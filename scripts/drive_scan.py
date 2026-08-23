@@ -173,7 +173,8 @@ def build_ci_payload(files, reports, buckets):
         owners.setdefault(email, o.get("displayName") or
                           (email.split("@")[0].replace(".", " ").replace("_", " ").title()))
         rows.append([f["id"], f["name"], ext_of(f["name"], mime), int(f.get("size") or 0),
-                     (f.get("createdTime") or "")[:10], email, f.get("md5") or "", kind])
+                     (f.get("createdTime") or "")[:10], email,
+                     f.get("md5Checksum") or f.get("md5") or "", kind])
     dup_groups = [{
         "md5": g["md5"], "count": g["count"], "size": g["size"],
         "names": [x["name"] for x in g["files"]][:10],
