@@ -3,16 +3,11 @@
  * Lives in its own worker; the UI never blocks during queries.
  */
 import * as duckdb from "@duckdb/duckdb-wasm";
-import duckdb_mvp_wasm from "@duckdb/duckdb-wasm/dist/duckdb-mvp.wasm?url";
-import duckdb_mvp_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-mvp.worker.js?url";
-import duckdb_eh_wasm from "@duckdb/duckdb-wasm/dist/duckdb-eh.wasm?url";
-import duckdb_eh_worker from "@duckdb/duckdb-wasm/dist/duckdb-browser-eh.worker.js?url";
 import type { Latest } from "./types";
 
-const MANUAL_BUNDLES: duckdb.DuckDBBundles = {
-  mvp: { mainModule: duckdb_mvp_wasm, mainWorker: duckdb_mvp_worker },
-  eh: { mainModule: duckdb_eh_wasm, mainWorker: duckdb_eh_worker },
-};
+/* WASM + worker load from jsDelivr (version-pinned by the npm package) —
+   Cloudflare Pages caps files at 25 MiB, so the 34–41 MB DuckDB binaries
+   cannot ship in the deploy bundle. Lazy-loaded only when /ask opens. */
 
 export interface SqlResult {
   columns: string[];
@@ -30,8 +25,12 @@ async function ensureDb(): Promise<duckdb.AsyncDuckDBConnection> {
   if (conn) return conn;
   if (!initing) {
     initing = (async () => {
-      const bundle = await duckdb.selectBundle(MANUAL_BUNDLES);
-      const worker = new Worker(bundle.mainWorker!);
+      const bundle = await duckdb.selectBundle(duckdb.getJsDelivrBundles());
+      // cross-origin worker script → wrap in a same-origin Blob
+      const workerUrl = URL.createObjectURL(
+        new Blob([`importScripts("${bundle.mainWorker}");`], { type: "text/javascript" }),
+      );
+      const worker = new Worker(workerUrl);
       const workerFailed = new Promise<never>((_, rej) => {
         worker.onerror = () => rej(new Error("DuckDB worker failed to load (check network tab)"));
       });
