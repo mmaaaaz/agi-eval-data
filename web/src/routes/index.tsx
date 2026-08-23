@@ -40,6 +40,23 @@ function Overview() {
   const sortedDays = [...activeDays].sort();
   const wasted = data.dupGroups.reduce((s, g) => s + (g.count - 1) * g.size, 0);
 
+  // per-day, per-owner breakdown for chart tooltips
+  const dayOwner = new Map<string, Map<string, number>>();
+  for (const r of imgs) {
+    if (r[4] === "?") continue;
+    let m = dayOwner.get(r[4]);
+    if (!m) dayOwner.set(r[4], (m = new Map()));
+    m.set(r[5], (m.get(r[5]) ?? 0) + 1);
+  }
+  const dayDetails = new Map<string, [string, number][]>([
+    ...[...dayOwner.entries()].map(([day, m]) => [
+      day,
+      [...m.entries()]
+        .map(([e, cnt]) => [data.owners[e] ?? e, cnt] as [string, number])
+        .sort((a, b) => b[1] - a[1]),
+    ] as [string, [string, number][]]),
+  ]);
+
   return (
     <div>
       <Eyebrow n="01">overview</Eyebrow>
@@ -47,12 +64,8 @@ function Overview() {
       {/* hero */}
       <section className="border-b border-[#262626]/60 pb-8">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#a1a1a1]">true picture count</p>
-        <p className="mt-2 text-7xl font-semibold tabular-nums tracking-tighter text-white">
+        <p className="mt-2 text-5xl font-semibold tabular-nums tracking-tighter text-white sm:text-6xl lg:text-7xl">
           {fmtN(c.imagesUnique)}
-        </p>
-        <p className="mt-3 font-mono text-xs text-[#666]">
-          {fmtN(c.imagesRaw)} raw files − {fmtN(c.dupCopies)} exact duplicates · videos excluded ·{" "}
-          {fmtB(c.bytes)} total stored
         </p>
       </section>
 
@@ -75,7 +88,7 @@ function Overview() {
 
         <section>
           <h2 className="mb-4 font-medium tracking-tight text-white">Uploads / day — last 28</h2>
-          <DayBars buckets={days} height={96} />
+          <DayBars buckets={days} height={96} details={dayDetails} />
 
           <h2 className="mb-4 mt-10 font-medium tracking-tight text-white">Latest arrivals</h2>
           <div className="-mx-1 flex gap-2 overflow-x-auto pb-2">

@@ -157,6 +157,8 @@ export interface OwnerStat {
   others: number;
   days: Map<string, number>;
   lastDay: string;
+  /** file id of their most recent upload — used as avatar */
+  lastId: string;
 }
 
 export function imageRows(latest: Latest): Row[] {
@@ -181,10 +183,13 @@ export function ownerStats(latest: Latest): OwnerStat[] {
       map.get(r[5]) ??
       ({
         email: r[5], raw: 0, unique: 0, dupes: 0, videos: 0, others: 0,
-        bytes: 0, days: new Map(), lastDay: "", seen: new Set<string>(),
+        bytes: 0, days: new Map(), lastDay: "", lastId: "", seen: new Set<string>(),
       } satisfies Acc);
     o.bytes += r[3];
-    if (r[4] > o.lastDay) o.lastDay = r[4];
+    if (r[4] > o.lastDay) {
+      o.lastDay = r[4];
+      o.lastId = r[0];
+    }
     if (r[7] === "v") o.videos++;
     else if (r[7] === "i") {
       o.raw++;

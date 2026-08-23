@@ -3,6 +3,7 @@ import { useData } from "../lib/dataContext";
 import { byDay, dupCounts, imageRows, ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 import { DayBreakdown } from "../components/DayBreakdown";
+import { ThumbImage } from "../components/ThumbImage";
 import { VirtualGallery } from "../components/VirtualGallery";
 
 export const Route = createFileRoute("/contributors/$email")({ component: Contributor });
@@ -38,14 +39,12 @@ function Contributor() {
 
       <header className="mt-4 flex flex-wrap items-end justify-between gap-4 border-b border-[#262626]/60 pb-6">
         <div className="flex items-center gap-4">
-          <span className="flex h-14 w-14 items-center justify-center rounded-lg border border-[#262626] font-mono text-base text-accent">
-            {name
-              .split(/\s+/)
-              .map((w) => w[0])
-              .join("")
-              .slice(0, 2)
-              .toUpperCase()}
-          </span>
+          <ThumbImage
+            fileId={stat.lastId || ""}
+            alt={name}
+            eager
+            className="h-14 w-14 shrink-0 rounded-full border border-[#262626]"
+          />
           <div>
             <h1 className="text-2xl font-semibold tracking-tight text-white">{name}</h1>
             <p className="font-mono text-xs text-[#666]">{email}</p>
@@ -65,7 +64,7 @@ function Contributor() {
         <DayBreakdown buckets={days} />
       </section>
 
-      <section className="flex h-[calc(100dvh-30rem)] min-h-[320px] flex-col pt-8">
+      <section className="flex min-h-[320px] flex-col pt-8 md:h-[calc(100dvh-30rem)]">
         <h2 className="mb-3 font-medium tracking-tight text-white">
           Their gallery <span className="ml-1 font-mono text-xs tabular-nums text-[#666]">{fmtN(theirImages.length)}</span>
         </h2>

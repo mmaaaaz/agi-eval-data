@@ -77,7 +77,7 @@ function Duplicates() {
                   ))}
                   <Link
                     to="/gallery"
-                    search={{ md5: g.md5, q: "", who: "*", ext: "", dedupe: false, sort: "recent" }}
+                    search={{ md5: g.md5 }}
                     className="mt-2 inline-block rounded border border-accent/40 px-2.5 py-1 font-mono text-[10px] text-accent transition-colors hover:bg-accent hover:text-white"
                   >
                     view all {g.count} in gallery →

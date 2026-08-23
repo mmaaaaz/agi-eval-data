@@ -1,8 +1,7 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import type { Latest, Row } from "../lib/types";
 import { ownerName } from "../lib/data";
 import { fmtB } from "../lib/format";
-import { ThumbImage } from "./ThumbImage";
 
 interface Props {
   row: Row;
@@ -59,11 +58,11 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
         </button>
       </header>
 
-      <div className="flex min-h-0 flex-1 items-center justify-center p-6" onClick={(e) => e.stopPropagation()}>
+      <div className="flex min-h-0 flex-1 items-center justify-center p-4 sm:p-6" onClick={(e) => e.stopPropagation()}>
         {kind === "v" ? (
           <p className="font-mono text-sm text-[#666]">video — excluded from dataset counts</p>
         ) : (
-          <ThumbImage fileId={id} w={1600} eager alt={name} className="max-h-full max-w-full rounded border border-[#262626]" />
+          <FullView key={id} fileId={id} alt={name} />
         )}
       </div>
 
@@ -82,6 +81,26 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
         </NavBtn>
       </footer>
     </div>
+  );
+}
+
+/** Full view — object-contain so the WHOLE frame fits, never cropped. */
+function FullView({ fileId, alt }: { fileId: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="flex h-64 w-64 items-center justify-center rounded-lg border border-[#262626] bg-[#0a0a0a] font-mono text-xs text-[#666]">
+        preview unavailable
+      </div>
+    );
+  }
+  return (
+    <img
+      src={`https://lh3.googleusercontent.com/d/${fileId}=w1600`}
+      alt={alt}
+      onError={() => setFailed(true)}
+      className="max-h-[72vh] max-w-full rounded-lg border border-[#262626] bg-[#0a0a0a] object-contain"
+    />
   );
 }
 

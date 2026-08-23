@@ -76,14 +76,19 @@ function Shell() {
   return (
     <div className="flex min-h-dvh flex-col">
         <header className="sticky top-0 z-40 border-b border-[#262626] bg-black/85 backdrop-blur-md">
-          <div className="mx-auto flex h-14 max-w-[1400px] items-center justify-between gap-4 px-5">
-            <Brand />
-            <nav className="flex items-center gap-1">
-              {NAV.map((n) => (
-                <NavLink key={n.to} to={n.to} label={n.label} />
-              ))}
-            </nav>
-            <div className="hidden md:block">
+          <div className="mx-auto max-w-[1400px] px-4 sm:px-5">
+            <div className="flex h-14 items-center justify-between gap-3">
+              <Brand />
+              <nav className="scrollbar-none flex flex-1 items-center justify-end gap-1 overflow-x-auto">
+                {NAV.map((n) => (
+                  <NavLink key={n.to} to={n.to} label={n.label} />
+                ))}
+              </nav>
+              <div className="hidden lg:block">
+                <SyncChip meta={latest.data.meta} />
+              </div>
+            </div>
+            <div className="pb-2 lg:hidden">
               <SyncChip meta={latest.data.meta} />
             </div>
           </div>
@@ -94,8 +99,18 @@ function Shell() {
         </main>
 
         <footer className="border-t border-[#262626]">
-          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-2 px-5 py-4 font-mono text-[10px] text-[#666]">
-            <span>metadata only · no dataset bytes served from here</span>
+          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-4 font-mono text-[10px] text-[#666]">
+            <span>
+              metadata only · no dataset bytes served from here ·{" "}
+              <a
+                href="https://github.com/mmaaaaz/agi-eval-data"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent transition-colors hover:underline"
+              >
+                GitHub ↗
+              </a>
+            </span>
             <span>
               v{latest.data.version} · scanned {latest.data.meta.scannedAt} ·{" "}
               {latest.data.files.length.toLocaleString()} items indexed

@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { useData } from "../lib/dataContext";
-import { dupCounts } from "../lib/data";
+import { dupCounts, ownerStats } from "../lib/data";
 import { fmtN } from "../lib/format";
 import { VirtualGallery } from "../components/VirtualGallery";
 import { Lightbox } from "../components/Lightbox";
@@ -75,12 +75,10 @@ function Gallery() {
 
   const extSet = new Set(search.ext.split(",").filter(Boolean));
   if (!data) return null;
-  const owners = Object.entries(data.owners)
-    .map(([email, name]) => ({ email, name }))
-    .sort((a, b) => a.name.localeCompare(b.name));
+  const owners = ownerStats(data).map((o) => ({ email: o.email, name: data.owners[o.email] ?? o.email, raw: o.raw }));
 
   return (
-    <div className="flex h-[calc(100dvh-10rem)] flex-col">
+    <div className="relative flex h-[calc(100dvh-16rem)] min-h-[420px] flex-col md:h-[calc(100dvh-10rem)]">
       {/* filter bar */}
       <div className="flex flex-wrap items-center gap-2 border-b border-[#262626]/60 pb-4">
         <input
@@ -92,12 +90,12 @@ function Gallery() {
         <select
           value={search.who}
           onChange={(e) => patch({ who: e.target.value })}
-          className="max-w-56 rounded-md border border-[#262626] bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
+          className="max-w-56 min-w-0 rounded-md border border-[#262626] bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
         >
           <option value="*">everyone</option>
           {owners.map((o) => (
             <option key={o.email} value={o.email}>
-              {o.name}
+              {o.name} ({fmtN(o.raw)})
             </option>
           ))}
         </select>
@@ -153,6 +151,14 @@ function Gallery() {
       </div>
 
       <VirtualGallery rows={rows} dupSet={dups} onOpen={setOpen} />
+
+      {rows.length === 0 && search.md5 && (
+        <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
+          <p className="rounded-lg border border-[#262626] bg-black/80 px-4 py-3 font-mono text-xs text-[#a1a1a1]">
+            no files with hash {search.md5.slice(0, 12)}… in this snapshot
+          </p>
+        </div>
+      )}
 
       {open != null && rows[open] && (
         <Lightbox
