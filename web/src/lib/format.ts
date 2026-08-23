@@ -27,21 +27,22 @@ export function timeAgo(iso: string): string {
 }
 
 /** Next run time for cron strings of shape "0 * * * *" or "0 H,H,H * * *". */
-export function nextSync(cron: string, now = new Date()): Date {
+/** Next cron slot strictly after `after`, honouring hourly or fixed-hour lists. */
+export function nextSlotAfter(cron: string, after: Date): Date {
   const parts = cron.trim().split(/\s+/);
-  const hours = parts[3]?.split(",").map(Number).filter((n) => !Number.isNaN(n)) ?? [];
-  const next = new Date(now);
-  next.setSeconds(0, 0);
-  if (parts[1] === "*" || hours.length === 0) {
-    next.setHours(next.getHours() + 1, 0, 0, 0);
-    return next;
+  const minutes = Number(parts[0]) || 0;
+  const hours = parts[1] === "*" ? null : parts[1].split(",").map(Number).filter((n) => !Number.isNaN(n));
+  if (!hours || hours.length === 0) {
+    const d = new Date(after);
+    d.setHours(d.getHours() + 1, minutes, 0, 0);
+    return d;
   }
-  for (let i = 1; i <= 24; i++) {
-    const cand = new Date(now.getTime() + i * 3600_000);
-    cand.setMinutes(Number(parts[0]) || 0, 0, 0);
-    if (hours.includes(cand.getHours())) return cand;
+  for (let i = 0; i < 48; i++) {
+    const cand = new Date(after.getTime() + i * 3600_000);
+    cand.setMinutes(minutes, 0, 0);
+    if (hours.includes(cand.getHours()) && cand > after) return cand;
   }
-  return new Date(now.getTime() + 3600_000);
+  return new Date(after.getTime() + 3600_000);
 }
 
 export function tzShort(): string {

@@ -67,11 +67,12 @@ function chrome({ eyebrow, accent = T.accent }) {
     // eyebrow + safelight
     txt(eyebrow, { position: "absolute", right: 130, top: 62, color: accent, fontSize: 20, letterSpacing: 6 }),
     abs({ right: 86, top: 62 }, { width: 22, height: 22, borderRadius: 11, backgroundColor: T.danger }),
-    // bottom bar
+    // bottom bar — deliberately timestamp-free: identical stats must produce
+    // byte-identical cards, so git skips no-op commits
     abs({ left: 0, bottom: 0 }, { width: 1200, height: 4, backgroundColor: accent }),
     abs({ left: 90, bottom: 34 }, { display: "flex", flexDirection: "row", gap: 24, alignItems: "center" }, [
       txt(DOMAIN, { color: T.faint, fontSize: 19 }),
-      txt(`synced ${data.meta.scannedAt} · hourly`, { color: T.faint, fontSize: 19 }),
+      txt("hourly sync · zero-cost pipeline", { color: T.faint, fontSize: 19 }),
     ]),
   ];
 }
