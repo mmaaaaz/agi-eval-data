@@ -38,6 +38,17 @@ jobs:
           DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
         run: python scripts/drive_scan.py --ci
 
+      - name: Set up Node for OG render
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Render OG card (takumi)
+        run: |
+          cd scripts/og
+          npm install --no-fund --no-audit
+          node render-og.mjs
+
       - name: Share-sync new images (delta)
         env:
           DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
@@ -49,7 +60,7 @@ jobs:
         run: |
           git config user.name  "agi-eval-bot"
           git config user.email "bot@agi-eval-data.local"
-          git add data/latest.json
+          git add data/latest.json og/og.png
           if git diff --cached --quiet; then
             echo "No changes since last sync."
           else

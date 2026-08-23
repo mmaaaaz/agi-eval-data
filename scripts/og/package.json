@@ -1,0 +1,8 @@
+{
+  "name": "agi-eval-og",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@takumi-rs/core": "^2.12.0"
+  }
+}
