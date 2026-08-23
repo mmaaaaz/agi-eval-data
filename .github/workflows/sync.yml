@@ -65,6 +65,13 @@ jobs:
             echo "No changes since last sync."
           else
             git commit -m "chore(data): sync $(date -u '+%Y-%m-%dT%H:%MZ')"
+          fi
+          # main may have moved while we scanned — rebase and retry once
+          git fetch origin main
+          git rebase origin/main || git rebase --abort
+          if git diff --quiet origin/main; then
+            echo "nothing to push"
+          else
             git push
           fi
 
