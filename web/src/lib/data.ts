@@ -11,6 +11,37 @@ export function ownerName(latest: Latest, email: string): string {
   return latest.owners[email] ?? email;
 }
 
+/* ---------- exif helpers ---------- */
+
+export interface ExifInfo {
+  w: number;
+  h: number;
+  camera?: string;
+}
+
+export function exifOf(l: Latest, id: string): ExifInfo | null {
+  const e = l.exif?.[id];
+  if (!e || e.length < 2) return null;
+  return {
+    w: e[0],
+    h: e[1],
+    camera: e[2] != null && e[2] >= 0 ? l.cams?.[e[2]] : undefined,
+  };
+}
+
+export type Orientation = "landscape" | "portrait" | "square";
+
+export function orientationOf(w: number, h: number): Orientation {
+  const r = w / h;
+  if (r > 1.05) return "landscape";
+  if (r < 0.95) return "portrait";
+  return "square";
+}
+
+export function megapixels(w: number, h: number): number {
+  return (w * h) / 1_000_000;
+}
+
 /* ---------- cache (stale-while-revalidate) ---------- */
 
 async function withCache<T>(fn: (c: Cache) => Promise<T>): Promise<T | null> {

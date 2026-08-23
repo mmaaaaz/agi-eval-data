@@ -1,7 +1,9 @@
+import { useEffect, useState } from "react";
 import { Link, createRootRoute, Outlet } from "@tanstack/react-router";
 import { useLatest } from "../lib/data";
 import { DataProvider, useData } from "../lib/dataContext";
 import { SyncChip } from "../components/SyncChip";
+import { CommandPalette } from "../components/CommandPalette";
 
 const NAV = [
   { to: "/", label: "Overview" },
@@ -64,6 +66,19 @@ function Brand() {
 
 function Shell() {
   const latest = useData();
+  const [palette, setPalette] = useState(false);
+
+  // global ⌘K / Ctrl-K
+  useEffect(() => {
+    const h = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault();
+        setPalette((p) => !p);
+      }
+    };
+    window.addEventListener("keydown", h);
+    return () => window.removeEventListener("keydown", h);
+  }, []);
 
   if (latest.loadingFirst && !latest.data && !latest.error) {
     return <Loader progress={latest.progress} />;
@@ -75,24 +90,35 @@ function Shell() {
 
   return (
     <div className="flex min-h-dvh flex-col">
-        <header className="sticky top-0 z-40 border-b border-[#262626] bg-black/85 backdrop-blur-md">
-          <div className="mx-auto max-w-[1400px] px-4 sm:px-5">
-            <div className="flex h-14 items-center justify-between gap-3">
-              <Brand />
-              <nav className="scrollbar-none flex flex-1 items-center justify-end gap-1 overflow-x-auto">
-                {NAV.map((n) => (
-                  <NavLink key={n.to} to={n.to} label={n.label} />
-                ))}
-              </nav>
-              <div className="hidden lg:block">
-                <SyncChip meta={latest.data.meta} />
-              </div>
-            </div>
-            <div className="pb-2 lg:hidden">
+      <header className="sticky top-0 z-40 border-b border-[#262626] bg-black/85 backdrop-blur-md">
+        <div className="mx-auto max-w-[1400px] px-4 sm:px-5">
+          {/* row 1: brand · palette · sync */}
+          <div className="flex h-12 items-center justify-between gap-3 lg:h-14">
+            <Brand />
+            <nav className="hidden items-center gap-1 lg:flex">
+              {NAV.map((n) => (
+                <NavLink key={n.to} to={n.to} label={n.label} />
+              ))}
+            </nav>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => setPalette(true)}
+                aria-label="Open command menu"
+                className="hidden items-center gap-1.5 rounded-md border border-[#262626] px-2 py-1 font-mono text-[10px] text-[#666] transition-colors hover:border-[#404040] hover:text-[#a1a1a1] md:flex"
+              >
+                search <kbd className="rounded bg-[#141414] px-1">⌘K</kbd>
+              </button>
               <SyncChip meta={latest.data.meta} />
             </div>
           </div>
-        </header>
+          {/* row 2 (mobile/tablet): scrollable nav */}
+          <nav className="scrollbar-none -mx-4 mb-1 flex items-center gap-1 overflow-x-auto px-4 sm:-mx-5 sm:px-5 lg:hidden">
+            {NAV.map((n) => (
+              <NavLink key={n.to} to={n.to} label={n.label} />
+            ))}
+          </nav>
+        </div>
+      </header>
 
         <main className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-8">
           <Outlet />
@@ -113,10 +139,12 @@ function Shell() {
             </span>
             <span>
               v{latest.data.version} · scanned {latest.data.meta.scannedAt} ·{" "}
-              {latest.data.files.length.toLocaleString()} items indexed
+              {latest.data.files.length.toLocaleString()} items indexed · press ⌘K
             </span>
           </div>
         </footer>
+
+        <CommandPalette open={palette} onClose={() => setPalette(false)} />
       </div>
   );
 }

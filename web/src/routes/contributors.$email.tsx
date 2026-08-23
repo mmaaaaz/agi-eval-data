@@ -4,6 +4,7 @@ import { useData } from "../lib/dataContext";
 import { byDay, dupCounts, imageRows, ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 import { DayBreakdown } from "../components/DayBreakdown";
+import { Heatmap } from "../components/Heatmap";
 import { ThumbImage } from "../components/ThumbImage";
 import { VirtualGallery } from "../components/VirtualGallery";
 import { Lightbox } from "../components/Lightbox";
@@ -64,7 +65,11 @@ function Contributor() {
 
       <section className="pt-6">
         <h2 className="mb-3 font-medium tracking-tight text-white">Upload rhythm</h2>
-        <DayBreakdown buckets={days} />
+        <Heatmap
+          days={stat.days}
+          endDay={data.files.reduce((m, r) => (r[4] > m && r[4] !== "?" ? r[4] : m), "0000-00-00")}
+        />
+        <div className="mt-5"><DayBreakdown buckets={days} /></div>
       </section>
 
       <section className="flex min-h-[320px] flex-col pt-8 md:h-[calc(100dvh-30rem)]">

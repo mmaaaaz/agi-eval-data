@@ -34,4 +34,7 @@ export interface Latest {
   files: Row[];
   owners: Record<string, string>;
   dupGroups: DupGroup[];
+  /** v3: fileId → [width, height, cameraIndex?] (cameraIndex absent = unknown) */
+  exif?: Record<string, number[]>;
+  cams?: string[];
 }

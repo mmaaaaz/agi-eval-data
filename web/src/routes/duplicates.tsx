@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
+import { ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 
 export const Route = createFileRoute("/duplicates")({ component: Duplicates });
@@ -35,6 +36,41 @@ function Duplicates() {
         Grouped by md5 checksum — files that are byte-for-byte identical. Re-saved or re-compressed
         variants are intentionally not flagged.
       </p>
+
+      {/* duplicate guilt chart */}
+      {(() => {
+        const guilt = ownerStats(data)
+          .map((o) => ({ name: data.owners[o.email] ?? o.email, dupes: o.dupes }))
+          .filter((g) => g.dupes > 0)
+          .sort((a, b) => b.dupes - a.dupes);
+        if (guilt.length === 0) return null;
+        const max = Math.max(...guilt.map((g) => g.dupes), 1);
+        const totalDupes = guilt.reduce((s, g) => s + g.dupes, 0);
+        return (
+          <section className="mt-8">
+            <h2 className="mb-4 font-medium tracking-tight text-white">
+              Duplicate contributions
+              <span className="ml-2 font-mono text-xs font-normal tabular-nums text-[#666]">
+                copies per contributor · {fmtN(totalDupes)} total
+              </span>
+            </h2>
+            <div>
+              {guilt.map((g) => (
+                <div key={g.name} className="mb-2 grid grid-cols-[minmax(90px,180px)_1fr_64px] items-center gap-3">
+                  <span className="truncate font-mono text-[11px] text-[#a1a1a1]" title={g.name}>{g.name}</span>
+                  <span className="h-[10px] overflow-hidden rounded-full bg-[#161616]">
+                    <span
+                      className="block h-full rounded-full bg-gradient-to-r from-[#7a2015] to-danger"
+                      style={{ width: `${Math.max(2, (g.dupes / max) * 100)}%` }}
+                    />
+                  </span>
+                  <span className="text-right font-mono text-[11px] tabular-nums text-danger">{fmtN(g.dupes)}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        );
+      })()}
 
       <div className="mt-6 overflow-hidden rounded-lg border border-[#262626]">
         <div className="grid grid-cols-[52px_70px_90px_1fr_24px] items-center gap-3 border-b border-[#262626] bg-[#0a0a0a] px-4 py-2.5 md:grid-cols-[52px_70px_110px_110px_1fr_24px]">
