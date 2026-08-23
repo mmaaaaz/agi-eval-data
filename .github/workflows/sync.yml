@@ -43,7 +43,26 @@ jobs:
         with:
           node-version: 22
 
-      - name: Render OG card (takumi)
+      - name: Detect real change (ignore scan timestamp)
+        id: change
+        run: |
+          git show HEAD:data/latest.json > /tmp/prev.json 2>/dev/null || echo "{}" > /tmp/prev.json
+          python3 - <<'PY'
+          import json, os
+          def norm(path):
+              try:
+                  d = json.load(open(path))
+              except Exception:
+                  return "{}"
+              d.get("meta", {}).pop("scannedAt", None)
+              return json.dumps(d, sort_keys=True)
+          changed = norm("/tmp/prev.json") != norm("data/latest.json")
+          with open(os.environ["GITHUB_OUTPUT"], "a") as g:
+              g.write(f"changed={str(changed).lower()}")
+          print(f"real change detected: {changed}")
+          PY
+      - name: Render OG cards (takumi) — only when stats changed
+        if: steps.change.outputs.changed == 'true'
         run: |
           cd scripts/og
           npm install --no-fund --no-audit
@@ -60,7 +79,10 @@ jobs:
         run: |
           git config user.name  "agi-eval-bot"
           git config user.email "bot@agi-eval-data.local"
-          git add data/latest.json og/
+          git add data/latest.json
+          if [ "${{ steps.change.outputs.changed }}" = "true" ]; then
+            git add og/
+          fi
           if git diff --cached --quiet; then
             echo "No changes since last sync."
           else
