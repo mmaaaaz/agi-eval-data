@@ -304,6 +304,30 @@ function Ask() {
         </div>
       </div>
 
+      {sqlStatus === "error" && (
+        <div className="mb-3 rounded-lg border border-danger/40 bg-danger/5 p-3">
+          <p className="break-all font-mono text-[11px] leading-5 text-danger">{sqlError}</p>
+          <button
+            onClick={() => {
+              if (!data) return;
+              setSqlStatus("loading");
+              loadArtifact(data)
+                .then(() => setSqlStatus("ready"))
+                .catch((e) => {
+                  const msg = e instanceof Error ? e.message : String(e);
+                  setSqlStatus("error");
+                  setSqlError(msg);
+                  console.error("[duckdb]", msg);
+                });
+            }}
+            className="mt-2 rounded-md border border-danger/50 px-3 py-1.5 font-mono text-[11px] text-danger transition-colors hover:bg-danger/10"
+          >
+            retry SQL engine
+          </button>
+          <p className="mt-2 font-mono text-[10px] text-[#666]">chat works without SQL — answers will come from the dataset summary only</p>
+        </div>
+      )}
+
       {showSettings && (
         <AskSettingsPanel
           accounts={settings.accounts}
