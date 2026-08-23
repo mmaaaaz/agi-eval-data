@@ -59,10 +59,10 @@ export function datasetBrief(latest: Latest): string {
     `DUPLICATES: ${fmtN(latest.dupGroups.length)} byte-identical groups (${fmtN(c.dupCopies)} extra copies). md5 dedup only — re-compressed variants are not flagged.`,
     ``,
     `You also have the run_sql tool over tables:`,
-    `- images(id VARCHAR, name VARCHAR, ext VARCHAR, size BIGINT, day DATE-as-string 'YYYY-MM-DD', owner VARCHAR(email), md5 VARCHAR, kind VARCHAR['i'|'v'|'o'])`,
+    `- images(id VARCHAR, name VARCHAR, ext VARCHAR, size BIGINT, day VARCHAR 'YYYY-MM-DD', owner VARCHAR(email), md5 VARCHAR, kind VARCHAR['i'|'v'|'o'], width INT, height INT, megapixels DOUBLE, camera VARCHAR, orientation VARCHAR['landscape'|'portrait'|'square'])`,
     `- owners(email VARCHAR, name VARCHAR)`,
     `- dup_groups(md5 VARCHAR, copies BIGINT, bytes BIGINT)`,
-    `Rules: single SELECT only, always include LIMIT (auto-capped 200). kind 'i'=image 'v'=video 'o'=other. day compares as string 'YYYY-MM-DD'. owner is the email; join owners for display names.`,
+    `Rules: single SELECT only, always include LIMIT (auto-capped 200). kind 'i'=image 'v'=video 'o'=other. day compares as string 'YYYY-MM-DD'. owner is the email; join owners for display names. width/height/megapixels/camera/orientation come from EXIF and are NULL when unknown — when a question mentions orientation or resolution, filter on those columns.`,
   ].join("\n");
 }
 

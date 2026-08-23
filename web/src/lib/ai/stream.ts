@@ -57,12 +57,28 @@ async function streamOpenAI(a: StreamArgs): Promise<StreamResult> {
   if (a.tools?.length)
     body.tools = a.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } }));
 
-  const res = await fetch(`${trimBase(a.base)}/chat/completions`, {
+  let res = await fetch(`${trimBase(a.base)}/chat/completions`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${a.key}` },
     body: JSON.stringify(body),
     signal: a.signal,
   });
+
+  // some gateways/reasoning-models reject tools unless reasoning_effort is "none"
+  if (!res.ok && body.tools) {
+    const detail = await res.text().catch(() => "");
+    if (/reasoning_effort/i.test(detail)) {
+      body.reasoning_effort = "none";
+      res = await fetch(`${trimBase(a.base)}/chat/completions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${a.key}` },
+        body: JSON.stringify(body),
+        signal: a.signal,
+      });
+    } else {
+      throw new Error(`provider HTTP ${res.status}: ${detail.slice(0, 300)}`);
+    }
+  }
   if (!res.ok || !res.body) {
     const detail = await res.text().catch(() => "");
     throw new Error(`provider HTTP ${res.status}: ${detail.slice(0, 300)}`);

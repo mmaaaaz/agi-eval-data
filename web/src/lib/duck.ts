@@ -60,10 +60,19 @@ async function loadArtifactInner(latest: Latest): Promise<void> {
   const conn = await ensureDb();
   if (loadedScannedAt === latest.meta.scannedAt) return;
 
-  const images = latest.files.map((r) => ({
-    id: r[0], name: r[1], ext: r[2], size: Number(r[3] ?? 0), day: r[4],
-    owner: r[5], md5: r[6] || null, kind: r[7],
-  }));
+  const images = latest.files.map((r) => {
+    const e = latest.exif?.[r[0]];
+    const ratio = e ? e[0] / e[1] : 0;
+    return {
+      id: r[0], name: r[1], ext: r[2], size: Number(r[3] ?? 0), day: r[4],
+      owner: r[5], md5: r[6] || null, kind: r[7],
+      width: e?.[0] ?? null,
+      height: e?.[1] ?? null,
+      megapixels: e ? Number(((e[0] * e[1]) / 1e6).toFixed(2)) : null,
+      camera: e && e[2] != null && e[2] >= 0 ? latest.cams?.[e[2]] ?? null : null,
+      orientation: e ? (ratio > 1.05 ? "landscape" : ratio < 0.95 ? "portrait" : "square") : null,
+    };
+  });
   const ownerRows = Object.entries(latest.owners).map(([email, name]) => ({ email, name }));
   const dupRows = latest.dupGroups.map((g) => ({ md5: g.md5, copies: g.count, bytes: g.size }));
 
