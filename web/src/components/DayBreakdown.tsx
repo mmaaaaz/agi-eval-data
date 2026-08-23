@@ -16,14 +16,12 @@ export function DayBreakdown({ buckets, height = 56 }: Props) {
   void height;
   return (
     <div className="mt-3">
-      {!open && (
-        <button
-          onClick={() => setOpen(true)}
-          className="w-full rounded-lg border border-dashed border-[#262626] py-2 font-mono text-[11px] tracking-wider text-[#666] transition-colors hover:border-[#404040] hover:text-[#a1a1a1]"
-        >
-          ▾ DAY-WISE BREAKDOWN ({buckets.length} DAYS)
-        </button>
-      )}
+      <button
+        onClick={() => setOpen((v) => !v)}
+        className="w-full rounded-lg border border-dashed border-[#262626] py-2 font-mono text-[11px] tracking-wider text-[#666] transition-colors hover:border-[#404040] hover:text-[#a1a1a1]"
+      >
+        {open ? `▴ HIDE DAY-WISE BREAKDOWN` : `▾ DAY-WISE BREAKDOWN (${buckets.length} DAYS)`}
+      </button>
       {open && (
         <div className="border-t border-[#262626] pt-3">
           {shown.map(([day, count]) => (
@@ -40,14 +38,6 @@ export function DayBreakdown({ buckets, height = 56 }: Props) {
               </span>
             </div>
           ))}
-          {buckets.length > 14 && (
-            <button
-              onClick={() => setOpen(false)}
-              className="mt-2 w-full rounded-lg border border-dashed border-[#262626] py-2 font-mono text-[11px] text-[#666] hover:border-[#404040]"
-            >
-              ▴ COLLAPSE
-            </button>
-          )}
         </div>
       )}
     </div>

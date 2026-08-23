@@ -34,7 +34,7 @@ function Contributors() {
             <Link
               key={o.email}
               to="/contributors/$email"
-              params={{ email: encodeURIComponent(o.email) }}
+              params={{ email: o.email }}
               className="block border-b border-[#262626]/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-[#0a0a0a] md:grid md:grid-cols-[40px_minmax(0,1fr)_repeat(5,minmax(0,90px))_110px] md:items-center md:gap-4"
             >
               <span className="hidden font-mono text-xs tabular-nums text-[#666] md:block">

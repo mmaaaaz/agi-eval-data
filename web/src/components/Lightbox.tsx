@@ -56,6 +56,7 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
   useEffect(() => {
     drag.current = null;
     setZoom(null);
+    setPan({ x: 0, y: 0 });
   }, [id]);
 
   /* ---------------- gestures (pointer events: touch + mouse) ---------------- */
@@ -68,15 +69,16 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
   const drag = useRef<Drag | null>(null);
   const [dragStyle, setDragStyle] = useState<{ tx: number; ty: number; dragging: boolean }>({ tx: 0, ty: 0, dragging: false });
   const [zoom, setZoom] = useState<{ s: number; ox: number; oy: number } | null>(null);
+  const [pan, setPan] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const panLast = useRef<{ x: number; y: number } | null>(null);
   const lastTap = useRef<{ t: number; x: number; y: number } | null>(null);
 
   const onPointerDown = (e: React.PointerEvent) => {
+    // never hijack clicks meant for controls living inside the stage
+    if ((e.target as HTMLElement).closest("button, a, [data-no-gesture]")) return;
     if (e.pointerType === "mouse" && e.button !== 0) return;
-    if (zoom) {
-      drag.current = { startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, mode: "pan", pointerId: e.pointerId };
-    } else {
-      drag.current = { startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, mode: "undecided", pointerId: e.pointerId };
-    }
+    drag.current = { startX: e.clientX, startY: e.clientY, dx: 0, dy: 0, mode: "undecided", pointerId: e.pointerId };
+    if (zoom) panLast.current = { x: e.clientX, y: e.clientY };
     (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
   };
 
@@ -86,14 +88,26 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
     d.dx = e.clientX - d.startX;
     d.dy = e.clientY - d.startY;
 
-    if (d.mode === "pan") return; // offset applied via zoom origin below (kept simple)
     if (d.mode === "undecided") {
       const adx = Math.abs(d.dx), ady = Math.abs(d.dy);
       if (Math.max(adx, ady) < 8) return;
-      d.mode = adx > ady ? "swipe-x" : d.dy > 0 && ady > adx * 1.3 ? "dismiss" : null;
+      // zoomed: any real drag becomes a pan; otherwise classify the swipe
+      d.mode = zoom ? "pan" : adx > ady ? "swipe-x" : d.dy > 0 && ady > adx * 1.3 ? "dismiss" : null;
     }
     if (d.mode === "swipe-x") setDragStyle({ tx: d.dx * 0.55, ty: 0, dragging: true });
     else if (d.mode === "dismiss") setDragStyle({ tx: 0, ty: Math.max(0, d.dy) * 0.6, dragging: true });
+    else if (d.mode === "pan") {
+      // clamp so the image can't be dragged past its own edges
+      if (!panLast.current) return;
+      const rect = stageRef.current?.getBoundingClientRect();
+      const maxX = rect ? (rect.width * (ZOOM - 1)) / 2 : 200;
+      const maxY = rect ? (rect.height * (ZOOM - 1)) / 2 : 200;
+      setPan({
+        x: Math.max(-maxX, Math.min(maxX, pan.x + (e.clientX - panLast.current.x))),
+        y: Math.max(-maxY, Math.min(maxY, pan.y + (e.clientY - panLast.current.y))),
+      });
+      panLast.current = { x: e.clientX, y: e.clientY };
+    }
   };
 
   const onPointerUp = (e: React.PointerEvent) => {
@@ -117,21 +131,24 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
       }
     } else if (d.mode === "undecided") {
       // tap candidate → double-tap zoom
+      panLast.current = null;
       const now = Date.now();
       const lt = lastTap.current;
       if (lt && now - lt.t < 320 && Math.hypot(e.clientX - lt.x, e.clientY - lt.y) < 28) {
         lastTap.current = null;
         const rect = stageRef.current?.getBoundingClientRect();
         if (rect) {
-          setZoom((z) =>
-            z
-              ? null
-              : {
-                  s: ZOOM,
-                  ox: Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
-                  oy: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
-                },
-          );
+          if (zoom) {
+            // already zoomed → this double-tap un-zooms
+            setZoom(null);
+            setPan({ x: 0, y: 0 });
+          } else {
+            setZoom({
+              s: ZOOM,
+              ox: Math.min(100, Math.max(0, ((e.clientX - rect.left) / rect.width) * 100)),
+              oy: Math.min(100, Math.max(0, ((e.clientY - rect.top) / rect.height) * 100)),
+            });
+          }
         }
         return;
       }
@@ -195,8 +212,7 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
           {/* stage — owns gestures */}
           <div
             ref={stageRef}
-            className="relative flex min-h-0 flex-1 touch-none items-center justify-center overflow-hidden p-3 sm:p-6"
-            style={{ height: "auto" }}
+            className="relative flex min-h-0 flex-1 touch-none select-none items-center justify-center overflow-hidden p-3 sm:p-6"
             onPointerDown={onPointerDown}
             onPointerMove={onPointerMove}
             onPointerUp={onPointerUp}
@@ -220,13 +236,13 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
                   alt={name}
                   draggable={false}
                   onError={(e) => ((e.target as HTMLImageElement).style.opacity = "0.15")}
-                  className="max-h-[62vh] rounded-lg border border-[#262626] bg-[#0a0a0a] object-contain @2xl/lb:max-h-full"
+                  className="max-h-[62vh] select-none rounded-lg border border-[#262626] bg-[#0a0a0a] object-contain @2xl/lb:max-h-full"
                   style={
                     zoom
                       ? {
-                          transform: `scale(${zoom.s})`,
+                          transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom.s})`,
                           transformOrigin: `${zoom.ox}% ${zoom.oy}%`,
-                          transition: `transform var(--dur-standard) var(--ease-signature)`,
+                          transition: dragStyle.dragging ? "none" : `transform var(--dur-standard) var(--ease-signature)`,
                         }
                       : undefined
                   }
