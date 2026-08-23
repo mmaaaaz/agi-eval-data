@@ -60,7 +60,7 @@ jobs:
         run: |
           git config user.name  "agi-eval-bot"
           git config user.email "bot@agi-eval-data.local"
-          git add data/latest.json og/og.png
+          git add data/latest.json og/
           if git diff --cached --quiet; then
             echo "No changes since last sync."
           else
