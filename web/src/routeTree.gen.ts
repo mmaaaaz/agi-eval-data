@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as SplatRouteImport } from './routes/$'
+import { Route as CompositionRouteImport } from './routes/composition'
 import { Route as DuplicatesRouteImport } from './routes/duplicates'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as ProjectRouteImport } from './routes/project'
@@ -25,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const SplatRoute = SplatRouteImport.update({
   id: '/$',
   path: '/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompositionRoute = CompositionRouteImport.update({
+  id: '/composition',
+  path: '/composition',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DuplicatesRoute = DuplicatesRouteImport.update({
@@ -56,6 +62,7 @@ const ContributorsEmailRoute = ContributorsEmailRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/composition': typeof CompositionRoute
   '/duplicates': typeof DuplicatesRoute
   '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
@@ -65,6 +72,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/composition': typeof CompositionRoute
   '/duplicates': typeof DuplicatesRoute
   '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
@@ -75,6 +83,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/$': typeof SplatRoute
+  '/composition': typeof CompositionRoute
   '/duplicates': typeof DuplicatesRoute
   '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
@@ -86,6 +95,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/$'
+    | '/composition'
     | '/duplicates'
     | '/gallery'
     | '/project'
@@ -95,6 +105,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/$'
+    | '/composition'
     | '/duplicates'
     | '/gallery'
     | '/project'
@@ -104,6 +115,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/$'
+    | '/composition'
     | '/duplicates'
     | '/gallery'
     | '/project'
@@ -114,6 +126,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   SplatRoute: typeof SplatRoute
+  CompositionRoute: typeof CompositionRoute
   DuplicatesRoute: typeof DuplicatesRoute
   GalleryRoute: typeof GalleryRoute
   ProjectRoute: typeof ProjectRoute
@@ -135,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/$'
       fullPath: '/$'
       preLoaderRoute: typeof SplatRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/composition': {
+      id: '/composition'
+      path: '/composition'
+      fullPath: '/composition'
+      preLoaderRoute: typeof CompositionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/duplicates': {
@@ -178,6 +198,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   SplatRoute: SplatRoute,
+  CompositionRoute: CompositionRoute,
   DuplicatesRoute: DuplicatesRoute,
   GalleryRoute: GalleryRoute,
   ProjectRoute: ProjectRoute,

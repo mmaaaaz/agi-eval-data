@@ -12,7 +12,7 @@ function Project() {
   return (
     <div className="max-w-3xl">
       <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
-        <span className="text-accent">05</span> — project
+        <span className="text-accent">06</span> — project
       </p>
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         agi-eval-data

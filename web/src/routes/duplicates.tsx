@@ -24,7 +24,7 @@ function Duplicates() {
   return (
     <div>
       <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
-        <span className="text-accent">04</span> — duplicates
+        <span className="text-accent">05</span> — duplicates
       </p>
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         Byte-identical copies{" "}

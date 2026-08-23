@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Link, createRootRoute, Outlet } from "@tanstack/react-router";
+import { Link, createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useLatest } from "../lib/data";
 import { DataProvider, useData } from "../lib/dataContext";
 import { SyncChip } from "../components/SyncChip";
@@ -8,6 +8,7 @@ import { CommandPalette } from "../components/CommandPalette";
 const NAV = [
   { to: "/", label: "Overview" },
   { to: "/gallery", label: "Gallery" },
+  { to: "/composition", label: "Composition" },
   { to: "/contributors", label: "Contributors" },
   { to: "/duplicates", label: "Duplicates" },
   { to: "/project", label: "Project" },
@@ -125,7 +126,7 @@ function Shell() {
         </main>
 
         <footer className="border-t border-[#262626]">
-          <div className="mx-auto flex max-w-[1400px] flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-4 font-mono text-[10px] text-[#666]">
+          <div className="mx-auto flex max-w-[1400px] flex-col items-center gap-1.5 px-4 py-5 text-center font-mono text-[10px] text-[#666] sm:flex-row sm:justify-between sm:px-5 sm:py-4 sm:text-left">
             <span>
               metadata only · no dataset bytes served from here ·{" "}
               <a
@@ -161,12 +162,49 @@ function NavLink({ to, label }: { to: string; label: string }) {
   );
 }
 
+const PAGE_TITLES: Record<string, string> = {
+  "/": "Overview",
+  "/gallery": "Gallery",
+  "/composition": "Composition",
+  "/contributors": "Contributors",
+  "/duplicates": "Duplicates",
+  "/project": "Project",
+};
+
 export const Route = createRootRoute({
   component: function Root() {
     const latest = useLatest();
+    const pathname = useRouterState({ select: (s) => s.location.pathname });
+
+    // per-route tab titles (crawlers read static OG tags; this is for humans)
+    useEffect(() => {
+      const base = PAGE_TITLES[pathname];
+      document.title = base ? `${base} · agi-eval-data` : "agi-eval-data — dataset ledger";
+    }, [pathname]);
+
+    // SPA route change should land at the top, like a real page load
+    useEffect(() => {
+      window.scrollTo(0, 0);
+    }, [pathname]);
+
+    const [palette, setPalette] = useState(false);
+
+    // global ⌘K / Ctrl-K
+    useEffect(() => {
+      const h = (e: KeyboardEvent) => {
+        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
+          e.preventDefault();
+          setPalette((p) => !p);
+        }
+      };
+      window.addEventListener("keydown", h);
+      return () => window.removeEventListener("keydown", h);
+    }, []);
+
     return (
       <DataProvider value={latest}>
         <Shell />
+        {latest.data && <CommandPalette open={palette} onClose={() => setPalette(false)} />}
       </DataProvider>
     );
   },

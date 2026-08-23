@@ -1,19 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
-import { byDay, exifOf, megapixels, orientationOf, ownerName } from "../lib/data";
+import { byDay, exifOf, megapixels, ownerName } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
+import { Eyebrow } from "../components/Section";
+import { Link } from "@tanstack/react-router";
 import { DayBars } from "../components/DayBars";
 import { ThumbImage } from "../components/ThumbImage";
 
 export const Route = createFileRoute("/")({ component: Overview });
-
-function Eyebrow({ n, children }: { n: string; children: string }) {
-  return (
-    <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
-      <span className="text-accent">{n}</span> — {children}
-    </p>
-  );
-}
 
 function StatRow({ label, value, note, danger }: { label: string; value: string; note?: string; danger?: boolean }) {
   return (
@@ -33,6 +27,13 @@ function Overview() {
   const c = data.meta.counts;
   const imgs = data.files.filter((r) => r[7] === "i");
   const days = byDay(imgs, 28);
+  const exifKnown = imgs.filter((r) => exifOf(data, r[0]) !== null).length;
+  const sortedMps = imgs
+    .map((r) => exifOf(data, r[0]))
+    .filter((e): e is NonNullable<typeof e> => e !== null)
+    .map((e) => megapixels(e.w, e.h))
+    .sort((a, b) => a - b);
+  const medMp = sortedMps.length ? sortedMps[Math.floor(sortedMps.length / 2)] : 0;
   const recent = [...imgs]
     .sort((a, b) => b[4].localeCompare(a[4]) || b[1].localeCompare(a[1]))
     .slice(0, 16);
@@ -57,23 +58,6 @@ function Overview() {
     ] as [string, [string, number][]]),
   ]);
 
-  // exif composition
-  let land = 0, por = 0, sq = 0;
-  const cams = new Map<string, number>();
-  const mps: number[] = [];
-  for (const r of imgs) {
-    const e = exifOf(data, r[0]);
-    if (!e) continue;
-    const o = orientationOf(e.w, e.h);
-    if (o === "landscape") land++;
-    else if (o === "portrait") por++;
-    else sq++;
-    mps.push(megapixels(e.w, e.h));
-    if (e.camera) cams.set(e.camera, (cams.get(e.camera) ?? 0) + 1);
-  }
-  const known = mps.length;
-  const medMp = known ? [...mps].sort((a, b) => a - b)[Math.floor(known / 2)] : 0;
-  const topCams = [...cams.entries()].sort((a, b) => b[1] - a[1]).slice(0, 4);
 
   return (
     <div>
@@ -109,36 +93,18 @@ function Overview() {
           <DayBars buckets={days} height={96} details={dayDetails} />
 
           <h2 className="mb-4 mt-10 font-medium tracking-tight text-white">Composition</h2>
-          {known > 0 ? (
-            <div>
-              {/* orientation segmented bar */}
-              <div className="flex h-2 w-full overflow-hidden rounded-full">
-                <span title={`landscape · ${fmtN(land)}`} style={{ width: `${(land / known) * 100}%`, background: "#0070f3" }} />
-                <span title={`portrait · ${fmtN(por)}`} style={{ width: `${(por / known) * 100}%`, background: "#66aaff" }} />
-                <span title={`square · ${fmtN(sq)}`} style={{ width: `${(sq / known) * 100}%`, background: "#1b3a5c" }} />
-              </div>
-              <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 font-mono text-[10px] text-[#666]">
-                <span><i className="mr-1 inline-block h-[7px] w-[7px] rounded-full align-middle" style={{ background: "#0070f3" }} />landscape {fmtN(land)}</span>
-                <span><i className="mr-1 inline-block h-[7px] w-[7px] rounded-full align-middle" style={{ background: "#66aaff" }} />portrait {fmtN(por)}</span>
-                <span><i className="mr-1 inline-block h-[7px] w-[7px] rounded-full align-middle" style={{ background: "#1b3a5c" }} />square {fmtN(sq)}</span>
-              </div>
-              <p className="mt-3 font-mono text-[11px] tabular-nums text-[#a1a1a1]">
-                median {medMp.toFixed(1)} MP · metadata on {(known / Math.max(imgs.length, 1) * 100).toFixed(0)}% of images
-              </p>
-              {topCams.length > 0 && (
-                <dl className="mt-3">
-                  {topCams.map(([cam, n]) => (
-                    <div key={cam} className="flex justify-between border-b border-[#262626]/50 py-1.5 font-mono text-[11px] last:border-b-0">
-                      <dt className="truncate pr-3 text-[#a1a1a1]" title={cam}>{cam}</dt>
-                      <dd className="tabular-nums text-[#ededed]">{fmtN(n)}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-            </div>
-          ) : (
-            <p className="font-mono text-xs text-[#666]">waiting for exif metadata (next sync)</p>
-          )}
+          <Link
+            to="/composition"
+            className="group flex items-center justify-between gap-4 rounded-lg border border-[#262626] bg-[#0a0a0a] px-5 py-4 transition-colors hover:border-[#404040]"
+          >
+            <span>
+              <span className="block text-sm text-[#ededed]">Orientation · resolution · aspect ratios · cameras</span>
+              <span className="mt-0.5 block font-mono text-[10px] text-[#666]">
+                {exifKnown > 0 ? `median ${medMp.toFixed(1)} MP · ${fmtN(exifKnown)} images with metadata` : "waiting for exif metadata"}
+              </span>
+            </span>
+            <span className="font-mono text-sm text-accent transition-transform group-hover:translate-x-1">→</span>
+          </Link>
 
           <h2 className="mb-4 mt-10 font-medium tracking-tight text-white">Latest arrivals</h2>
           <div className="-mx-1 flex gap-2 overflow-x-auto pb-2">
