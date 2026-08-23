@@ -29,7 +29,8 @@ TOKEN_FILE = "token.json"
 SNAPSHOT_DIR = Path("snapshots")
 
 FIELDS = ("nextPageToken, files(id,name,mimeType,size,md5Checksum,createdTime,trashed,"
-          "shared,owners(displayName,emailAddress))")
+          "shared,owners(displayName,emailAddress),"
+          "imageMediaMetadata(width,height,cameraMake,cameraModel))")
 
 MIME_EXT_FALLBACK = {
     "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
@@ -162,9 +163,12 @@ def headless_credentials():
 
 
 def build_ci_payload(files, reports, buckets):
-    """v2 contract consumed by the web app. Rows: [id,name,ext,size,day,email,md5,kind]."""
+    """v3 contract consumed by the web app. Rows: [id,name,ext,size,day,email,md5,kind]."""
     owners = {}
     rows = []
+    cams: list[str] = []
+    cam_idx: dict[str, int] = {}
+    exif: dict[str, list[int]] = {}
     for f in files:
         mime = f.get("mimeType") or ""
         kind = "i" if mime.startswith("image/") else ("v" if mime.startswith("video/") else "o")
@@ -175,13 +179,25 @@ def build_ci_payload(files, reports, buckets):
         rows.append([f["id"], f["name"], ext_of(f["name"], mime), int(f.get("size") or 0),
                      (f.get("createdTime") or "")[:10], email,
                      f.get("md5Checksum") or f.get("md5") or "", kind])
+        if kind == "i":
+            im = f.get("imageMediaMetadata") or {}
+            w, h = im.get("width"), im.get("height")
+            if w and h:
+                entry = [int(w), int(h)]
+                cam = (im.get("cameraModel") or im.get("cameraMake") or "").strip()
+                if cam:
+                    if cam not in cam_idx:
+                        cam_idx[cam] = len(cams)
+                        cams.append(cam)
+                    entry.append(cam_idx[cam])
+                exif[f["id"]] = entry
     dup_groups = [{
         "md5": g["md5"], "count": g["count"], "size": g["size"],
         "names": [x["name"] for x in g["files"]][:10],
     } for g in reports["images"]["groups"]]
     img, _vid = reports["images"], reports["videos"]
     return {
-        "version": 2,
+        "version": 3,
         "meta": {
             "scannedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
             "cron": "0 * * * *",
@@ -192,6 +208,7 @@ def build_ci_payload(files, reports, buckets):
             },
         },
         "files": rows, "owners": owners, "dupGroups": dup_groups,
+        "cams": cams, "exif": exif,
     }
 
 
