@@ -1,5 +1,7 @@
 # AI Intelligence Plan — natural-language dataset Q&A
 
+> **UPDATE:** direction moved to a dedicated chat page with an optional thin relay backend. See `AI_CHAT_PLAN.md` (supersedes the architecture below; the BYOK analysis still holds). OpenViking verdict unchanged: wrong shape for in-browser analytics.
+
 _Question: can OpenViking (openviking.ai) give our website in-browser, natural-language intelligence over the dataset — BYOK, no backend, zero AI cost?_
 
 ---
