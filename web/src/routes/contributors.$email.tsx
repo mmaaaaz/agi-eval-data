@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { byDay, dupCounts, imageRows, ownerStats } from "../lib/data";
@@ -5,6 +6,7 @@ import { fmtB, fmtN } from "../lib/format";
 import { DayBreakdown } from "../components/DayBreakdown";
 import { ThumbImage } from "../components/ThumbImage";
 import { VirtualGallery } from "../components/VirtualGallery";
+import { Lightbox } from "../components/Lightbox";
 
 export const Route = createFileRoute("/contributors/$email")({ component: Contributor });
 
@@ -12,6 +14,7 @@ function Contributor() {
   const { data } = useData();
   const { email: rawEmail } = Route.useParams();
   const email = decodeURIComponent(rawEmail);
+  const [open, setOpen] = useState<number | null>(null);
 
   if (!data) return null;
   const stat = ownerStats(data).find((o) => o.email === email);
@@ -68,8 +71,20 @@ function Contributor() {
         <h2 className="mb-3 font-medium tracking-tight text-white">
           Their gallery <span className="ml-1 font-mono text-xs tabular-nums text-[#666]">{fmtN(theirImages.length)}</span>
         </h2>
-        <VirtualGallery rows={theirImages} dupSet={dups} onOpen={() => {}} />
+        <VirtualGallery rows={theirImages} dupSet={dups} onOpen={setOpen} />
       </section>
+
+      {open != null && theirImages[open] && (
+        <Lightbox
+          row={theirImages[open]}
+          latest={data}
+          pos={open}
+          total={theirImages.length}
+          onClose={() => setOpen(null)}
+          onPrev={() => setOpen(Math.max(0, open - 1))}
+          onNext={() => setOpen(Math.min(theirImages.length - 1, open + 1))}
+        />
+      )}
     </div>
   );
 }
