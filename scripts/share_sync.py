@@ -41,12 +41,14 @@ def main():
     todo, page_token = [], None
     while True:
         resp = with_backoff(lambda: service.files().list(
-            q="mimeType contains 'image/' and trashed = false and shared = false",
-            pageSize=1000, fields="nextPageToken, files(id)",
+            # NOTE: 'shared' is not queryable — fetch it as a field, filter client-side
+            q="mimeType contains 'image/' and trashed = false",
+            pageSize=1000,
+            fields="nextPageToken, files(id, shared)",
             pageToken=page_token, supportsAllDrives=True,
             includeItemsFromAllDrives=True,
         ).execute())
-        todo += [f["id"] for f in resp.get("files", [])]
+        todo += [f["id"] for f in resp.get("files", []) if not f.get("shared", True)]
         page_token = resp.get("nextPageToken")
         if not page_token:
             break
