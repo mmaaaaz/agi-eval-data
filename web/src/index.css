@@ -100,3 +100,42 @@ body {
 .scrollbar-none::-webkit-scrollbar {
   display: none;
 }
+
+/* ---- motion system (reconciled: LottieFiles Premium archetype ×
+       transitions.dev token structure × krehel reduced-motion rules) ---- */
+:root {
+  --ease-signature: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-enter: cubic-bezier(0.05, 0.7, 0.1, 1);
+  --ease-exit: cubic-bezier(0.3, 0, 1, 1);
+  --dur-quick: 150ms;
+  --dur-standard: 300ms;
+  --dur-slow: 500ms;
+}
+
+/* motion is opt-in (krehel/motion-and-zoom): vestibular-safe static baseline,
+   0.01ms so transitionend/animationend still fire for JS listeners */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* KPI pop-in (transitions.dev "number pop-in" analog): blur + settle */
+@keyframes num-in {
+  from {
+    filter: blur(6px);
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    filter: blur(0);
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.t-num {
+  animation: num-in var(--dur-standard) var(--ease-signature);
+}

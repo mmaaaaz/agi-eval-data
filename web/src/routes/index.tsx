@@ -82,7 +82,7 @@ function Overview() {
       {/* hero */}
       <section className="border-b border-[#262626]/60 pb-8">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#a1a1a1]">true picture count</p>
-        <p className="mt-2 text-5xl font-semibold tabular-nums tracking-tighter text-white sm:text-6xl lg:text-7xl">
+        <p key={c.imagesUnique} className="t-num mt-2 text-5xl font-semibold tabular-nums tracking-tighter text-white sm:text-6xl lg:text-7xl">
           {fmtN(c.imagesUnique)}
         </p>
       </section>

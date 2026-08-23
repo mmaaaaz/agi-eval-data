@@ -1,0 +1,657 @@
+{
+  "sha": "6c43b20ce00f720eed854591abe480127629c191",
+  "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/6c43b20ce00f720eed854591abe480127629c191",
+  "tree": [
+    {
+      "path": ".claude-plugin",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "387a1bb1bc00cb8b72f677998a9ccaefdad1810c",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/387a1bb1bc00cb8b72f677998a9ccaefdad1810c"
+    },
+    {
+      "path": ".claude-plugin/marketplace.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9226731fe9aabcc321690c8946c4c605841e7fa2",
+      "size": 449,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/9226731fe9aabcc321690c8946c4c605841e7fa2"
+    },
+    {
+      "path": ".claude-plugin/plugin.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "59acea70e1542dcb9312ad3b85eb5be352e19e0a",
+      "size": 374,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/59acea70e1542dcb9312ad3b85eb5be352e19e0a"
+    },
+    {
+      "path": ".gitattributes",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a0652a605e6b418261a2b4fb1ad82576be0c3b53",
+      "size": 68,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/a0652a605e6b418261a2b4fb1ad82576be0c3b53"
+    },
+    {
+      "path": "AGENTS.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cce2f3790f7d4073e0666a903ef0f6b7e9778a7a",
+      "size": 14062,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/cce2f3790f7d4073e0666a903ef0f6b7e9778a7a"
+    },
+    {
+      "path": "CLAUDE.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2724a38b852d6c5092c1b80d31dc6ea77037e421",
+      "size": 416,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/2724a38b852d6c5092c1b80d31dc6ea77037e421"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6a067e906e1346e640a0cda6ed37c5fb793104e4",
+      "size": 1069,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/6a067e906e1346e640a0cda6ed37c5fb793104e4"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "276da2fcefdbe6e59a48f26d5976778d80b27841",
+      "size": 3014,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/276da2fcefdbe6e59a48f26d5976778d80b27841"
+    },
+    {
+      "path": "opencode.json",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "48c209799846a14b49d3a56c65c324d9ca39e4b1",
+      "size": 94,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/48c209799846a14b49d3a56c65c324d9ca39e4b1"
+    },
+    {
+      "path": "skills",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ce54f052475f60f6dcd64e7fe39dfdaf73a365f7",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/ce54f052475f60f6dcd64e7fe39dfdaf73a365f7"
+    },
+    {
+      "path": "skills/better-accessibility",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "968f51a6cbe02220d4f6822f1aaab9f7f2f21d0d",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/968f51a6cbe02220d4f6822f1aaab9f7f2f21d0d"
+    },
+    {
+      "path": "skills/better-accessibility/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "11a35deed19c0246a12721e7542b1042a90dde61",
+      "size": 8634,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/11a35deed19c0246a12721e7542b1042a90dde61"
+    },
+    {
+      "path": "skills/better-accessibility/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "d5e1b978afe826df1fbdc1a5c8f69d5bf84fb860",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/d5e1b978afe826df1fbdc1a5c8f69d5bf84fb860"
+    },
+    {
+      "path": "skills/better-accessibility/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "36b942fb8e5b86916b006c2fe4e07fdbde24a112",
+      "size": 121,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/36b942fb8e5b86916b006c2fe4e07fdbde24a112"
+    },
+    {
+      "path": "skills/better-accessibility/focus-and-keyboard.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6e5c2902dc543d2520730927fc5a8524883964f6",
+      "size": 6319,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/6e5c2902dc543d2520730927fc5a8524883964f6"
+    },
+    {
+      "path": "skills/better-accessibility/forms.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c0f0dba72346f84b5441efb8747357279f48ac5a",
+      "size": 3718,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/c0f0dba72346f84b5441efb8747357279f48ac5a"
+    },
+    {
+      "path": "skills/better-accessibility/hit-areas.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ab0e061e612582a5dd95d1bf8bbc54d4413a2105",
+      "size": 3957,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/ab0e061e612582a5dd95d1bf8bbc54d4413a2105"
+    },
+    {
+      "path": "skills/better-accessibility/motion-and-zoom.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2101162289302e7daad91d1801270a19ae06cc38",
+      "size": 3939,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/2101162289302e7daad91d1801270a19ae06cc38"
+    },
+    {
+      "path": "skills/better-accessibility/screen-readers.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aaee977357eeeb845022dd5eb5f2f18170b64b30",
+      "size": 5072,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/aaee977357eeeb845022dd5eb5f2f18170b64b30"
+    },
+    {
+      "path": "skills/better-accessibility/semantics-and-aria.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0e1ef213f5cfaf4f00c1d12443f81cc6f078be56",
+      "size": 5368,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/0e1ef213f5cfaf4f00c1d12443f81cc6f078be56"
+    },
+    {
+      "path": "skills/better-colors",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f17ebf5d60bc070557d162a04655c9b159c66060",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/f17ebf5d60bc070557d162a04655c9b159c66060"
+    },
+    {
+      "path": "skills/better-colors/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a3e4240e8a647e084ded44a0d36e6bdbe5752fcb",
+      "size": 7903,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/a3e4240e8a647e084ded44a0d36e6bdbe5752fcb"
+    },
+    {
+      "path": "skills/better-colors/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f005993a46cafa3c01d1ca81d81ad64281d68d5b",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/f005993a46cafa3c01d1ca81d81ad64281d68d5b"
+    },
+    {
+      "path": "skills/better-colors/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "27c2e70131abce32fd35a453a33747b26d2bc045",
+      "size": 110,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/27c2e70131abce32fd35a453a33747b26d2bc045"
+    },
+    {
+      "path": "skills/better-colors/color-formats.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0bba701783bf381f0760726a66bce7313608aeba",
+      "size": 4515,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/0bba701783bf381f0760726a66bce7313608aeba"
+    },
+    {
+      "path": "skills/better-colors/color-usage.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b9049a38435b90a11ef1e11667c1eea4baa2fa75",
+      "size": 5833,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/b9049a38435b90a11ef1e11667c1eea4baa2fa75"
+    },
+    {
+      "path": "skills/better-colors/contrast.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d2ef7c7481dfdfff4a2fd05d016f0e983d71d21f",
+      "size": 4770,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/d2ef7c7481dfdfff4a2fd05d016f0e983d71d21f"
+    },
+    {
+      "path": "skills/better-colors/palette-generation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "29e1330b6ce1fb60719d1acbb2fa6a8a901eaccc",
+      "size": 6022,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/29e1330b6ce1fb60719d1acbb2fa6a8a901eaccc"
+    },
+    {
+      "path": "skills/better-colors/palette-structure.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "53c97e638e35ba520ea749ce411de6ffac4667dd",
+      "size": 5245,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/53c97e638e35ba520ea749ce411de6ffac4667dd"
+    },
+    {
+      "path": "skills/better-colors/token-naming.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "45ed40110199e5a30df6651ffe50bb3192af22e3",
+      "size": 5409,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/45ed40110199e5a30df6651ffe50bb3192af22e3"
+    },
+    {
+      "path": "skills/better-interface",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "c333b73a1c2fd156967f3d6a3801981f1519c066",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/c333b73a1c2fd156967f3d6a3801981f1519c066"
+    },
+    {
+      "path": "skills/better-interface/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f7ea14dd1036ff324cf3dbf5094d9e86d133598",
+      "size": 9754,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/4f7ea14dd1036ff324cf3dbf5094d9e86d133598"
+    },
+    {
+      "path": "skills/better-interface/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "839f2b094d460a4b65a1e19834a82c02f66e870e",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/839f2b094d460a4b65a1e19834a82c02f66e870e"
+    },
+    {
+      "path": "skills/better-interface/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0dcd6987ffdec27825147b33ff3c7c1462fe4805",
+      "size": 103,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/0dcd6987ffdec27825147b33ff3c7c1462fe4805"
+    },
+    {
+      "path": "skills/better-interface/review-format.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "077618391a8f3337209db02d359caa0b781b072b",
+      "size": 2547,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/077618391a8f3337209db02d359caa0b781b072b"
+    },
+    {
+      "path": "skills/better-layout",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "ea251442f566866411d3ade307aee3bc72014d10",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/ea251442f566866411d3ade307aee3bc72014d10"
+    },
+    {
+      "path": "skills/better-layout/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4eb518645f54b1216a5ed21aa673e0062c90b8de",
+      "size": 5911,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/4eb518645f54b1216a5ed21aa673e0062c90b8de"
+    },
+    {
+      "path": "skills/better-layout/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e4cd787f531a43e38ef03954fd702affdc081f25",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/e4cd787f531a43e38ef03954fd702affdc081f25"
+    },
+    {
+      "path": "skills/better-layout/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "34531649df1a7af9638b3497e162124630fed965",
+      "size": 117,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/34531649df1a7af9638b3497e162124630fed965"
+    },
+    {
+      "path": "skills/better-layout/grouping-and-alignment.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0a139c30fa8c9aeb3b413be120f915c5b1293b46",
+      "size": 5423,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/0a139c30fa8c9aeb3b413be120f915c5b1293b46"
+    },
+    {
+      "path": "skills/better-layout/spacing-and-adaptivity.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d0c7213af21591cb8cb262aee862e2bd77736ecc",
+      "size": 6609,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/d0c7213af21591cb8cb262aee862e2bd77736ecc"
+    },
+    {
+      "path": "skills/better-typography",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "bf3c544de7c0423ec6a2576387107dfdb8c2298f",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/bf3c544de7c0423ec6a2576387107dfdb8c2298f"
+    },
+    {
+      "path": "skills/better-typography/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8d5e8c922434dc30c535a43df6cd75e95b8e42ff",
+      "size": 11093,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/8d5e8c922434dc30c535a43df6cd75e95b8e42ff"
+    },
+    {
+      "path": "skills/better-typography/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "787cc62271a53787abf43237267307d0b5a24490",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/787cc62271a53787abf43237267307d0b5a24490"
+    },
+    {
+      "path": "skills/better-typography/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3baec7d2a846fd811bfa3bf0d41d37de931ad9f0",
+      "size": 111,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/3baec7d2a846fd811bfa3bf0d41d37de931ad9f0"
+    },
+    {
+      "path": "skills/better-typography/choosing-fonts.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "0dfcfa13b220c37b578f005b474242cd6afe4c18",
+      "size": 3179,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/0dfcfa13b220c37b578f005b474242cd6afe4c18"
+    },
+    {
+      "path": "skills/better-typography/css-cheat-sheet.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3233aa17bbf688548950106c56a5b4d359af2f82",
+      "size": 3952,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/3233aa17bbf688548950106c56a5b4d359af2f82"
+    },
+    {
+      "path": "skills/better-typography/details-and-accessibility.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "74c2eef1363cf221527fab5223a382547107ba25",
+      "size": 4211,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/74c2eef1363cf221527fab5223a382547107ba25"
+    },
+    {
+      "path": "skills/better-typography/spacing-and-sizing.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a69dddb322f9ffc2ef2f5142b3f0210eee33ba54",
+      "size": 4294,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/a69dddb322f9ffc2ef2f5142b3f0210eee33ba54"
+    },
+    {
+      "path": "skills/better-typography/variable-fonts-and-opentype.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9a8742352eb1391f0b8ea54fc3a9a62975e1a867",
+      "size": 4308,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/9a8742352eb1391f0b8ea54fc3a9a62975e1a867"
+    },
+    {
+      "path": "skills/better-typography/wrapping-and-punctuation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "751deeb9798e87dce5f410438bbe8ab8516a5dd4",
+      "size": 3277,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/751deeb9798e87dce5f410438bbe8ab8516a5dd4"
+    },
+    {
+      "path": "skills/better-ui",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2e191f3a9607e3d3168675f8a8209fa9ec53f3d5",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/2e191f3a9607e3d3168675f8a8209fa9ec53f3d5"
+    },
+    {
+      "path": "skills/better-ui/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "19e278a8e107d9acd346c3d83b1a17cd6904cb00",
+      "size": 7383,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/19e278a8e107d9acd346c3d83b1a17cd6904cb00"
+    },
+    {
+      "path": "skills/better-ui/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "adfe06e002349cc5f8ee0030488a3abc5c55c88b",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/adfe06e002349cc5f8ee0030488a3abc5c55c88b"
+    },
+    {
+      "path": "skills/better-ui/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "913f2004ff9dca87bedbf9c6da8922ca8b8b2d79",
+      "size": 113,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/913f2004ff9dca87bedbf9c6da8922ca8b8b2d79"
+    },
+    {
+      "path": "skills/better-ui/animations.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "91430e6a9b2bf9e6293d056f2377a154a4efab9f",
+      "size": 7033,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/91430e6a9b2bf9e6293d056f2377a154a4efab9f"
+    },
+    {
+      "path": "skills/better-ui/enter-exit.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "6d353d78e414aed3ebc872612a8dfca609b72f1f",
+      "size": 3807,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/6d353d78e414aed3ebc872612a8dfca609b72f1f"
+    },
+    {
+      "path": "skills/better-ui/icon-transitions.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "fe266de59483bcfb433ec7c068f1406e66c6db7a",
+      "size": 4061,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/fe266de59483bcfb433ec7c068f1406e66c6db7a"
+    },
+    {
+      "path": "skills/better-ui/icons.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e425fbabec076b1262bc9b5177ffde503e2abbe6",
+      "size": 4267,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/e425fbabec076b1262bc9b5177ffde503e2abbe6"
+    },
+    {
+      "path": "skills/better-ui/performance.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e32ce47825b8c266f8274244948f98e56a4daa85",
+      "size": 2928,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/e32ce47825b8c266f8274244948f98e56a4daa85"
+    },
+    {
+      "path": "skills/better-ui/surfaces.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b22b5c5ca134377435976d8a7a2f1c7277e9f45",
+      "size": 6268,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/9b22b5c5ca134377435976d8a7a2f1c7277e9f45"
+    },
+    {
+      "path": "skills/better-writing",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2975531c7ff9d06e66fea216ff08e98857de0218",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/2975531c7ff9d06e66fea216ff08e98857de0218"
+    },
+    {
+      "path": "skills/better-writing/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "128dfb5f6adc1332b78c7fae8e5b1f13b0c300d7",
+      "size": 6634,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/128dfb5f6adc1332b78c7fae8e5b1f13b0c300d7"
+    },
+    {
+      "path": "skills/better-writing/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "f5a0acf571c07077749a0e9a602d2ceb254366e1",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/f5a0acf571c07077749a0e9a602d2ceb254366e1"
+    },
+    {
+      "path": "skills/better-writing/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "92fca236728b3ff434cf2419968dcc22d67c9f0a",
+      "size": 108,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/92fca236728b3ff434cf2419968dcc22d67c9f0a"
+    },
+    {
+      "path": "skills/explain-interface",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "0e29f98710b728439db03f2e9a6b40b3af624dea",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/0e29f98710b728439db03f2e9a6b40b3af624dea"
+    },
+    {
+      "path": "skills/explain-interface/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9fd727705849c09b4c6411e4651fc05c72c24eea",
+      "size": 10122,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/9fd727705849c09b4c6411e4651fc05c72c24eea"
+    },
+    {
+      "path": "skills/explain-interface/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "69f16aeae326fd0119c4c0ef5c1622d740be6b2b",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/69f16aeae326fd0119c4c0ef5c1622d740be6b2b"
+    },
+    {
+      "path": "skills/explain-interface/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "d769d0479e81504c7287ac284d770fc5d6ad524d",
+      "size": 160,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/d769d0479e81504c7287ac284d770fc5d6ad524d"
+    },
+    {
+      "path": "skills/explain-interface/find-the-effect.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "14d1ae643f5423aca339961cecad5ac0a99769db",
+      "size": 5020,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/14d1ae643f5423aca339961cecad5ac0a99769db"
+    },
+    {
+      "path": "skills/explain-interface/from-an-image.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4cfab233a314b0acb3bb3f8901dfdd0afc7f514a",
+      "size": 3448,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/4cfab233a314b0acb3bb3f8901dfdd0afc7f514a"
+    },
+    {
+      "path": "skills/explain-interface/no-browser.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f07b7fd54bb0d593f2dc16700b22f0188dac44dc",
+      "size": 3880,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/f07b7fd54bb0d593f2dc16700b22f0188dac44dc"
+    },
+    {
+      "path": "skills/explain-interface/read-the-system.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ff60e8cbf6d1784f75acee4ac3df1a906c2bb753",
+      "size": 7871,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/ff60e8cbf6d1784f75acee4ac3df1a906c2bb753"
+    },
+    {
+      "path": "skills/interface-review",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "59ed11b4553116d7117159b11bac0e8e4c275afe",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/59ed11b4553116d7117159b11bac0e8e4c275afe"
+    },
+    {
+      "path": "skills/interface-review/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "ebd91cce18f9fa2ab949a265b0a09d13dd2979c4",
+      "size": 10708,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/ebd91cce18f9fa2ab949a265b0a09d13dd2979c4"
+    },
+    {
+      "path": "skills/interface-review/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "77d4c96d4cc76b0c62b683163b7042513afcae33",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/77d4c96d4cc76b0c62b683163b7042513afcae33"
+    },
+    {
+      "path": "skills/interface-review/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "496d63d47b88eef476ccf3c2cfdeb74d62701e78",
+      "size": 157,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/496d63d47b88eef476ccf3c2cfdeb74d62701e78"
+    },
+    {
+      "path": "skills/interface-review/removed-signals.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "7fdaa437cdb877d289a71c5c5ddf0d554355c141",
+      "size": 2907,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/7fdaa437cdb877d289a71c5c5ddf0d554355c141"
+    },
+    {
+      "path": "skills/interface-review/scope-resolution.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "93c81a18267804b551b102ddeaa5767b5ed71618",
+      "size": 8155,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/93c81a18267804b551b102ddeaa5767b5ed71618"
+    },
+    {
+      "path": "skills/variant",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "472514342c270429bd4525363c0a4ece6fbdcfe0",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/472514342c270429bd4525363c0a4ece6fbdcfe0"
+    },
+    {
+      "path": "skills/variant/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "f4389c9567e3c5dbbe679ad6c44bb8e04a1d2f1a",
+      "size": 6283,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/f4389c9567e3c5dbbe679ad6c44bb8e04a1d2f1a"
+    },
+    {
+      "path": "skills/variant/agents",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "6258d6ae7c93da993cd459e1f2b030cfc679438a",
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/trees/6258d6ae7c93da993cd459e1f2b030cfc679438a"
+    },
+    {
+      "path": "skills/variant/agents/openai.yaml",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "bbbee43354574199fd2abbc6f07092bff0c81e44",
+      "size": 152,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/bbbee43354574199fd2abbc6f07092bff0c81e44"
+    },
+    {
+      "path": "skills/variant/picker.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "e2841756a280c82ff52f6c9530fd244ae4daf7fb",
+      "size": 2735,
+      "url": "https://api.github.com/repos/jakubkrehel/skills/git/blobs/e2841756a280c82ff52f6c9530fd244ae4daf7fb"
+    }
+  ],
+  "truncated": false
+}

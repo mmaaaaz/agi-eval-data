@@ -1,0 +1,202 @@
+{
+  "sha": "f9a8a041b85185ee4881b3471d3415e939aac772",
+  "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/trees/f9a8a041b85185ee4881b3471d3415e939aac772",
+  "tree": [
+    {
+      "path": ".gitignore",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "617dde01440b8787c2ee19f73a3c5e504041ea22",
+      "size": 30,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/617dde01440b8787c2ee19f73a3c5e504041ea22"
+    },
+    {
+      "path": "LICENSE",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "cf29711a87aa93532c1253aa71c8c9815938abe2",
+      "size": 1068,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/cf29711a87aa93532c1253aa71c8c9815938abe2"
+    },
+    {
+      "path": "README.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "aa631cc60eb17a3ff9fd4df6f03ddd466cc49efa",
+      "size": 3589,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/aa631cc60eb17a3ff9fd4df6f03ddd466cc49efa"
+    },
+    {
+      "path": "skills",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "8fa767c65bc0b92b09fc98042a08c27be13e1add",
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/trees/8fa767c65bc0b92b09fc98042a08c27be13e1add"
+    },
+    {
+      "path": "skills/motion-design",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "10f0c6d1a4aad1039b783988caf5dd9236fc2ac0",
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/trees/10f0c6d1a4aad1039b783988caf5dd9236fc2ac0"
+    },
+    {
+      "path": "skills/motion-design/SKILL.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "9b5e2df492752a8343f21a6782a16c97ca5d8f9f",
+      "size": 12580,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/9b5e2df492752a8343f21a6782a16c97ca5d8f9f"
+    },
+    {
+      "path": "skills/motion-design/director",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "e72867d6268b7dc796c581efa48621bde84d05cc",
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/trees/e72867d6268b7dc796c581efa48621bde84d05cc"
+    },
+    {
+      "path": "skills/motion-design/director/choreography.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8b0322efe715247e4e120c561d2023308d2273a2",
+      "size": 3035,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/8b0322efe715247e4e120c561d2023308d2273a2"
+    },
+    {
+      "path": "skills/motion-design/director/context-adaptation.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "97bc36ee57deb70b2c721caaad41b76191a066dd",
+      "size": 3066,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/97bc36ee57deb70b2c721caaad41b76191a066dd"
+    },
+    {
+      "path": "skills/motion-design/director/core-philosophy.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "b48ea367dca840ec251b4cc36adbdc6df34c243f",
+      "size": 1864,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/b48ea367dca840ec251b4cc36adbdc6df34c243f"
+    },
+    {
+      "path": "skills/motion-design/director/decision-framework.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "040e1ed776993ea0071388425143e39bc7664d0b",
+      "size": 2866,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/040e1ed776993ea0071388425143e39bc7664d0b"
+    },
+    {
+      "path": "skills/motion-design/director/disney-principles.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4e573031d960aaf69aeea9aa42a2d00a1985afcc",
+      "size": 3197,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/4e573031d960aaf69aeea9aa42a2d00a1985afcc"
+    },
+    {
+      "path": "skills/motion-design/director/emotion-mapping.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "3a923b76b405231074881f5f27415a7ec8978fd6",
+      "size": 2877,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/3a923b76b405231074881f5f27415a7ec8978fd6"
+    },
+    {
+      "path": "skills/motion-design/director/motion-personality.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "63e319397123f15169af44e3da904d32fd8a34c9",
+      "size": 2998,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/63e319397123f15169af44e3da904d32fd8a34c9"
+    },
+    {
+      "path": "skills/motion-design/director/narrative-structure.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "c989603d1e8749220e66d7273f349bb69db72b82",
+      "size": 2407,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/c989603d1e8749220e66d7273f349bb69db72b82"
+    },
+    {
+      "path": "skills/motion-design/patterns",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "cf12cfefe8cae738b0e32b9028f1b29b1da4567d",
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/trees/cf12cfefe8cae738b0e32b9028f1b29b1da4567d"
+    },
+    {
+      "path": "skills/motion-design/patterns/ambient-continuous.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "17d6533571b39a1e8a171b6366623bf8df6c1e1b",
+      "size": 2823,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/17d6533571b39a1e8a171b6366623bf8df6c1e1b"
+    },
+    {
+      "path": "skills/motion-design/patterns/entrance-exit.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "4f3dc318565fce5ae410da5c95448bc786d1407f",
+      "size": 2822,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/4f3dc318565fce5ae410da5c95448bc786d1407f"
+    },
+    {
+      "path": "skills/motion-design/patterns/multi-element.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "68aab1c0ccfd08a535a59bc01b3d39ad4823dc72",
+      "size": 2362,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/68aab1c0ccfd08a535a59bc01b3d39ad4823dc72"
+    },
+    {
+      "path": "skills/motion-design/patterns/state-feedback.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "8efb7209986ee450a11df829c413a943ff156de7",
+      "size": 3062,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/8efb7209986ee450a11df829c413a943ff156de7"
+    },
+    {
+      "path": "skills/motion-design/reference",
+      "mode": "040000",
+      "type": "tree",
+      "sha": "2dbde76c360513f8e5a6e21b4800f369ebb5b563",
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/trees/2dbde76c360513f8e5a6e21b4800f369ebb5b563"
+    },
+    {
+      "path": "skills/motion-design/reference/property-selection.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "21e8594a4eb360093b22aa3ed3146dbb513618ce",
+      "size": 2922,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/21e8594a4eb360093b22aa3ed3146dbb513618ce"
+    },
+    {
+      "path": "skills/motion-design/reference/quality-checklist.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "a3d7033f744256e3b6d45468b64a3f19b48ebb6e",
+      "size": 2080,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/a3d7033f744256e3b6d45468b64a3f19b48ebb6e"
+    },
+    {
+      "path": "skills/motion-design/reference/timing-easing-tables.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "810de35c9923d8f43ffc37aeef70faebb7e5bbfc",
+      "size": 2900,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/810de35c9923d8f43ffc37aeef70faebb7e5bbfc"
+    },
+    {
+      "path": "skills/motion-design/reference/troubleshooting.md",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "dbae0ebed28c920893393d9210661c1c4e27bf64",
+      "size": 2709,
+      "url": "https://api.github.com/repos/LottieFiles/motion-design-skill/git/blobs/dbae0ebed28c920893393d9210661c1c4e27bf64"
+    }
+  ],
+  "truncated": false
+}
