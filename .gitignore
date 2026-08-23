@@ -1,0 +1,24 @@
+# secrets & local credentials — NEVER commit
+token.json
+client_secret.json
+*.local
+.env
+
+# local scan artifacts (data/latest.json IS tracked; snapshots aren't)
+snapshots/
+duplicates*.csv
+report.html
+
+# python
+__pycache__/
+*.pyc
+
+# web
+node_modules/
+dist/
+wrangler/.wrangler/
+.wrangler/
+
+# os/editor
+Thumbs.db
+.DS_Store

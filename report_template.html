@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Darkroom — Dataset Ledger</title>
+<style>
+  :root{
+    --bg:#0d0b08; --panel:#15110a; --panel2:#1b160d; --line:#2c2416;
+    --ink:#f0e7d3; --dim:#9c8f74; --faint:#5e5540;
+    --amber:#ffb03a; --amber-dk:#c97f12; --red:#e0583a; --green:#a4ba67;
+    --serif:Constantia,Cambria,"Palatino Linotype",Georgia,serif;
+    --mono:"Cascadia Mono",Consolas,"JetBrains Mono",monospace;
+    --sans:"Segoe UI",system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:var(--bg);color:var(--ink);font-family:var(--sans);font-size:15px;line-height:1.5}
+  ::selection{background:var(--amber);color:#000}
+
+  /* darkroom grain */
+  .grain{position:fixed;inset:-50%;pointer-events:none;z-index:999;opacity:.05;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")}
+
+  .filmstrip{height:16px;border-bottom:1px solid var(--line);
+    background:repeating-linear-gradient(90deg,var(--amber-dk) 0 10px,transparent 10px 26px) center/26px 8px no-repeat,
+               repeating-linear-gradient(90deg,#000 0 12px,var(--line) 12px 14px)}
+
+  header{padding:42px clamp(20px,5vw,72px) 0}
+  .masthead{display:flex;flex-wrap:wrap;align-items:flex-end;gap:24px;justify-content:space-between}
+  h1{font-family:var(--serif);font-size:clamp(38px,6vw,64px);letter-spacing:.06em;font-weight:600;line-height:1}
+  h1 em{color:var(--amber);font-style:normal}
+  .safelight{display:inline-block;width:11px;height:11px;border-radius:50%;background:var(--red);
+    box-shadow:0 0 18px 4px rgba(224,88,58,.55);margin-right:14px;animation:pulse 3.2s ease-in-out infinite;vertical-align:6px}
+  @keyframes pulse{50%{box-shadow:0 0 8px 1px rgba(224,88,58,.25)}}
+  .sub{color:var(--dim);margin-top:10px;font-family:var(--mono);font-size:12.5px;letter-spacing:.04em}
+  .meta{text-align:right;font-family:var(--mono);font-size:12px;color:var(--faint);line-height:1.9}
+  .meta b{color:var(--dim);font-weight:400}
+
+  nav{position:sticky;top:0;z-index:50;display:flex;gap:4px;flex-wrap:wrap;
+    padding:12px clamp(20px,5vw,72px);margin-top:34px;
+    background:rgba(13,11,8,.82);backdrop-filter:blur(10px) saturate(1.2);border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+  nav a{color:var(--dim);text-decoration:none;font-family:var(--mono);font-size:12.5px;
+    letter-spacing:.08em;text-transform:uppercase;padding:6px 12px;border-radius:99px;transition:.2s}
+  nav a:hover{color:var(--amber);background:rgba(255,176,58,.08)}
+
+  main{padding:30px clamp(20px,5vw,72px) 70px;max-width:1500px}
+  section{scroll-margin-top:80px;margin-bottom:64px}
+  h2{font-family:var(--serif);font-weight:600;font-size:26px;letter-spacing:.02em;margin-bottom:4px}
+  h2 small{font-family:var(--mono);font-size:12px;color:var(--faint);letter-spacing:.06em;margin-left:14px}
+  .rule{height:1px;background:linear-gradient(90deg,var(--amber),transparent 60%);opacity:.35;margin:14px 0 24px}
+
+  /* filters */
+  #filters{display:flex;flex-wrap:wrap;gap:12px;align-items:center;background:var(--panel);
+    border:1px solid var(--line);border-radius:14px;padding:16px 18px}
+  input[type=search],select{background:var(--panel2);border:1px solid var(--line);color:var(--ink);
+    border-radius:9px;padding:9px 12px;font-family:var(--mono);font-size:13px;outline:none;transition:border-color .2s}
+  input[type=search]:focus,select:focus{border-color:var(--amber-dk)}
+  input[type=search]{flex:1 1 220px;min-width:180px}
+  label.tgl{display:flex;align-items:center;gap:9px;cursor:pointer;font-family:var(--mono);font-size:12.5px;color:var(--dim);user-select:none}
+  label.tgl input{display:none}
+  .knob{width:36px;height:20px;border-radius:99px;background:var(--panel2);border:1px solid var(--line);position:relative;transition:.25s}
+  .knob::after{content:"";position:absolute;top:2px;left:2px;width:14px;height:14px;border-radius:50%;background:var(--faint);transition:.25s}
+  label.tgl input:checked + .knob{background:rgba(255,176,58,.25);border-color:var(--amber-dk)}
+  label.tgl input:checked + .knob::after{left:18px;background:var(--amber)}
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{background:none;border:none;color:var(--dim);font-family:var(--mono);font-size:12px;
+    padding:9px 13px;cursor:pointer;border-right:1px solid var(--line);transition:.2s}
+  .seg button:last-child{border-right:none}
+  .seg button.on{background:var(--amber);color:#141005;font-weight:700}
+
+  /* KPI cards */
+  #kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(190px,1fr));gap:14px;margin-top:26px}
+  .kpi{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px 20px 16px;position:relative;overflow:hidden;transition:transform .25s,border-color .25s}
+  .kpi:hover{transform:translateY(-3px);border-color:var(--amber-dk)}
+  .kpi::before{content:"";position:absolute;inset:0 auto 0 0;width:3px;background:var(--amber);opacity:.7}
+  .kpi.alt::before{background:var(--red)} .kpi.grn::before{background:var(--green)}
+  .kpi .n{font-family:var(--serif);font-size:clamp(28px,3vw,40px);color:var(--amber);font-variant-numeric:tabular-nums;line-height:1.1}
+  .kpi.alt .n{color:var(--red)} .kpi.grn .n{color:var(--green)} .kpi.plain .n{color:var(--ink)}
+  .kpi .l{font-family:var(--mono);font-size:11px;color:var(--dim);letter-spacing:.14em;text-transform:uppercase;margin-top:8px}
+  .kpi .s{font-family:var(--mono);font-size:12px;color:var(--faint);margin-top:4px}
+
+  /* people */
+  #peopleCards{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:16px;margin-top:22px}
+  .person{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px;transition:border-color .25s}
+  .person:hover{border-color:var(--amber-dk)}
+  .phead{display:flex;align-items:center;gap:14px}
+  .avatar{width:46px;height:46px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    font-family:var(--serif);font-size:17px;color:var(--amber);border:1.5px solid var(--amber-dk);background:radial-gradient(circle at 32% 28%,rgba(255,176,58,.28),transparent 65%)}
+  .pname{font-family:var(--serif);font-size:19px}
+  .pmail{font-family:var(--mono);font-size:11.5px;color:var(--faint)}
+  .pstats{display:flex;flex-wrap:wrap;gap:6px 18px;margin:14px 0 4px;font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+  .pstats b{color:var(--ink);font-weight:400}
+  .expand{margin-top:10px;background:none;border:1px dashed var(--line);color:var(--dim);border-radius:8px;
+    font-family:var(--mono);font-size:12px;padding:7px 12px;cursor:pointer;width:100%;transition:.2s;letter-spacing:.05em}
+  .expand:hover{color:var(--amber);border-color:var(--amber-dk)}
+  .days{display:none;margin-top:12px;border-top:1px solid var(--line);padding-top:12px}
+  .days.open{display:block}
+  .dayrow{display:grid;grid-template-columns:86px 1fr 52px;gap:10px;align-items:center;margin-bottom:6px;font-family:var(--mono);font-size:11.5px}
+  .dayrow .d{color:var(--faint)} .dayrow .c{color:var(--dim);text-align:right}
+  .daybar{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--amber-dk),var(--amber));min-width:2px;transition:width .5s cubic-bezier(.2,.7,.3,1)}
+
+  /* timeline */
+  #timeline{display:flex;align-items:flex-end;gap:2px;height:170px;margin-top:26px;padding:10px 4px 0;
+    border-bottom:1px solid var(--line)}
+  .tbar{flex:1;max-width:20px;min-width:3px;background:linear-gradient(180deg,var(--amber),#7a5410);border-radius:3px 3px 0 0;
+    position:relative;transition:height .5s cubic-bezier(.2,.7,.3,1);cursor:pointer}
+  .tbar:hover{filter:brightness(1.3)}
+  .tnote{font-family:var(--mono);font-size:11.5px;color:var(--faint);margin-top:10px}
+
+  /* extensions */
+  #chips{display:flex;flex-wrap:wrap;gap:8px;margin:18px 0 20px}
+  .chip{background:var(--panel2);border:1px solid var(--line);color:var(--dim);border-radius:99px;
+    font-family:var(--mono);font-size:12px;padding:6px 13px;cursor:pointer;transition:.2s}
+  .chip:hover{border-color:var(--amber-dk);color:var(--ink)}
+  .chip.on{background:var(--amber);color:#141005;border-color:var(--amber);font-weight:700}
+  .extrow{display:grid;grid-template-columns:64px 1fr 170px;gap:14px;align-items:center;margin-bottom:9px;font-family:var(--mono);font-size:12.5px}
+  .extrow .bar{height:14px;border-radius:7px;background:linear-gradient(90deg,var(--amber-dk),var(--amber));
+    transition:width .6s cubic-bezier(.2,.7,.3,1);min-width:2px}
+  .extrow .lab{color:var(--dim);text-align:right;font-size:11.5px}
+
+  /* tables */
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th{font-family:var(--mono);font-size:11px;color:var(--faint);letter-spacing:.12em;text-transform:uppercase;
+    text-align:left;padding:10px 12px;border-bottom:1px solid var(--line)}
+  td{padding:9px 12px;border-bottom:1px solid rgba(44,36,22,.45);vertical-align:top}
+  tr:hover td{background:rgba(255,176,58,.035)}
+  td.mono,th.r{text-align:right}
+  td.mono{font-family:var(--mono);font-size:12.5px;color:var(--dim)}
+  .fname{font-family:var(--mono);font-size:12.5px;word-break:break-all;color:var(--ink)}
+  .badge{display:inline-block;font-family:var(--mono);font-size:10.5px;border:1px solid var(--line);
+    color:var(--dim);border-radius:6px;padding:1px 7px;margin-left:8px;vertical-align:1px}
+  .badge.dup{border-color:var(--red);color:var(--red)}
+  .dot{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:8px}
+  .i{background:var(--green)} .v{background:var(--red)} .o{background:var(--faint)}
+  .tblwrap{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:8px 6px;margin-top:20px;overflow-x:auto}
+  .note{font-family:var(--mono);font-size:12px;color:var(--faint);margin:12px 2px 0}
+
+  footer{border-top:1px solid var(--line);padding:26px clamp(20px,5vw,72px);
+    font-family:var(--mono);font-size:11.5px;color:var(--faint);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+  @media(max-width:640px){ .extrow{grid-template-columns:48px 1fr} .extrow .lab{display:none} }
+</style>
+</head>
+<body>
+<div class="grain"></div>
+<div class="filmstrip"></div>
+
+<header>
+  <div class="masthead">
+    <div>
+      <h1><span class="safelight"></span>DARK<em>ROOM</em></h1>
+      <p class="sub">drive dataset ledger · metadata only · nothing downloaded</p>
+    </div>
+    <div class="meta" id="meta"></div>
+  </div>
+</header>
+
+<nav>
+  <a href="#overview">Overview</a><a href="#uploaders">Uploaders</a><a href="#timelineSec">Timeline</a>
+  <a href="#extSec">Extensions</a><a href="#dupSec">Duplicates</a><a href="#filesSec">Files</a>
+</nav>
+
+<main>
+  <section id="filters">
+    <input type="search" id="q" placeholder="search filename…">
+    <select id="person"><option value="*">everyone</option></select>
+    <div class="seg" id="range">
+      <button data-r="all" class="on">all time</button><button data-r="30">30d</button><button data-r="7">7d</button>
+    </div>
+    <select id="sort">
+      <option value="date">recent first</option><option value="old">oldest first</option>
+      <option value="size">largest first</option><option value="name">name A–Z</option>
+    </select>
+    <label class="tgl"><input type="checkbox" id="dedupe"><span class="knob"></span>unique only</label>
+  </section>
+
+  <section id="overview">
+    <h2>The Count<small id="countLine"></small></h2>
+    <div class="rule"></div>
+    <div id="kpis"></div>
+  </section>
+
+  <section id="uploaders">
+    <h2>Uploaders<small>grouped by google account · expand for day-wise</small></h2>
+    <div class="rule"></div>
+    <div id="peopleCards"></div>
+  </section>
+
+  <section id="timelineSec">
+    <h2>Uploads per day<small>hover a bar</small></h2>
+    <div class="rule"></div>
+    <div id="timeline"></div>
+    <div class="tnote" id="tnote"></div>
+  </section>
+
+  <section id="extSec">
+    <h2>Extensions<small>click chips to filter everything below</small></h2>
+    <div class="rule"></div>
+    <div id="chips"></div>
+    <div id="extBars"></div>
+  </section>
+
+  <section id="dupSec">
+    <h2>Duplicate groups<small>byte-identical (same md5) · live vs current filter</small></h2>
+    <div class="rule"></div>
+    <div class="tblwrap"><table id="dupTable"></table></div>
+    <div class="note" id="dupNote"></div>
+  </section>
+
+  <section id="filesSec">
+    <h2>Files<small>every item in the current filter</small></h2>
+    <div class="rule"></div>
+    <div class="tblwrap"><table id="fileTable"></table></div>
+    <div class="note" id="filesNote"></div>
+  </section>
+</main>
+
+<footer>
+  <span>generated locally from drive metadata · md5 dedup only catches byte-identical files</span>
+  <span id="footR"></span>
+</footer>
+
+<script id="data" type="application/json">__DATA__</script>
+<script>
+"use strict";
+const DATA = JSON.parse(document.getElementById("data").textContent);
+const OWNERS = DATA.owners;
+const ROWS = DATA.rows.map(r => ({name:r[0], ext:r[1], size:r[2], day:r[3], who:r[4], md5:r[5], kind:r[6]}));
+
+const $ = s => document.querySelector(s);
+const fmtN = n => n.toLocaleString("en-US");
+function fmtB(b){ if(b==null||isNaN(b))return "—"; let u=["B","KB","MB","GB","TB"],i=0; b=Math.abs(b)*1;
+  while(b>=1024&&i<4){b/=1024;i++} return b.toFixed(1)+" "+u[i]; }
+const esc = s => s.replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+/* ---------- state ---------- */
+const S = { q:"", person:"*", range:"all", sort:"date", dedupe:false, exts:new Set() };
+
+let maxDay = "0000-00-00";
+for (const r of ROWS) if (r.day > maxDay && r.day !== "?") maxDay = r.day;
+function cutoff(days){
+  const d = new Date(maxDay + "T00:00:00Z"); d.setUTCDate(d.getUTCDate() - days);
+  return d.toISOString().slice(0,10);
+}
+
+/* ---------- filtering ---------- */
+function filtered(){
+  const q = S.q.toLowerCase();
+  const cut = S.range === "all" ? null : cutoff(S.range === "30" ? 29 : 6);
+  const seen = new Set();
+  let out = [];
+  for (const r of ROWS){
+    if (S.person !== "*" && r.who !== S.person) continue;
+    if (q && !r.name.toLowerCase().includes(q)) continue;
+    if (S.exts.size && !S.exts.has(r.ext)) continue;
+    if (cut && r.day !== "?" && r.day < cut) continue;
+    if (S.dedupe && r.md5){
+      if (seen.has(r.md5)) continue;
+      seen.add(r.md5);
+    }
+    out.push(r);
+  }
+  const cmp = {
+    date:(a,b)=> b.day.localeCompare(a.day),
+    old:(a,b)=> a.day.localeCompare(b.day),
+    size:(a,b)=> b.size - a.size,
+    name:(a,b)=> a.name.localeCompare(b.name),
+  }[S.sort];
+  return out.sort(cmp);
+}
+
+/* ---------- kpis with count-up ---------- */
+function animNum(el, to){
+  const from = el._v || 0; el._v = to;
+  if (from === to){ el.textContent = fmtN(to); return; }
+  const t0 = performance.now(), dur = 550;
+  (function step(t){
+    const p = Math.min(1,(t-t0)/dur), e = 1-Math.pow(1-p,3);
+    el.textContent = fmtN(Math.round(from+(to-from)*e));
+    if (p<1) requestAnimationFrame(step);
+  })(t0);
+}
+function kpi(cls,n,label,sub){
+  return `<div class="kpi ${cls}"><div class="n">${fmtN(n)}</div><div class="l">${label}</div><div class="s">${sub}</div></div>`;
+}
+function renderKPIs(fs){
+  const uniqMd5 = new Set(), vid = new Set(); // placeholders
+  let imgs=0, vids=0, bytes=0, dupWasted=0, skipped=0;
+  const md5s = new Set(); const emails = new Set();
+  const md5Count = new Map();
+  for (const r of fs){ if(r.kind==="i"&&r.md5) md5Count.set(r.md5,(md5Count.get(r.md5)||0)+1); }
+  for (const r of fs){
+    bytes += r.size; emails.add(r.who);
+    if (r.kind==="v"){ vids++; continue; }
+    if (r.kind!=="i") continue;
+    imgs++;
+    if (r.md5){
+      if (!md5s.has(r.md5)) md5s.add(r.md5);
+      else { skipped++; dupWasted += r.size; }
+    }
+  }
+  $("#kpis").innerHTML =
+    kpi("", imgs, "images (raw)", `${fmtN(md5s.size)} unique after dedup`) +
+    kpi("grn", md5s.size, "true picture count", "what you actually have") +
+    kpi("alt", skipped, "duplicate copies", fmtB(dupWasted)+" recoverable") +
+    kpi("plain", vids, "videos (excluded)", "not counted as pictures") +
+    kpi("plain", emails.size, "uploaders", "google accounts") +
+    kpi("plain", fs.length, "total items", fmtB(bytes)+" stored");
+  $("#countLine").textContent = `→ ${fmtN(md5s.size)} unique pictures right now`;
+}
+
+/* ---------- uploaders ---------- */
+function renderPeople(fs){
+  const byP = new Map();
+  for (const r of fs){
+    if (!byP.has(r.who)) byP.set(r.who,{raw:0,uniq:new Set(),dup:0,vids:0,bytes:0,days:new Map()});
+    const p = byP.get(r.who); p.bytes += r.size;
+    if (r.kind==="v"){ p.vids++; continue; }
+    if (r.kind!=="i") continue;
+    p.raw++;
+    if (r.md5){ if (p.uniq.has(r.md5)) p.dup++; else p.uniq.add(r.md5); }
+    p.days.set(r.day,(p.days.get(r.day)||0)+1);
+  }
+  const list = [...byP.entries()].sort((a,b)=>b[1].raw-a[1].raw);
+  $("#peopleCards").innerHTML = list.map(([email,p])=>{
+    const nm = OWNERS[email] || email;
+    const ini = nm.split(/\s+/).map(w=>w[0]).join("").slice(0,2).toUpperCase();
+    const topDays = [...p.days.entries()].sort((a,b)=>b[1]-a[1]).slice(0,14);
+    const mx = Math.max(...topDays.map(d=>d[1]),1);
+    const rowsHtml = topDays.map(([d,c],idx)=>
+      `<div class="dayrow"><span class="d">${d}</span><span class="bar-track"><span class="daybar" style="width:${(c/mx*100).toFixed(1)}%;transition-delay:${idx*25}ms"></span></span><span class="c">${fmtN(c)}</span></div>`).join("")
+      || `<div class="note">no image uploads in current filter</div>`;
+    return `<div class="person">
+      <div class="phead"><div class="avatar">${esc(ini)}</div>
+        <div><div class="pname">${esc(nm)}</div><div class="pmail">${esc(email)}</div></div></div>
+      <div class="pstats">
+        <span>pictures <b>${fmtN(p.raw)}</b></span><span>unique <b>${fmtN(p.uniq.size)}</b></span>
+        <span>dupes <b style="color:var(--red)">${fmtN(p.dup)}</b></span><span>videos <b>${fmtN(p.vids)}</b></span>
+        <span>size <b>${fmtB(p.bytes)}</b></span></div>
+      <button class="expand">▾ day-wise breakdown</button>
+      <div class="days">${rowsHtml}</div></div>`;
+  }).join("") || `<div class="note">nothing matches the current filter</div>`;
+  document.querySelectorAll(".expand").forEach(btn=>{
+    btn.onclick = ()=>{ const d = btn.nextElementSibling; d.classList.toggle("open");
+      btn.textContent = d.classList.contains("open") ? "▴ hide breakdown" : "▾ day-wise breakdown";
+      requestAnimationFrame(()=>d.querySelectorAll(".daybar").forEach((b,i)=>b.style.width=b.style.width)); };
+  });
+}
+
+/* ---------- timeline ---------- */
+function renderTimeline(fs){
+  const byDay = new Map();
+  for (const r of fs){ if (r.kind==="i") byDay.set(r.day,(byDay.get(r.day)||0)+1); }
+  const days = [...byDay.entries()].sort((a,b)=>a[0].localeCompare(b[0]));
+  const mx = Math.max(...days.map(d=>d[1]),1);
+  $("#timeline").innerHTML = days.map(([d,c])=>
+    `<div class="tbar" style="height:${Math.max(2,(c/mx*100)).toFixed(1)}%" title="${d} · ${fmtN(c)} images"></div>`).join("");
+  $("#tnote").textContent = days.length
+    ? `${fmtN(days.length)} days · ${days[0][0]} → ${days[days.length-1][0]} · peak ${mx}/day` : "";
+}
+
+/* ---------- extensions ---------- */
+function renderExts(fs){
+  const byE = new Map();
+  for (const r of fs){ if (r.kind==="i") byE.set(r.ext,(byE.get(r.ext)||{c:0,b:0})), byE.get(r.ext).c++, byE.get(r.ext).b+=r.size; }
+  const list = [...byE.entries()].sort((a,b)=>b[1].c-a[1].c);
+  const total = list.reduce((s,[,v])=>s+v.c,0)||1;
+
+  const allExts = [...new Set(ROWS.filter(r=>r.kind==="i").map(r=>r.ext))]
+    .map(e=>[e, ROWS.reduce((s,r)=>s+(r.kind==="i"&&r.ext===e?1:0),0)])
+    .sort((a,b)=>b[1]-a[1]).slice(0,14);
+  $("#chips").innerHTML = allExts.map(([e,c])=>
+    `<button class="chip ${S.exts.has(e)?"on":""}" data-e="${esc(e)}">${esc(e)} · ${fmtN(c)}</button>`).join("");
+  document.querySelectorAll(".chip").forEach(ch=>ch.onclick=()=>{
+    const e = ch.dataset.e; S.exts.has(e) ? S.exts.delete(e) : S.exts.add(e); renderAll();
+  });
+
+  $("#extBars").innerHTML = list.slice(0,16).map(([e,v])=>
+    `<div class="extrow"><span>.${esc(e)}</span><span class="bar" style="width:${(v.c/total*100).toFixed(2)}%"></span><span class="lab">${fmtN(v.c)} files · ${fmtB(v.b)}</span></div>`).join("")
+    || `<div class="note">no images in current filter</div>`;
+}
+
+/* ---------- duplicates (live) ---------- */
+function renderDups(fs){
+  const g = new Map();
+  for (const r of fs){ if (r.kind==="i"&&r.md5){
+    if (!g.has(r.md5)) g.set(r.md5,[]);
+    g.get(r.md5).push(r); } }
+  const groups = [...g.values()].filter(v=>v.length>1)
+    .sort((a,b)=>(b.length-1)*b[0].size - (a.length-1)*a[0].size);
+  $("#dupTable").innerHTML = `<tr><th>#</th><th>copies</th><th class="r">size each</th><th class="r">wasted</th><th>files</th></tr>` +
+    groups.slice(0,25).map((v,i)=>{
+      const names = v.slice(0,2).map(x=>esc(x.name)).join("<br>") + (v.length>2?`<br>+${v.length-2} more…`:"");
+      return `<tr><td class="mono">${i+1}</td><td class="mono">×${v.length}</td>
+        <td class="mono">${fmtB(v[0].size)}</td><td class="mono" style="color:var(--red)">${fmtB((v.length-1)*v[0].size)}</td>
+        <td class="fname">${names}</td></tr>`;
+    }).join("") || `<tr><td colspan="5" class="note">no duplicates in current filter 🎉</td></tr>`;
+  const wasted = groups.reduce((s,v)=>s+(v.length-1)*v[0].size,0);
+  $("#dupNote").textContent = groups.length
+    ? `${fmtN(groups.length)} duplicate groups in view · ${fmtB(wasted)} recoverable · full inventory in duplicates.csv`
+    : "";
+}
+
+/* ---------- file table ---------- */
+function renderFiles(fs){
+  const cap = Math.min(fs.length,500);
+  const body = fs.slice(0,cap).map(r=>`<tr>
+    <td><span class="dot ${r.kind}"></span><span class="fname">${esc(r.name)}</span>
+        ${r.md5&&fs.some(x=>x!==r&&x.md5===r.md5&&x.kind==="i")?'<span class="badge dup">DUP</span>':""}</td>
+    <td class="mono">.${esc(r.ext)}</td><td class="mono">${fmtB(r.size)}</td>
+    <td class="mono">${esc(r.day)}</td><td class="fname" style="color:var(--dim)">${esc(OWNERS[r.who]||r.who)}</td></tr>`).join("");
+  $("#fileTable").innerHTML = `<tr><th>file</th><th>ext</th><th class="r">size</th><th>day</th><th>uploader</th></tr>` +
+    (body || `<tr><td colspan="5" class="note">nothing matches — loosen the filters</td></tr>`);
+  $("#filesNote").textContent = fs.length>cap
+    ? `showing ${cap} of ${fmtN(fs.length)} matching files — refine filters to narrow down`
+    : `${fmtN(fs.length)} matching files`;
+}
+
+/* ---------- wiring ---------- */
+$("#q").addEventListener("input", e=>{ S.q=e.target.value.trim(); renderAll(); });
+$("#person").addEventListener("change", e=>{ S.person=e.target.value; renderAll(); });
+$("#sort").addEventListener("change", e=>{ S.sort=e.target.value; renderAll(); });
+$("#dedupe").addEventListener("change", e=>{ S.dedupe=e.target.checked; renderAll(); });
+document.querySelectorAll("#range button").forEach(b=>b.onclick=()=>{
+  document.querySelectorAll("#range button").forEach(x=>x.classList.remove("on"));
+  b.classList.add("on"); S.range=b.dataset.r; renderAll();
+});
+
+/* person dropdown built once */
+(function(){
+  const counts = new Map();
+  for (const r of ROWS) counts.set(r.who,(counts.get(r.who)||0)+1);
+  const opts = [...counts.entries()].sort((a,b)=>b[1]-a[1])
+    .map(([e,c])=>`<option value="${esc(e)}">${esc(OWNERS[e]||e)} (${fmtN(c)})</option>`).join("");
+  $("#person").innerHTML += opts;
+})();
+
+function renderAll(){
+  const fs = filtered();
+  renderKPIs(fs); renderPeople(fs); renderTimeline(fs);
+  renderExts(fs); renderDups(fs); renderFiles(fs);
+}
+$("#meta").innerHTML = `snapshot <b>${esc(DATA.source)}</b><br>scanned <b>${esc(DATA.scannedAt)}</b> · report <b>${esc(DATA.generated)}</b>`;
+$("#footR").textContent = `${fmtN(ROWS.length)} items indexed`;
+renderAll();
+</script>
+</body>
+</html>
