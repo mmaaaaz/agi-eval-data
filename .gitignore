@@ -23,3 +23,8 @@ wrangler/.wrangler/
 Thumbs.db
 .DS_Store
 .takumi-tmp/
+
+.research/
+web/.tanstack/
+web/src/routeTree.gen.ts
+.backup/

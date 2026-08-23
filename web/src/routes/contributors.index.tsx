@@ -14,7 +14,7 @@ function Contributors() {
   return (
     <div>
       <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
-        <span className="text-accent">04</span> — contributors
+        <span className="text-accent">05</span> — contributors
       </p>
       <h1 className="mb-6 text-2xl font-semibold tracking-tight text-white">Who uploads what</h1>
 

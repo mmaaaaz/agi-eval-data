@@ -44,6 +44,13 @@ const routes = [
     url: "/gallery",
   },
   {
+    dir: "ask",
+    title: `Ask AI · ${BASE}`,
+    desc: `Chat with the dataset in natural language — real SQL over ${fmt(c.imagesUnique)} unique images, answered in your browser.`,
+    image: "overview.png",
+    url: "/ask",
+  },
+  {
     dir: "composition",
     title: `Composition · ${BASE}`,
     desc: `What the dataset is made of: orientation split, resolution histogram, aspect ratios, ${fmt(Object.keys(data.exif ?? {}).length)} images of camera EXIF.`,

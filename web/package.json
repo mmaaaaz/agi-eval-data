@@ -8,6 +8,7 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
     "@tanstack/react-router": "^1.114.0",
     "@tanstack/react-virtual": "^3.13.0",
     "react": "^19.1.0",
