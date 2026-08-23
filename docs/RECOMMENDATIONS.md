@@ -19,7 +19,7 @@ Status legend: `idea` → `planned` → `shipped`
 - `flags[]` per image in artifact; gallery filter; contributor feedback.
 - Effort: S. Zero new infrastructure.
 
-### 3. CLIP embeddings → similarity + semantic dedup `idea`
+### 3. CLIP embeddings → similarity + semantic dedup `idea` — see also `SQL_ANALYTICS_PLAN.md` (in-browser DuckDB + AI text-to-SQL plan, drafted separately)
 - CI computes quantized CLIP embeddings per thumbnail into the artifact.
 - Unlocks: find-similar from any image, semantic cluster view, near-dup detection that catches re-compressed/re-cropped copies (beyond MD5 and pHash).
 - Effort: M-L. If only one dedup upgrade ever: this one.
