@@ -7,4 +7,4 @@ enabled = true
 
 [vars]
 GATEWAY_MODEL = "openai/gpt-5-nano"
-RATE_LIMIT_PER_IP = "30"
+RATE_LIMIT_PER_IP = "101"

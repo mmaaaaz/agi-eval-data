@@ -60,9 +60,12 @@ function Ask() {
   const [input, setInput] = useState("");
   const [openTool, setOpenTool] = useState<string | null>(null);
   const [executingTool, setExecutingTool] = useState<string | null>(null);
+  const [elapsed, setElapsed] = useState(0);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bootstrapped = useRef(false);
+  const sqlCache = useRef(new Map<string, string>());
+  const ranSqlCount = useRef(0);
 
   const [sqlStatus, setSqlStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [sqlError, setSqlError] = useState("");
@@ -160,15 +163,35 @@ function Ask() {
     async onToolCall({ toolCall }) {
       if (toolCall.toolName !== "run_sql") return;
       const input = toolCall.input as { sql?: string };
-      setExecutingTool(toolCall.toolCallId);
-      try {
-        const out = await runSql(input.sql ?? "");
-        // provide the result; sendAutomaticallyWhen continues the conversation
+      const cacheKey = (input.sql ?? "").replace(/\s+/g, " ").trim();
+
+      // identical query already ran in this conversation → instant cached result
+      const cached = sqlCache.current.get(cacheKey);
+      if (cached) {
+        addToolOutput({ tool: "run_sql", toolCallId: toolCall.toolCallId, output: cached });
+        return;
+      }
+
+      // one execution per turn — nudge the model to answer from existing results
+      if (ranSqlCount.current >= 1) {
         addToolOutput({
           tool: "run_sql",
           toolCallId: toolCall.toolCallId,
-          output: JSON.stringify(out),
+          output: JSON.stringify({ note: "you already have this query's result — answer the user now without calling tools again" }),
         });
+        return;
+      }
+
+      setExecutingTool(toolCall.toolCallId);
+      try {
+        const out = await runSql(input.sql ?? "");
+        const output = JSON.stringify(out);
+        if (!("error" in out)) {
+          sqlCache.current.set(cacheKey, output);
+          ranSqlCount.current++;
+        }
+        // provide the result; sendAutomaticallyWhen continues the conversation
+        addToolOutput({ tool: "run_sql", toolCallId: toolCall.toolCallId, output });
       } finally {
         setExecutingTool(null);
       }
@@ -178,6 +201,13 @@ function Ask() {
   });
 
   const streaming = status === "submitted" || status === "streaming";
+
+  useEffect(() => {
+    if (!streaming) return;
+    setElapsed(0);
+    const t = setInterval(() => setElapsed((e) => e + 1), 1000);
+    return () => clearInterval(t);
+  }, [streaming]);
 
   // restore messages when switching to a chat that exists in IndexedDB
   useEffect(() => {
@@ -276,11 +306,27 @@ function Ask() {
         });
     }
 
+    // resolve mentioned contributors to exact emails (kills name-guessing)
+    const lower = text.toLowerCase();
+    const matches = Object.entries(data.owners)
+      .filter(([email, name]) => {
+        const n = name.toLowerCase();
+        const e = email.toLowerCase();
+        // full name/email in the text, OR the text is a meaningful fragment of a name/email
+        return lower.includes(n) || lower.includes(e) || (lower.length >= 3 && (n.includes(lower) || e.includes(lower)));
+      })
+      .map(([email, name]) => `- ${name} <${email}>`);
+    const matchLine = matches.length
+      ? `CONTRIBUTOR MATCHES (use these exact owner emails):\n${matches.join("\n")}\n\n`
+      : "";
+
     const viewing = viewingContext(location.pathname, location.search as Record<string, unknown>);
-    sendMessage({ text: viewing ? `${viewing}\n\n${text}` : text });
+    const prefix = [viewing, matchLine].filter(Boolean).join("\n\n");
+    sendMessage({ text: prefix ? `${prefix}\n\n${text}` : text });
   };
 
   const sqlReady = data && sqlStatus === "ready";
+  const sqlUsable = sqlStatus === "ready" || sqlStatus === "error";
 
   return (
     <div className="flex h-[calc(100dvh-11rem)] min-h-[440px] lg:h-[calc(100dvh-9rem)]">
@@ -408,7 +454,7 @@ function Ask() {
             {streaming && (
               <div className="flex items-center gap-2 font-mono text-[10px] text-[#666]">
                 <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-accent" />
-                {executingTool ? "running query…" : "thinking…"}
+                {executingTool ? "running query…" : "thinking…"} · {elapsed}s
               </div>
             )}
             {error && (
@@ -424,7 +470,10 @@ function Ask() {
           className="mt-3 flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            if (input.trim()) send(input);
+            if (input.trim()) {
+              send(input);
+              setInput("");
+            }
           }}
         >
           <textarea
@@ -433,11 +482,21 @@ function Ask() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                if (input.trim()) send(input);
+                if (input.trim()) {
+                  send(input);
+                  setInput("");
+                }
               }
             }}
             rows={1}
-            placeholder={streaming ? "streaming…" : "ask about the dataset… (Enter to send, Shift+Enter newline)"}
+            disabled={sqlStatus === "loading"}
+            placeholder={
+              sqlStatus === "loading"
+                ? "loading SQL engine…"
+                : streaming
+                  ? "streaming…"
+                  : "ask about the dataset… (Enter to send, Shift+Enter newline)"
+            }
             className="max-h-40 min-h-[42px] flex-1 resize-y rounded-lg border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 font-mono text-xs text-[#ededed] outline-none transition-colors placeholder:text-[#666] focus:border-accent"
           />
           {streaming ? (
@@ -451,7 +510,8 @@ function Ask() {
           ) : (
             <button
               type="submit"
-              disabled={!input.trim()}
+              disabled={!input.trim() || !sqlUsable}
+              title={!sqlUsable ? "waiting for the SQL engine" : undefined}
               className="h-[42px] rounded-lg bg-white px-4 font-mono text-xs font-semibold text-black transition-opacity disabled:opacity-30"
             >
               send
@@ -508,6 +568,10 @@ function MsgView({
     <div className="max-w-[92%]">
       <div className="space-y-2 text-sm leading-6 text-[#ededed]">
         {m.parts.map((part, i) => {
+          const prev = i > 0 ? (m.parts[i - 1] as { type?: string; input?: { sql?: string }; state?: string }) : null;
+          if (part.type.startsWith("tool-") && prev?.type?.startsWith("tool-") && p_sql(part) && p_sql(part) === p_sql(prev)) {
+            return null; // duplicate consecutive identical call — hide
+          }
           if (part.type === "text") {
             return <div key={i} className="space-y-2">{renderContent(part.text)}</div>;
           }
@@ -552,6 +616,10 @@ function MsgView({
 
 function partText(p: { type: string; text?: string }): string {
   return p.text ?? "";
+}
+
+function p_sql(part: unknown): string {
+  return (part as { input?: { sql?: string } }).input?.sql ?? "";
 }
 
 /** fenced-code-aware plain renderer (no markdown dep) */

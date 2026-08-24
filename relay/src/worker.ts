@@ -1,8 +1,11 @@
 import {
   convertToModelMessages,
   createGateway,
+  createUIMessageStream,
+  createUIMessageStreamResponse,
   stepCountIs,
   streamText,
+  UI_MESSAGE_STREAM_HEADERS,
   type UIMessage,
 } from "ai";
 import { z } from "zod";
@@ -50,42 +53,30 @@ function ipOf(request: Request): string {
 }
 
 /**
- * Rich, versioned schema brief — the model sees exact DDL + semantics, so it
- * writes correct SQL instead of hallucinating column types.
+ * Rich schema brief — the model sees exact DDL + semantics so it writes
+ * correct SQL instead of hallucinating column types.
  */
-const SYSTEM_PROMPT = `You are the data analyst for agi-eval-data — an AGI benchmark dataset of real-world images where vision models fail, plus geometric reasoning problems. Answer questions by writing SQL against DuckDB.
+const SYSTEM_PROMPT = `You are the data analyst for agi-eval-data — an AGI benchmark dataset of real-world images where vision models fail, plus geometric reasoning problems.
 
-SCHEMA (exact):
+SCOPE: Answer ONLY questions about this dataset, its stats, or the project. For anything else, reply with exactly one line: "I only answer questions about the agi-eval-data dataset." — nothing more.
 
-CREATE TABLE images (
-  id VARCHAR,          -- Google Drive file ID
-  name VARCHAR,        -- original filename
-  ext VARCHAR,         -- lowercase extension without dot ('jpg','png',…)
-  size BIGINT,         -- bytes
-  day VARCHAR,         -- upload date 'YYYY-MM-DD' (string compare/LIKE works)
-  owner VARCHAR,       -- contributor email; join owners for display name
-  md5 VARCHAR,         -- content hash; duplicates share md5
-  kind VARCHAR,        -- 'i' image | 'v' video | 'o' other
-  width INT,           -- EXIF pixel width (NULL if unknown)
-  height INT,          -- EXIF pixel height (NULL if unknown)
-  megapixels DOUBLE,   -- width*height/1e6 (NULL if unknown)
-  camera VARCHAR,      -- EXIF camera model (NULL if unknown)
-  orientation VARCHAR  -- 'landscape' | 'portrait' | 'square' (NULL if unknown)
-);
-CREATE TABLE owners (email VARCHAR, name VARCHAR);
-CREATE TABLE dup_groups (md5 VARCHAR, copies BIGINT, bytes BIGINT);
+STYLE:
+- Lead with the exact answer (number/name/list). Then at most 1–2 short context sentences.
+- No filler, no apologies, no restating the question, no offers to "break it down further" unless asked.
 
-SEMANTICS:
-- "pictures/images" = kind='i'. Videos are kind='v' and are excluded from picture counts.
-- unique images = COUNT(DISTINCT md5) (NULL md5 rows count separately).
-- duplicates: md5 shared by >1 row. Wasted bytes = (copies-1)*size per group; dup_groups pre-aggregates this.
-- orientation/width/height/camera come from EXIF; they are NULL when unknown — never guess them.
-- day is a VARCHAR 'YYYY-MM-DD': filter with day >= '2026-08-01' or day LIKE '2026-08-%'.
+CONTRIBUTORS:
+- Match contributors by their EXACT owner email (given in the user message as CONTRIBUTOR MATCHES). Never guess names or emails, never use name-pattern matching.
 
-RULES:
-- You have the run_sql tool. For ANY question about the data, call it first and answer from the real result — never invent numbers.
-- Ask for at most one query per step. If the first result is not enough, call run_sql again with a refined query.
-- Final answers: concise, lead with the number, add one line of context.`;
+DATA RULES:
+- "pictures/images" = kind='i'. Videos (kind='v') are excluded from picture counts.
+- unique images = COUNT(DISTINCT md5). Duplicates: md5 shared by >1 row.
+- day is VARCHAR 'YYYY-MM-DD': use day >= '2026-08-01' or day LIKE '2026-08-%'.
+- orientation/width/height/camera are EXIF columns; NULL when unknown — never guess.
+
+SQL:
+- Call run_sql for ANY data question — answer from the real result, never invent numbers.
+- Call run_sql at most ONCE per user question. After the result arrives, answer immediately.
+- Single SELECT, LIMIT auto-added (200).`;
 
 /* client-side tool: executed in the visitor's browser against DuckDB WASM.
    No `execute` here — the AI SDK forwards the call to the client. */
@@ -98,7 +89,6 @@ const runSqlTool = {
       .describe("Single SELECT statement. LIMIT is added automatically (200) if missing."),
   }),
 };
-
 
 export default {
   async fetch(request, env): Promise<Response> {
@@ -150,15 +140,16 @@ export default {
         abortSignal: request.signal,
       });
 
-      // UI message stream (SSE) with CORS — cross-origin from pages.dev
-      return new Response(result.toUIMessageStream(), {
-        status: 200,
-        headers: {
-          "Content-Type": "text/event-stream",
-          "Cache-Control": "no-cache",
-          "x-vercel-ai-ui-message-stream": "v1",
-          ...CORS,
+      const stream = createUIMessageStream({
+        execute: ({ writer }) => {
+          writer.merge(result.toUIMessageStream());
         },
+        onError: (e) => `AI error: ${e instanceof Error ? e.message : String(e)}`,
+      });
+
+      return createUIMessageStreamResponse({
+        stream,
+        headers: { ...UI_MESSAGE_STREAM_HEADERS, ...CORS },
       });
     }
 
