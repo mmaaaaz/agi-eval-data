@@ -75,8 +75,9 @@ DATA RULES:
 
 SQL:
 - Call run_sql for ANY data question — answer from the real result, never invent numbers.
-- Call run_sql at most ONCE per user question. After the result arrives, answer immediately.
-- Single SELECT, LIMIT auto-added (200).`;
+- Chain multiple run_sql calls when a question needs multi-step analysis (filter → aggregate → compare). Never re-run an identical query — reuse the result you already have.
+- Older tool results may be trimmed to 8 rows; re-run a query when you need rows that were trimmed.
+- Single SELECT per call, LIMIT auto-added (200).`;
 
 /* client-side tool: executed in the visitor's browser against DuckDB WASM.
    No `execute` here — the AI SDK forwards the call to the client. */
@@ -128,21 +129,43 @@ export default {
           { ...CORS },
         );
 
-      const { messages } = (await request.json()) as { messages: UIMessage[] };
+      const { messages, context } = (await request.json()) as {
+        messages: UIMessage[];
+        /** per-turn client context (viewing + contributor emails) — never shown to the user */
+        context?: string;
+      };
+
+      const modelMessages = await convertToModelMessages(messages);
+      if (context) {
+        const lastUser = [...modelMessages].reverse().find((m) => m.role === "user");
+        if (lastUser) {
+          lastUser.content =
+            typeof lastUser.content === "string"
+              ? `${context}\n\n${lastUser.content}`
+              : [{ type: "text", text: context }, ...lastUser.content];
+        }
+      }
 
       const gw = createGateway({ apiKey: env.GATEWAY_KEY });
       const result = streamText({
         model: gw(env.GATEWAY_MODEL || "openai/gpt-5-nano"),
         system: SYSTEM_PROMPT,
-        messages: await convertToModelMessages(messages),
+        messages: modelMessages,
         tools: { run_sql: runSqlTool },
-        stopWhen: stepCountIs(6),
+        stopWhen: stepCountIs(8),
         abortSignal: request.signal,
       });
 
       const stream = createUIMessageStream({
         execute: ({ writer }) => {
-          writer.merge(result.toUIMessageStream());
+          // onError must ALSO live on the inner stream: errors thrown inside
+          // the AI call propagate through result.toUIMessageStream(), whose
+          // default masks everything as "An error occurred."
+          writer.merge(
+            result.toUIMessageStream({
+              onError: (e) => `AI error: ${e instanceof Error ? e.message : String(e)}`,
+            }),
+          );
         },
         onError: (e) => `AI error: ${e instanceof Error ? e.message : String(e)}`,
       });

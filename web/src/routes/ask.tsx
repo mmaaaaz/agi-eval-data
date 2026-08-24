@@ -35,6 +35,49 @@ const SQL_TOOL = {
     required: ["sql"],
   },
 };
+const CONTRIBUTOR_STOP = new Set(["the", "and", "has", "was", "all", "who", "how", "many", "much", "are", "did", "does", "what", "when", "where", "which", "with", "for", "from", "that", "this", "have", "been", "were", "their", "them", "they", "about", "into", "over", "under", "most", "least", "more", "some", "any", "total"]);
+
+/** Exact-email context for contributors the question mentions; "" when none.
+ *  Token matching only — raw substrings once made "the" match "theyellowdog123". */
+function contributorContext(text: string, owners: Record<string, string>): string {
+  const words = text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !CONTRIBUTOR_STOP.has(w));
+  if (words.length === 0) return "";
+  const tokensOf = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
+  const matches = Object.entries(owners)
+    .filter(([email, name]) => {
+      const toks = [...tokensOf(name), ...tokensOf(email.split("@")[0])];
+      return words.some((w) => toks.some((t) => t === w || (t.startsWith(w) && w.length >= 4)));
+    })
+    .map(([email, name]) => `- ${name} <${email}>`);
+  return matches.length ? `CONTRIBUTOR MATCHES (use these exact owner emails):\n${matches.join("\n")}` : "";
+}
+
+/** Request-side context window: 16 messages, old tool results compressed to 8 rows. */
+const MAX_CONTEXT_MESSAGES = 16;
+const MAX_TOOL_ROWS_IN_HISTORY = 8;
+
+function leanHistory(messages: UIMessage[]): UIMessage[] {
+  const alive = messages.filter((m) => {
+    if (m.role !== "assistant") return true;
+    const dead = new Set(["streaming", "input-streaming", "input-available"]);
+    return m.parts.every((p) => !("state" in p) || !dead.has(String(p.state)));
+  });
+  const windowed = alive.length > MAX_CONTEXT_MESSAGES ? alive.slice(-MAX_CONTEXT_MESSAGES) : alive;
+  return windowed.map((m) => {
+    if (m.role !== "assistant") return m;
+    const parts = m.parts.map((p) => {
+      if (p.type !== "tool-run_sql" || !("output" in p) || typeof p.output !== "string") return p;
+      try {
+        const o = JSON.parse(p.output) as { rows?: unknown[]; rowCount?: number; columns?: string[] };
+        if (Array.isArray(o.rows) && o.rows.length > MAX_TOOL_ROWS_IN_HISTORY) {
+          return { ...p, output: JSON.stringify({ columns: o.columns, rows: o.rows.slice(0, MAX_TOOL_ROWS_IN_HISTORY), rowCount: o.rowCount, note: `showing ${MAX_TOOL_ROWS_IN_HISTORY} of ${o.rows.length} rows — re-run the query if you need different rows` }) };
+        }
+      } catch { /* keep original output */ }
+      return p;
+    });
+    return { ...m, parts };
+  });
+}
 
 const newChatId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
 
@@ -160,28 +203,31 @@ function Ask() {
     };
     return f;
   }, []);
-
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: `${settings.relay.replace(/\/+$/, "")}/api/chat`,
+        headers: settings.accessCode ? { "x-access-code": settings.accessCode } : undefined,
         // the relay needs the tool schema to enable tool-calling on the model.
-        // Also drop assistant messages left mid-stream by a failed/stopped
-        // turn (dangling tool calls, half-streamed reasoning) — the API
-        // rejects those, which would poison every later send in this chat.
-        prepareSendMessagesRequest: ({ messages }) => ({
-          body: {
-            messages: messages.filter((m) => {
-              if (m.role !== "assistant") return true;
-              const dead = new Set(["streaming", "input-streaming", "input-available"]);
-              return m.parts.every((p) => !("state" in p) || !dead.has(String(p.state)));
-            }),
-            tools: [SQL_TOOL],
-          },
-        }),
+        prepareSendMessagesRequest: ({ messages }) => {
+          // per-turn context (viewing + contributor emails) rides in the body,
+          // NOT in the message text — the user's bubble stays pristine and the
+          // relay injects it into the model's view server-side
+          const lastUser = [...messages].reverse().find((m) => m.role === "user");
+          const q = lastUser?.parts.find((p) => p.type === "text")?.text ?? "";
+          const viewing = viewingContext(location.pathname, location.search as Record<string, unknown>);
+          const ctx = [viewing, data ? contributorContext(q, data.owners) : ""].filter(Boolean).join("\n\n");
+          return {
+            body: {
+              messages: leanHistory(messages),
+              tools: [SQL_TOOL],
+              ...(ctx ? { context: ctx } : {}),
+            },
+          };
+        },
         fetch: fetchWithRetry,
       }),
-    [settings.relay, settings.accessCode, fetchWithRetry],
+    [settings.relay, settings.accessCode, data, location, fetchWithRetry],
   );
 
 
@@ -191,22 +237,30 @@ function Ask() {
     async onToolCall({ toolCall }) {
       if (toolCall.toolName !== "run_sql") return;
       const input = toolCall.input as { sql?: string };
-      const cacheKey = (input.sql ?? "").replace(/\s+/g, " ").trim();
+      const cacheKey = normSql(input.sql ?? "");
 
-      // identical query already ran in this conversation → instant cached result
+      // identical query already ran in this conversation → instant cached
+      // result plus a nudge, since weak models tend to re-call before answering
       const cached = sqlCache.current.get(cacheKey);
       if (cached) {
-        addToolOutput({ tool: "run_sql", toolCallId: toolCall.toolCallId, output: cached });
+        addToolOutput({
+          tool: "run_sql",
+          toolCallId: toolCall.toolCallId,
+          output: JSON.stringify({
+            note: "identical query already executed in this conversation — its result is included below. Do NOT call run_sql again; answer the user now.",
+            ...(JSON.parse(cached) as Record<string, unknown>),
+          }),
+        });
         return;
       }
 
-      // per-turn attempt budget: lets the model self-correct after SQL errors,
-      // while capping runaway loops. Reset when the user sends a new question.
+      // per-turn budget: room for self-correction + one refinement, then force
+      // the answer. gpt-5-nano loops re-runs otherwise (measured: 4 in a row).
       if (ranSqlCount.current >= 3) {
         addToolOutput({
           tool: "run_sql",
           toolCallId: toolCall.toolCallId,
-          output: JSON.stringify({ error: "3 SQL attempts used for this question. Stop calling run_sql and answer from the results you already have." }),
+          output: JSON.stringify({ error: "3 SQL queries already answered this question. Do NOT call run_sql again. Write the final answer now from the results above." }),
         });
         return;
       }
@@ -214,7 +268,15 @@ function Ask() {
       setExecutingTool(toolCall.toolCallId);
       try {
         const out = await runSql(input.sql ?? "");
-        const output = JSON.stringify(out);
+        // the wrap-up note is the anti-repeat measure: weak models tend to
+        // re-run the identical query to "verify" before answering — tell them
+        // the execution is final at the exact place they read it
+        const outNote = ranSqlCount.current >= 1
+          ? `This is result #${ranSqlCount.current + 1} of this turn. You have enough data. Your next message MUST be the final answer with NO tool calls.`
+          : "query executed — this result is final. Answer the user now; do NOT re-run this query.";
+        const output = "error" in out
+          ? JSON.stringify(out)
+          : JSON.stringify({ ...out, note: outNote });
         if (!("error" in out)) {
           sqlCache.current.set(cacheKey, output);
         }
@@ -341,25 +403,9 @@ function Ask() {
         });
     }
 
-    // resolve mentioned contributors to exact emails (kills name-guessing):
-    // match question words against name/email TOKENS — never raw substrings,
-    // else "the" matches "theyellowdog123" and poisons the query context
-    const STOP = new Set(["the", "and", "has", "was", "all", "who", "how", "many", "much", "are", "did", "does", "what", "when", "where", "which", "with", "for", "from", "that", "this", "have", "been", "were", "their", "them", "they", "about", "into", "over", "under", "most", "least", "more", "some", "any", "total"]);
-    const words = text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOP.has(w));
-    const tokensOf = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-    const matches = Object.entries(data.owners)
-      .filter(([email, name]) => {
-        const toks = [...tokensOf(name), ...tokensOf(email.split("@")[0])];
-        return words.some((w) => toks.some((t) => t === w || (t.startsWith(w) && w.length >= 4)));
-      })
-      .map(([email, name]) => `- ${name} <${email}>`);
-    const matchLine = matches.length
-      ? `CONTRIBUTOR MATCHES (use these exact owner emails):\n${matches.join("\n")}\n\n`
-      : "";
-
-    const viewing = viewingContext(location.pathname, location.search as Record<string, unknown>);
-    const prefix = [viewing, matchLine].filter(Boolean).join("\n\n");
-    sendMessage({ text: prefix ? `${prefix}\n\n${text}` : text });
+    // viewing + contributor context is attached invisibly at request time
+    // (prepareSendMessagesRequest → body.context) — never in the message text
+    sendMessage({ text });
   };
 
   const sqlReady = data && sqlStatus === "ready";
@@ -485,9 +531,12 @@ function Ask() {
             </div>
           )}
           <div className="space-y-4">
-            {messages.map((m) => (
-              <MsgView key={m.id} m={m} executingTool={executingTool} openTool={openTool} setOpenTool={setOpenTool} />
-            ))}
+            {(() => {
+              const shownSql = new Set<string>();
+              return messages.map((m) => (
+                <MsgView key={m.id} m={m} shownSql={shownSql} executingTool={executingTool} openTool={openTool} setOpenTool={setOpenTool} />
+              ));
+            })()}
             {streaming && (
               <div className="flex items-center gap-2 font-mono text-[10px] text-[#666]">
                 <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-accent" />
@@ -564,11 +613,14 @@ function Ask() {
 
 function MsgView({
   m,
+  shownSql,
   executingTool,
   openTool,
   setOpenTool,
 }: {
   m: UIMessage;
+  /** SQL results already rendered anywhere in this conversation (cross-message dedupe) */
+  shownSql: Set<string>;
   executingTool: string | null;
   openTool: string | null;
   setOpenTool: (id: string | null) => void;
@@ -605,10 +657,6 @@ function MsgView({
     <div className="max-w-[92%]">
       <div className="space-y-2 text-sm leading-6 text-[#ededed]">
         {m.parts.map((part, i) => {
-          const prev = i > 0 ? (m.parts[i - 1] as { type?: string; input?: { sql?: string }; state?: string }) : null;
-          if (part.type.startsWith("tool-") && prev?.type?.startsWith("tool-") && p_sql(part) && p_sql(part) === p_sql(prev)) {
-            return null; // duplicate consecutive identical call — hide
-          }
           if (part.type === "text") {
             return <div key={i} className="space-y-2">{renderContent(part.text)}</div>;
           }
@@ -623,6 +671,9 @@ function MsgView({
             const running = p.state === "input-streaming" || p.state === "input-available";
             const hasOutput = p.state === "output-available";
             const isErr = p.state === "output-error";
+            // a repeated identical call adds no information — show first run only
+            if (hasOutput && p.input?.sql && shownSql.has(normSql(p.input.sql))) return null;
+            if (hasOutput && p.input?.sql) shownSql.add(normSql(p.input.sql));
             return (
               <div key={i}>
                 <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[9px] ${
@@ -655,8 +706,9 @@ function partText(p: { type: string; text?: string }): string {
   return p.text ?? "";
 }
 
-function p_sql(part: unknown): string {
-  return (part as { input?: { sql?: string } }).input?.sql ?? "";
+/** whitespace-collapsed SQL — identity for the cache and the UI dedupe */
+function normSql(sql: string): string {
+  return sql.replace(/\s+/g, " ").trim();
 }
 
 /** fenced-code-aware plain renderer (no markdown dep) */
