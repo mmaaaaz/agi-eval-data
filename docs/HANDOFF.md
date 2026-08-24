@@ -107,11 +107,12 @@ Snapshot of record (re-read `data/latest.json` for live numbers — they move ho
 
 ## 6. Relay details (relay/src/worker.ts)
 
-- **Pooled path (default)**: AI Gateway via `createGateway({ apiKey: env.GATEWAY_KEY })`, model `gateway(env.GATEWAY_MODEL)` — currently `openai/gpt-5-nano`. Fixed model, no selector (owner's choice).
+- **Primary (default)**: Vercel AI Gateway via `createGateway({ apiKey: env.GATEWAY_KEY })`, model `gateway(env.GATEWAY_MODEL)` — currently `openai/gpt-5-nano`. Relay now runs **`ai@^7`** (aligned with the web client; the old v5/v7 skew is gone).
+- **Workers AI overflow (2026-08-25)**: gateway free-tier per-model rate limits caused intermittent "An error occurred." (masked for weeks by `toUIMessageStream()`'s DEFAULT onError — always pass `onError` to BOTH `createUIMessageStream` AND `result.toUIMessageStream()`). Fix: the execute() handler peeks the first stream chunks; if the error matches rate-limiting, it transparently swaps to `env.AI.run("@cf/meta/llama-3.3-70b-instruct-fp8-fast")` — **toolless** (Workers AI tool-calling proved unreliable: garbled tool JSON on llama fp8-fast, tools ignored on qwen-coder; the provider also duplicated stream deltas — raw non-streaming `env.AI.run` is bulletproof) with `FALLBACK_SYSTEM_PROMPT` (narrative answers, says when precision is unavailable). Sticky: after any rate-limit, fallback is used for 3 min (`gwFallbackUntil`). `FORCE_FALLBACK=1` in wrangler.toml bypasses the gateway for testing — keep "0" in prod.
 - **Per-IP daily cap**: `RATE_LIMIT_PER_IP` (currently **101/day**, set in relay/wrangler.toml), in-memory (resets on isolate recycle — best-effort).
 - **ACCESS_CODE**: optional gate; unset.
 - **Client-side tool**: `run_sql` has NO execute — the AI SDK forwards the call to the browser; DuckDB runs there. The tool result returns via `addToolOutput` and the SDK auto-continues.
-- **System prompt**: rich DDL + semantics + rules (concise-only, off-topic refusal, single-SQL, exact-email matching). ~2 KB. Server-side so it can't be tampered with.
+- **System prompt**: rich DDL + semantics + rules (concise-only, off-topic refusal, exact-email matching, multi-step chaining allowed). Server-side so it can't be tampered with.
 
 ---
 
@@ -123,11 +124,12 @@ Snapshot of record (re-read `data/latest.json` for live numbers — they move ho
 
 ## 8. CURRENT KNOWN ISSUES (for the next agent)
 
-1. **Failed/stopped turns poisoned the conversation (FIXED 2026-08-25)**: a stream that died mid-turn (NetworkError, user `stop()`) left assistant parts in non-final states (`reasoning` stuck in `streaming`, tool calls with no result). Every later send re-posted them and the API rejected tool-calls-without-results → the chat was permanently broken ("An error occurred." forever). Fix: `prepareSendMessagesRequest` in ask.tsx now drops assistant messages whose parts are in `streaming` / `input-streaming` / `input-available` states; transient fetch failures get one retry via the transport's `fetch` wrapper. Repro that must keep passing: send → stop mid-stream → follow up in the same chat.
-2. **Model sometimes repeats identical tool calls** — mitigated: client-side `sqlCache` (identical SQL → instant cached result) + a per-turn budget of 3 `run_sql` attempts (reset on every user send) that lets the model self-correct after SQL errors but caps loops. Verified working 2026-08-25.
+1. **Failed/stopped turns poisoned the conversation (FIXED 2026-08-25)**: a stream that died mid-turn (NetworkError, user `stop()`) left assistant parts in non-final states (`reasoning` stuck in `streaming`, tool calls with no result). Every later send re-posted them and the API rejected tool-calls-without-results → the chat was permanently broken ("An error occurred." forever). Fix: `prepareSendMessagesRequest` in ask.tsx drops assistant messages whose parts are in `streaming` / `input-streaming` / `input-available` states; transient fetch failures get one retry via the transport's `fetch` wrapper. Repro that must keep passing: send → stop mid-stream → follow up in the same chat.
+2. **Model sometimes repeats or refines tool calls** — measured 2026-08-25: gpt-5-nano re-runs a query to "verify" or refines it with extra predicates. Identical re-runs: served instantly from `sqlCache` + a stop-nudge in the cached output, and hidden in the UI (cross-message `shownSql` dedupe in ask.tsx). Refinements (different SQL) are legitimate and shown. Loops bounded by the per-turn budget of 3 `run_sql` attempts (reset on every user send).
 3. **gpt-5-nano via the gateway emits long reasoning chains** — 8–9 s before the first tool call. `providerOptions: { openai: { reasoningEffort: "minimal" } }` was tested 2026-08-25 and the gateway/model **rejects it (400)** — do not retry blindly; latency relief must come from swapping `GATEWAY_MODEL`.
-4. **`day` column type**: forced to VARCHAR at load (DuckDB auto-types ISO strings as DATE, breaking LIKE). If the model writes date-typed SQL anyway, the binder hint in `duck.ts` guides it.
-5. **routeTree.gen.ts is committed** and regenerates at build/dev — expect it to churn in diffs after any route change; include it in the same commit.
+4. **Gateway free-tier rate limits (RESOLVED 2026-08-25 by the Workers AI overflow)**: bursts of requests hit Vercel's per-model free-tier caps → "AI error: Free tier requests on this model are rate-limited…". The relay now swaps to the toolless llama-3.3-70b overflow transparently and sticks with it for 3 min. Overflow answers are narrative-only by design.
+5. **`day` column type**: forced to VARCHAR at load (DuckDB auto-types ISO strings as DATE, breaking LIKE). If the model writes date-typed SQL anyway, the binder hint in `duck.ts` guides it.
+6. **routeTree.gen.ts is committed** and regenerates at build/dev — expect it to churn in diffs after any route change; include it in the same commit.
 
 ---
 
