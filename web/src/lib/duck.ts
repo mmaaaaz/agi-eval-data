@@ -132,6 +132,8 @@ export async function runSql(rawSql: string): Promise<SqlResult | { error: strin
     let msg = e instanceof Error ? e.message : String(e);
     if (/binder error/i.test(msg) && /day/i.test(msg))
       msg += " (hint: day is VARCHAR 'YYYY-MM-DD' — filter with day >= '2026-08-01' or day LIKE '2026-08-%')";
+    if (/binder error/i.test(msg) && /not found/i.test(msg))
+      msg += " (the images table columns are exactly: id, name, ext, size, day, owner, md5, kind, width, height, megapixels, camera, orientation)";
     return { error: msg };
   }
 }

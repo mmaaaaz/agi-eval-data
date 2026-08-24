@@ -184,12 +184,20 @@ function Ask() {
 
       setExecutingTool(toolCall.toolCallId);
       try {
+        if (ranSqlCount.current >= 3) {
+          addToolOutput({
+            tool: "run_sql",
+            toolCallId: toolCall.toolCallId,
+            output: JSON.stringify({ error: "3 SQL attempts failed. Stop calling run_sql and answer the user from the dataset summary, or say what data you need." }),
+          });
+          return;
+        }
         const out = await runSql(input.sql ?? "");
         const output = JSON.stringify(out);
         if (!("error" in out)) {
           sqlCache.current.set(cacheKey, output);
-          ranSqlCount.current++;
         }
+        ranSqlCount.current++;
         // provide the result; sendAutomaticallyWhen continues the conversation
         addToolOutput({ tool: "run_sql", toolCallId: toolCall.toolCallId, output });
       } finally {
@@ -306,14 +314,14 @@ function Ask() {
         });
     }
 
-    // resolve mentioned contributors to exact emails (kills name-guessing)
-    const lower = text.toLowerCase();
+    // resolve mentioned contributors to exact emails (kills name-guessing):
+    // tokenize the question and match words against names/emails in both directions
+    const words = text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
     const matches = Object.entries(data.owners)
       .filter(([email, name]) => {
         const n = name.toLowerCase();
         const e = email.toLowerCase();
-        // full name/email in the text, OR the text is a meaningful fragment of a name/email
-        return lower.includes(n) || lower.includes(e) || (lower.length >= 3 && (n.includes(lower) || e.includes(lower)));
+        return words.some((w) => n.includes(w) || e.includes(w));
       })
       .map(([email, name]) => `- ${name} <${email}>`);
     const matchLine = matches.length
