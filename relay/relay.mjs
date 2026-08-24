@@ -1,18 +1,25 @@
 /**
- * agi-eval relay — two modes, one stateless server/worker:
+ * agi-eval relay — free-tier fallback chain, one stateless server/worker.
  *
  *   POOLED (default): /api/chat {messages, system?, tools?}
- *     → Vercel AI Gateway with the team key held as a server secret.
- *     Zero-config for visitors. Gated by per-IP daily cap + optional ACCESS_CODE.
+ *     → tries free providers in chain order (Groq → Gemini → GitHub → Workers AI).
+ *     On rate-limit/credit errors it falls through to the next provider.
+ *     Zero config for visitors. Gated by per-IP daily cap + optional ACCESS_CODE.
  *
  *   BYOK (power users): /api/chat {byok: {base, key, model, protocol}, messages, …}
  *     → passthrough to the visitor's own provider. No pooled quota consumed.
  *
- *   GET /api/info  → { model } so the UI can show what's serving.
+ *   GET /api/info  → { model, chain } — which providers are armed.
  *   GET /api/health
  *
- * Env: GATEWAY_KEY (secret), GATEWAY_MODEL, GATEWAY_BASE (default Vercel GW),
- *      ACCESS_CODE (optional), RATE_LIMIT_PER_IP (default 30/day on pooled).
+ * Env:
+ *   FREE_CHAIN        comma list, default "groq,gemini,github,wai"
+ *   GROQ_KEY          https://console.groq.com  (free)
+ *   GEMINI_KEY        https://aistudio.google.com  (free)
+ *   GITHUB_TOKEN      GitHub PAT (free via GitHub Models)
+ *   GROQ_MODEL / GEMINI_MODEL / GITHUB_MODEL / WAI_MODEL   optional overrides
+ *   ACCESS_CODE       optional gate
+ *   RATE_LIMIT_PER_IP default 100/day on pooled
  */
 
 const CORS = {
@@ -28,7 +35,15 @@ const json = (obj, status = 200) =>
     headers: { "Content-Type": "application/json", ...CORS },
   });
 
-/* best-effort per-IP daily rate limit (in-memory; resets on process/isolate recycle) */
+async function readJson(request) {
+  try {
+    return await request.json();
+  } catch {
+    return {};
+  }
+}
+
+/* per-IP daily cap (best-effort, in-memory) */
 const rateMap = new Map();
 function allowIp(ip, limit) {
   const day = Math.floor(Date.now() / 86400000);
@@ -42,26 +57,34 @@ function allowIp(ip, limit) {
   return true;
 }
 
-/**
- * Gateways are strict: every assistant tool_call needs an id, every tool
- * message needs a matching tool_call_id. Older/buggy clients may omit them —
- * synthesize deterministically here so the upstream never 400s.
- */
+function ipOf(request) {
+  return (
+    request.headers.get("cf-connecting-ip") ??
+    (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() ??
+    "unknown"
+  );
+}
+
+function providerHeaders(id, key) {
+  return { "Content-Type": "application/json", Authorization: `Bearer ${key}` };
+}
+
+/** strict tool-message sanitizer (ids synthesized, shapes normalized) */
 function sanitizeToolMessages(messages) {
   let seq = 0;
   const nextId = () => `call_auto_${Date.now().toString(36)}_${seq++}`;
   const pending = [];
   return messages.map((m) => {
-    // accept both snake_case (wire) and camelCase (older clients)
     const calls = m.tool_calls ?? m.toolCalls;
     if (m.role === "assistant" && Array.isArray(calls)) {
       const norm = calls.map((tc) => {
         const fn = tc.function ?? tc;
         const id = tc.id || fn.id || nextId();
         pending.push(id);
-        const args = typeof (fn.arguments ?? tc.arguments) === "string"
-          ? (fn.arguments ?? tc.arguments)
-          : JSON.stringify(fn.arguments ?? tc.arguments ?? {});
+        const args =
+          typeof (fn.arguments ?? tc.arguments) === "string"
+            ? fn.arguments ?? tc.arguments
+            : JSON.stringify(fn.arguments ?? tc.arguments ?? {});
         return { id, type: "function", function: { name: fn.name ?? tc.name ?? "", arguments: args } };
       });
       return { ...m, tool_calls: norm, content: m.content ?? "" };
@@ -79,32 +102,45 @@ function sanitizeToolMessages(messages) {
   });
 }
 
-function ipOf(request) {
-  return request.headers.get("cf-connecting-ip")
-    ?? (request.headers.get("x-forwarded-for") || "").split(",")[0].trim()
-    ?? "unknown";
+/* ---------- free-provider chain ---------- */
+
+function buildChain(env) {
+  const chain = [];
+  const order = (env.FREE_CHAIN || "groq,gemini,github,wai").split(",").map((s) => s.trim());
+
+  for (const id of order) {
+    if (id === "groq" && env.GROQ_KEY)
+      chain.push({
+        id: "groq",
+        url: "https://api.groq.com/openai/v1/chat/completions",
+        model: env.GROQ_MODEL || "llama-3.3-70b-versatile",
+        key: env.GROQ_KEY,
+      });
+    if (id === "gemini" && env.GEMINI_KEY)
+      chain.push({
+        id: "gemini",
+        url: "https://generativelanguage.googleapis.com/v1beta/openai/chat/completions",
+        model: env.GEMINI_MODEL || "gemini-2.0-flash",
+        key: env.GEMINI_KEY,
+      });
+    if (id === "github" && env.GITHUB_TOKEN)
+      chain.push({
+        id: "github",
+        url: "https://models.github.ai/inference/chat/completions",
+        model: env.GITHUB_MODEL || "openai/gpt-4.1-mini",
+        key: env.GITHUB_TOKEN,
+      });
+    if (id === "wai")
+      chain.push({
+        id: "wai",
+        binding: true,
+        model: env.WAI_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+      });
+  }
+  return chain;
 }
 
-function providerHeaders(protocol, key) {
-  if (protocol === "anthropic") {
-    return {
-      "Content-Type": "application/json",
-      "x-api-key": key,
-      "anthropic-version": "2023-06-01",
-    };
-  }
-  const h = { "Content-Type": "application/json" };
-  if (key) h["Authorization"] = `Bearer ${key}`;
-  return h;
-}
-
-async function readJson(request) {
-  try {
-    return await request.json();
-  } catch {
-    return {};
-  }
-}
+const RETRYABLE = new Set([429, 402, 403, 500, 502, 503, 504]);
 
 export async function handle(request, env = {}) {
   const url = new URL(request.url);
@@ -115,16 +151,18 @@ export async function handle(request, env = {}) {
   if (url.pathname === "/api/health")
     return json({ ok: true, service: "agi-eval-relay" }, 200, { ...CORS });
 
-  if (url.pathname === "/api/info")
-    return json({ model: env.GATEWAY_MODEL ?? "unset", pooled: true }, 200, { ...CORS });
+  if (url.pathname === "/api/info") {
+    const chain = buildChain(env).map((c) => c.id);
+    const model = buildChain(env)[0]?.model ?? "none";
+    return json({ model, chain }, 200, { ...CORS });
+  }
 
   if (url.pathname === "/api/models" && request.method === "POST") {
-    // BYOK model discovery passthrough
-    const { base, key = "", protocol = "openai" } = await readJson(request);
+    const { base, key = "" } = await readJson(request);
     if (!base) return json({ error: "missing base" }, 400, { ...CORS });
     try {
       const res = await fetch(base.replace(/\/+$/, "") + "/models", {
-        headers: providerHeaders(protocol, key),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       });
       return new Response(res.body, {
         status: res.status,
@@ -138,7 +176,7 @@ export async function handle(request, env = {}) {
   if (url.pathname === "/api/chat" && request.method === "POST") {
     const { messages = [], system = "", tools, byok = null } = await readJson(request);
 
-    /* ---- BYOK passthrough (power users; no pooled quota used) ---- */
+    /* ---- BYOK passthrough ---- */
     if (byok) {
       const { base, key = "", model, protocol = "openai" } = byok;
       if (!base || !model) return json({ error: "byok missing base/model" }, 400, { ...CORS });
@@ -151,12 +189,11 @@ export async function handle(request, env = {}) {
         stream: true,
         ...(protocol === "anthropic" ? { max_tokens: 4096 } : {}),
       };
-      if (tools && tools.length) {
+      if (tools && tools.length)
         payload.tools =
           protocol === "anthropic"
             ? tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }))
             : tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } }));
-      }
       try {
         const res = await fetch(target, {
           method: "POST",
@@ -176,67 +213,116 @@ export async function handle(request, env = {}) {
       }
     }
 
-    /* ---- POOLED: Vercel AI Gateway with team key ---- */
-    const gwBase = (env.GATEWAY_BASE || "https://ai-gateway.vercel.sh/v1").replace(/\/+$/, "");
-    if (!env.GATEWAY_KEY || !env.GATEWAY_MODEL)
-      return json(
-        { error: "pooled chat is not configured (missing GATEWAY_KEY/GATEWAY_MODEL)" },
-        503,
-        { ...CORS },
-      );
-
-    const limit = Number(env.RATE_LIMIT_PER_IP || 30);
+    /* ---- POOLED: free-provider fallback chain ---- */
+    const limit = Number(env.RATE_LIMIT_PER_IP || 100);
     if (!allowIp(ipOf(request), limit))
       return json(
-        {
-          error: `daily limit reached for your address (${limit} questions/day). Add your own key via providers settings, or try again tomorrow (UTC).`,
-        },
+        { error: `daily limit reached for your address (${limit} questions/day). Add your own key via settings, or try again tomorrow (UTC).` },
         429,
         { ...CORS },
       );
 
-    const msgs = system ? [{ role: "system", content: system }, ...messages] : messages;
-    const safeMsgs = sanitizeToolMessages(msgs);
-    const payload = {
-      model: env.GATEWAY_MODEL,
-      messages: safeMsgs,
-      stream: true,
-    };
-    if (tools && tools.length)
-      payload.tools = tools.map((t) => ({
-        type: "function",
-        function: { name: t.name, description: t.description, parameters: t.parameters },
-      }));
+    const safeMsgs = sanitizeToolMessages(
+      system ? [{ role: "system", content: system }, ...messages] : messages,
+    );
 
-    try {
-      const res = await fetch(`${gwBase}/chat/completions`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${env.GATEWAY_KEY}`,
-          "http-referer": "https://agi-eval-data.pages.dev",
-        },
-        body: JSON.stringify(payload),
-      });
-      if (!res.ok) {
-        const detail = await res.text().catch(() => "");
-        return json(
-          { error: `gateway HTTP ${res.status}: ${detail.slice(0, 300)}` },
-          res.status,
-          { ...CORS },
-        );
+    const chain = buildChain(env);
+    if (chain.length === 0)
+      return json({ error: "no free providers configured on the relay yet" }, 503, { ...CORS });
+
+    let lastError = "all providers exhausted";
+    for (const link of chain) {
+      const payload = {
+        model: link.model,
+        messages: safeMsgs,
+        stream: link.id !== "wai",
+      };
+      if (tools && tools.length)
+        payload.tools = tools.map((t) => ({
+          type: "function",
+          function: { name: t.name, description: t.description, parameters: t.parameters },
+        }));
+
+      try {
+        let res;
+        if (link.binding) {
+          // Workers AI — native binding, tools passed through; non-streamed,
+          // normalized into synthetic OpenAI SSE for the client
+          const runOpts = { messages: safeMsgs };
+          if (tools && tools.length)
+            runOpts.tools = tools.map((t) => {
+              const fn = t.function ?? t;
+              return {
+                type: "function",
+                function: {
+                  name: fn.name ?? t.name,
+                  description: fn.description ?? t.description,
+                  parameters: fn.parameters ?? t.parameters,
+                },
+              };
+            });
+          const out = await env.AI.run(link.model, runOpts);
+          let sse;
+          if (Array.isArray(out?.tool_calls) && out.tool_calls.length) {
+            const chunks = out.tool_calls.map((tc, i) => ({
+              choices: [{
+                delta: {
+                  tool_calls: [{
+                    index: i,
+                    id: tc.id || `call_${i}`,
+                    type: "function",
+                    function: {
+                      name: tc.name ?? tc.function?.name ?? "",
+                      arguments: typeof tc.arguments === "string" ? tc.arguments : JSON.stringify(tc.arguments ?? {}),
+                    },
+                  }],
+                  finish_reason: "tool_calls",
+                },
+              }],
+            }));
+            sse = chunks.map((c) => `data: ${JSON.stringify(c)}\n\n`).join("") + "data: [DONE]\n\n";
+          } else {
+            const text = out?.response ?? "";
+            sse =
+              `data: ${JSON.stringify({ choices: [{ delta: { content: text } }] })}\n\n` +
+              `data: [DONE]\n\n`;
+          }
+          res = new Response(sse, {
+            status: 200,
+            headers: { "Content-Type": "text/event-stream", "x-provider": "wai" },
+          });
+        } else {
+          res = await fetch(link.url, {
+            method: "POST",
+            headers: providerHeaders(link.id, link.key),
+            body: JSON.stringify(payload),
+          });
+        }
+
+        if (!res.ok) {
+          const detail = await res.text().catch(() => "");
+          lastError = `${link.id} HTTP ${res.status}: ${detail.slice(0, 160)}`;
+          console.warn(`[chain] ${lastError}`);
+          if (RETRYABLE.has(res.status)) continue; // next provider
+          return json({ error: `${link.id} HTTP ${res.status}: ${detail.slice(0, 200)}` }, res.status, { ...CORS });
+        }
+
+        return new Response(res.body, {
+          status: res.status,
+          headers: {
+            "Content-Type": res.headers.get("content-type") ?? "text/event-stream",
+            "Cache-Control": "no-cache",
+            "x-provider": link.id,
+            ...CORS,
+          },
+        });
+      } catch (e) {
+        lastError = `${link.id}: ${e.message}`;
+        console.warn(`[chain] ${lastError}`);
       }
-      return new Response(res.body, {
-        status: res.status,
-        headers: {
-          "Content-Type": res.headers.get("content-type") ?? "text/event-stream",
-          "Cache-Control": "no-cache",
-          ...CORS,
-        },
-      });
-    } catch (e) {
-      return json({ error: `gateway fetch failed: ${e.message}` }, 502, { ...CORS });
     }
+
+    return json({ error: `all free providers exhausted — last error: ${lastError}` }, 502, { ...CORS });
   }
 
   return json({ error: "not found" }, 404, { ...CORS });

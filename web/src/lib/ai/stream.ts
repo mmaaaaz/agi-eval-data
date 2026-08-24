@@ -30,6 +30,8 @@ export interface StreamArgs {
   tools?: ToolSpec[];
   signal?: AbortSignal;
   onDelta: (text: string) => void;
+  /** streaming tool-call arguments as they generate (for live SQL display) */
+  onToolArgs?: (args: string) => void;
 }
 
 export interface StreamResult {
@@ -46,6 +48,7 @@ export interface PooledArgs {
   tools?: ToolSpec[];
   signal?: AbortSignal;
   onDelta: (text: string) => void;
+  onToolArgs?: (args: string) => void;
 }
 
 const trimBase = (b: string) => b.replace(/\/+$/, "");
@@ -138,7 +141,7 @@ async function streamOpenAI(a: StreamArgs): Promise<StreamResult> {
 /** Shared OpenAI-compatible SSE parser (also used by the pooled relay path). */
 async function parseOpenAiSse(
   res: Response,
-  a: { onDelta: (t: string) => void },
+  a: { onDelta: (t: string) => void; onToolArgs?: (args: string) => void },
 ): Promise<StreamResult> {
   let text = "";
   const toolAcc = new Map<number, { id: string; name: string; args: string }>();
@@ -172,6 +175,7 @@ async function parseOpenAiSse(
       if (tc.function?.name) acc.name += tc.function.name;
       if (tc.function?.arguments) acc.args += tc.function.arguments;
       toolAcc.set(tc.index, acc);
+      a.onToolArgs?.(acc.args);
     }
     if (choice.finish_reason === "tool_calls") stop = "tool_use";
   });
@@ -268,7 +272,9 @@ async function streamAnthropic(a: StreamArgs): Promise<StreamResult> {
         text += j.delta.text;
         a.onDelta(j.delta.text);
       } else if (j.delta.type === "input_json_delta" && currentTool && j.delta.partial_json) {
-        toolAcc.get(currentTool)!.args += j.delta.partial_json;
+        const acc = toolAcc.get(currentTool)!;
+        acc.args += j.delta.partial_json;
+        a.onToolArgs?.(acc.args);
       }
     } else if (j.type === "message_delta" && j.delta?.stop_reason) {
       stop = j.delta.stop_reason === "tool_use" ? "tool_use" : "endturn";
@@ -321,6 +327,7 @@ export interface PooledArgs {
   tools?: ToolSpec[];
   signal?: AbortSignal;
   onDelta: (text: string) => void;
+  onToolArgs?: (args: string) => void;
 }
 
 /** Zero-config path: relay injects the team key + fixed model server-side. */
