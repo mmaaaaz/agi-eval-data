@@ -1,3 +1,8 @@
 name = "agi-eval-relay"
 main = "worker.js"
 compatibility_date = "2025-01-01"
+
+[vars]
+GATEWAY_BASE = "https://ai-gateway.vercel.sh/v1"
+GATEWAY_MODEL = "openai/gpt-5-nano"
+RATE_LIMIT_PER_IP = "30"

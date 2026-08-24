@@ -15,7 +15,7 @@ export interface AskSettings {
 
 const LS_KEY = "ask.settings.v3";
 /** change this constant when the relay gets a permanent home */
-export const DEFAULT_RELAY = "http://localhost:8787";
+export const DEFAULT_RELAY = "https://agi-eval-relay.devmaaaaz.workers.dev";
 
 export function loadSettings(): AskSettings {
   const defaults: AskSettings = {
