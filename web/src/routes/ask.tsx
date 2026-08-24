@@ -1,21 +1,25 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { useChat } from "@ai-sdk/react";
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
+import type { UIMessage } from "ai";
 import { z } from "zod";
 import { useData } from "../lib/dataContext";
-import { datasetBrief, viewingContext } from "../lib/brief";
+import { viewingContext } from "../lib/brief";
 import { loadArtifact, isLoaded, runSql, type SqlResult } from "../lib/duck";
-import { streamPooled, streamChat, type ChatMessage } from "../lib/ai/stream";
-import { loadSettings, saveSettings, type AskSettings } from "../lib/ai/settings";
 import {
   listChats, getChat, saveChat, deleteChat, titleFrom,
-  type StoredChat, type UiMsg,
+  type StoredChat,
 } from "../lib/chats";
-import { AskSettings as AskSettingsPanel } from "../components/AskSettings";
+import { loadSettings, saveSettings, type AskSettings as AskSettingsData } from "../lib/ai/settings";
+import { AskSettings } from "../components/AskSettings";
 import { Eyebrow } from "../components/Section";
 import { fmtN } from "../lib/format";
 
+const searchSchema = z.object({ c: z.string().optional() });
+
 export const Route = createFileRoute("/ask")({
-  validateSearch: z.object({ c: z.string().optional() }),
+  validateSearch: searchSchema,
   component: Ask,
 });
 
@@ -32,9 +36,11 @@ const SQL_TOOL = {
   },
 };
 
-let uid = 0;
-const nextId = () => `m${++uid}`;
 const newChatId = () => `c${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+
+function sysNote(content: string): UIMessage {
+  return { id: `n${Date.now()}${Math.random().toString(36).slice(2, 6)}`, role: "system", parts: [{ type: "text", text: content }] };
+}
 
 function Ask() {
   const { data } = useData();
@@ -42,89 +48,26 @@ function Ask() {
   const navigate = useNavigate();
   const search = Route.useSearch();
 
-  const [settings, setSettings] = useState<AskSettings>(loadSettings);
+  const [settings, setSettings] = useState<AskSettingsData>(loadSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [pooledModel, setPooledModel] = useState<string | null>(null);
 
   const [chats, setChats] = useState<StoredChat[]>([]);
   const [activeId, setActiveId] = useState<string | null>(search.c ?? null);
-  const [messages, setMessages] = useState<UiMsg[]>([]);
-  const messagesRef = useRef<UiMsg[]>([]);
   const saveTimer = useRef<number | null>(null);
   const chatMeta = useRef(new Map<string, number>());
 
   const [input, setInput] = useState("");
-  const [streaming, setStreaming] = useState(false);
-  const [liveSql, setLiveSql] = useState<string | null>(null);
-  const [sqlStatus, setSqlStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
-  const [sqlError, setSqlError] = useState("");
   const [openTool, setOpenTool] = useState<string | null>(null);
-  const [executingSql, setExecutingSql] = useState<string | null>(null);
+  const [executingTool, setExecutingTool] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const bootstrapped = useRef(false);
 
+  const [sqlStatus, setSqlStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
+  const [sqlError, setSqlError] = useState("");
+
   useEffect(() => saveSettings(settings), [settings]);
-
-  /* ---------------- persistence ---------------- */
-
-  const refreshList = useCallback(() => {
-    void listChats().then(setChats);
-  }, []);
-
-  const persist = useCallback(
-    (id: string, msgs: UiMsg[]) => {
-      if (saveTimer.current) clearTimeout(saveTimer.current);
-      saveTimer.current = window.setTimeout(() => {
-        const chat: StoredChat = {
-          id,
-          title: titleFrom(msgs),
-          createdAt: chatMeta.current.get(id) ?? Date.now(),
-          updatedAt: Date.now(),
-          messages: msgs,
-        };
-        chatMeta.current.set(id, chat.createdAt);
-        void saveChat(chat).then(refreshList);
-      }, 350);
-    },
-    [refreshList],
-  );
-
-  const updateMsgs = useCallback(
-    (fn: (prev: UiMsg[]) => UiMsg[]) => {
-      setMessages((prev) => {
-        const next = fn(prev);
-        messagesRef.current = next;
-        if (activeId) persist(activeId, next);
-        return next;
-      });
-    },
-    [activeId, persist],
-  );
-
-  /* ---------------- boot: restore or fresh ---------------- */
-
-  useEffect(() => {
-    if (bootstrapped.current) return;
-    bootstrapped.current = true;
-    void (async () => {
-      const list = await listChats();
-      setChats(list);
-      const want = search.c ?? list[0]?.id ?? null;
-      if (want) {
-        const chat = list.find((x) => x.id === want) ?? (await getChat(want));
-        if (chat) {
-          setActiveId(chat.id);
-          messagesRef.current = chat.messages;
-          setMessages(chat.messages);
-          return;
-        }
-      }
-      setActiveId(null);
-      setMessages([]);
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   /* ---------------- DuckDB preload ---------------- */
 
@@ -143,7 +86,8 @@ function Ask() {
 
   // pooled model name for the chip
   useEffect(() => {
-    const relay = (settings.relay || "http://localhost:8787").replace(/\/+$/, "");
+    const relay = (settings.relay || "").replace(/\/+$/, "");
+    if (!relay) return;
     fetch(`${relay}/api/info`)
       .then((r) => (r.ok ? r.json() : null))
       .then((j) => {
@@ -165,16 +109,120 @@ function Ask() {
       });
   }, [data]);
 
+  /* ---------------- persistence (debounced) ---------------- */
+
+  const refreshList = useCallback(() => {
+    void listChats().then(setChats);
+  }, []);
+
+  /* ---------------- boot: restore or fresh ---------------- */
+
+  useEffect(() => {
+    if (bootstrapped.current) return;
+    bootstrapped.current = true;
+    void (async () => {
+      const list = await listChats();
+      setChats(list);
+      const want = search.c ?? list[0]?.id ?? null;
+      if (want) {
+        const chat = list.find((x) => x.id === want) ?? (await getChat(want));
+        if (chat) {
+          setActiveId(chat.id);
+          setMessages(chat.messages);
+          return;
+        }
+      }
+      setActiveId(null);
+      setMessages([]);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /* ---------------- AI SDK v5 chat ---------------- */
+
+  const transport = useMemo(
+    () =>
+      new DefaultChatTransport({
+        api: `${settings.relay.replace(/\/+$/, "")}/api/chat`,
+        headers: settings.accessCode ? { "x-access-code": settings.accessCode } : undefined,
+        // the relay needs the tool schema to enable tool-calling on the model
+        prepareSendMessagesRequest: ({ messages }) => ({
+          body: { messages, tools: [SQL_TOOL] },
+        }),
+      }),
+    [settings.relay, settings.accessCode],
+  );
+
+
+  const { messages, sendMessage, status, stop, setMessages, addToolOutput, error } = useChat({
+    id: activeId ?? "default",
+    transport,
+    async onToolCall({ toolCall }) {
+      if (toolCall.toolName !== "run_sql") return;
+      const input = toolCall.input as { sql?: string };
+      setExecutingTool(toolCall.toolCallId);
+      try {
+        const out = await runSql(input.sql ?? "");
+        // provide the result; sendAutomaticallyWhen continues the conversation
+        addToolOutput({
+          tool: "run_sql",
+          toolCallId: toolCall.toolCallId,
+          output: JSON.stringify(out),
+        });
+      } finally {
+        setExecutingTool(null);
+      }
+    },
+    sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+    onError: (e) => console.error("[chat]", e),
+  });
+
+  const streaming = status === "submitted" || status === "streaming";
+
+  // restore messages when switching to a chat that exists in IndexedDB
+  useEffect(() => {
+    if (!activeId || messages.length > 0) return;
+    let cancelled = false;
+    void (async () => {
+      const chat = await getChat(activeId);
+      if (!cancelled && chat && chat.messages.length) {
+        setMessages(chat.messages);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [activeId, messages.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // persist on message changes (debounced)
+  useEffect(() => {
+    if (!activeId || messages.length === 0) return;
+    if (saveTimer.current) clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => {
+      const chat: StoredChat = {
+        id: activeId,
+        title: titleFrom(messages),
+        createdAt: chatMeta.current.get(activeId) ?? Date.now(),
+        updatedAt: Date.now(),
+        messages,
+      };
+      chatMeta.current.set(activeId, chat.createdAt);
+      void saveChat(chat).then(refreshList);
+    }, 350);
+    return () => {
+      if (saveTimer.current) clearTimeout(saveTimer.current);
+    };
+  }, [messages, activeId, refreshList]); // eslint-disable-line react-hooks/exhaustive-deps
+
   /* ---------------- chat ops ---------------- */
 
   const newChat = useCallback(() => {
     abortRef.current?.abort();
-    setActiveId(null);
-    messagesRef.current = [];
+    const id = newChatId();
+    setActiveId(id);
     setMessages([]);
     setOpenTool(null);
-    setLiveSql(null);
-    navigate({ to: "/ask", search: {} });
+    navigate({ to: "/ask", search: { c: id } });
   }, [navigate]);
 
   const switchChat = useCallback(
@@ -183,13 +231,10 @@ function Ask() {
       abortRef.current?.abort();
       void (async () => {
         const chat = await getChat(id);
-        if (!chat) return;
-        setActiveId(chat.id);
-        messagesRef.current = chat.messages;
-        setMessages(chat.messages);
+        setActiveId(id);
+        setMessages(chat?.messages ?? []);
         setOpenTool(null);
-        setLiveSql(null);
-        navigate({ to: "/ask", search: { c: chat.id } });
+        navigate({ to: "/ask", search: { c: id } });
       })();
     },
     [activeId, navigate],
@@ -207,161 +252,35 @@ function Ask() {
 
   /* ---------------- send ---------------- */
 
-  const send = async (raw: string) => {
+  const send = (raw: string) => {
     const text = raw.trim();
     if (!text || streaming) return;
     if (!data) {
-      updateMsgs((m) => [...m, { id: nextId(), role: "note", content: "dataset still loading — try again in a moment" }]);
-      return;
-    }
-
-    const useByok = settings.byokEnabled && settings.byokBase && settings.byokKey && settings.byokModel;
-    if (!useByok && !settings.relay) {
-      updateMsgs((m) => [...m, { id: nextId(), role: "note", content: "no relay URL configured — set it in settings" }]);
+      setMessages((m) => [...m, sysNote("dataset still loading — try again in a moment")]);
       return;
     }
 
     let sqlAvailable = isLoaded(data);
     if (!sqlAvailable && sqlStatus !== "error") {
       setSqlStatus("loading");
-      try {
-        await loadArtifact(data);
-        sqlAvailable = true;
-        setSqlStatus("ready");
-      } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e);
-        setSqlStatus("error");
-        setSqlError(msg);
-        updateMsgs((m) => [...m, { id: nextId(), role: "note", content: `sql engine unavailable (${msg}) — answering from the dataset summary only` }]);
-      }
-    }
-
-    // resolve/create the conversation
-    let chatId = activeId;
-    if (!chatId) {
-      chatId = newChatId();
-      setActiveId(chatId);
-      navigate({ to: "/ask", search: { c: chatId } });
+      void loadArtifact(data)
+        .then(() => {
+          sqlAvailable = true;
+          setSqlStatus("ready");
+        })
+        .catch((e) => {
+          const msg = e instanceof Error ? e.message : String(e);
+          setSqlStatus("error");
+          setSqlError(msg);
+          setMessages((m) => [...m, sysNote(`sql engine unavailable (${msg}) — answering from the dataset summary only`)]);
+        });
     }
 
     const viewing = viewingContext(location.pathname, location.search as Record<string, unknown>);
-    const userMsg: UiMsg = {
-      id: nextId(),
-      role: "user",
-      content: viewing ? `${viewing}\n\n${text}` : text,
-    };
-    const startMsgs = [...messagesRef.current, userMsg];
-    messagesRef.current = startMsgs;
-    setMessages(startMsgs);
-    persist(chatId, startMsgs);
-    setInput("");
-    setStreaming(true);
-    setLiveSql(null);
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
-    const startedAt = performance.now();
-
-    try {
-      const toWire = (msgs: UiMsg[]): ChatMessage[] =>
-        msgs
-          .filter((m): m is UiMsg & { role: "user" | "assistant" | "tool" } => m.role !== "note")
-          .map((m) => ({ role: m.role, content: m.content, toolCalls: m.toolCalls, toolCallId: m.toolCallId }));
-
-      let convo = toWire(startMsgs.slice(-16));
-      const account = settings.byokEnabled ? { base: settings.byokBase, key: settings.byokKey, model: settings.byokModel, protocol: settings.byokProtocol } : null;
-
-      for (let iter = 0; iter < 5; iter++) {
-        const assistantId = nextId();
-        updateMsgs((m) => [...m, { id: assistantId, role: "assistant", content: "" }]);
-
-        const system = datasetBrief(data);
-        const onDelta = (t: string) =>
-          updateMsgs((m) => m.map((x) => (x.id === assistantId ? { ...x, content: x.content + t } : x)));
-        const onToolArgs = (args: string) => {
-          if (iter === 0 || true) setLiveSql(args);
-        };
-
-        const result = account
-          ? await streamChat({
-              protocol: account.protocol,
-              base: account.base,
-              key: account.key,
-              model: account.model,
-              system,
-              messages: convo,
-              tools: sqlAvailable ? [SQL_TOOL] : undefined,
-              signal: ctrl.signal,
-              onDelta,
-              onToolArgs,
-            })
-          : await streamPooled({
-              relay: settings.relay,
-              accessCode: settings.accessCode || undefined,
-              system,
-              messages: convo,
-              tools: sqlAvailable ? [SQL_TOOL] : undefined,
-              signal: ctrl.signal,
-              onDelta,
-              onToolArgs,
-            });
-
-        setLiveSql(null);
-
-        if (!result.toolCalls.length) {
-          const dur = Math.round(performance.now() - startedAt);
-          updateMsgs((m) => m.map((x) => (x.id === assistantId ? { ...x, durationMs: dur } : x)));
-          break;
-        }
-
-        const toolMsgs: UiMsg[] = [];
-        const toolResults: Record<string, SqlResult | { error: string }> = {};
-        for (const tc of result.toolCalls) {
-          let args: { sql?: string } = {};
-          try {
-            args = JSON.parse(tc.args || "{}");
-          } catch { /* fall through */ }
-          setExecutingSql(tc.id);
-          const out = sqlAvailable
-            ? args.sql
-              ? await runSql(args.sql)
-              : { error: "missing sql argument" }
-            : { error: "sql engine unavailable in this session" };
-          setExecutingSql(null);
-          toolResults[tc.id] = out as SqlResult | { error: string };
-          toolMsgs.push({
-            id: nextId(),
-            role: "tool",
-            content: JSON.stringify(out).slice(0, 8000),
-            toolCallId: tc.id,
-            toolResults: { [tc.id]: out as SqlResult | { error: string } },
-          });
-        }
-        updateMsgs((m) =>
-          m.map((x) => (x.id === assistantId ? { ...x, toolCalls: result.toolCalls, toolResults } : x)),
-        );
-        convo = [...convo, ...toWire([
-          { id: assistantId, role: "assistant", content: result.text, toolCalls: result.toolCalls },
-          ...toolMsgs,
-        ])];
-        updateMsgs((m) => [...m, ...toolMsgs]);
-      }
-    } catch (e) {
-      if (!(e instanceof DOMException && e.name === "AbortError")) {
-        updateMsgs((m) => [
-          ...m,
-          { id: nextId(), role: "assistant", content: `⚠ ${e instanceof Error ? e.message : String(e)}` },
-        ]);
-      }
-    } finally {
-      setStreaming(false);
-      setExecutingSql(null);
-      setLiveSql(null);
-      abortRef.current = null;
-    }
+    sendMessage({ text: viewing ? `${viewing}\n\n${text}` : text });
   };
 
   const sqlReady = data && sqlStatus === "ready";
-  const usingByok = settings.byokEnabled;
 
   return (
     <div className="flex h-[calc(100dvh-11rem)] min-h-[440px] lg:h-[calc(100dvh-9rem)]">
@@ -442,7 +361,7 @@ function Ask() {
               {sqlReady && data ? ` · ${fmtN(data.files.length)} rows` : ""}
             </span>
             <span className="rounded border border-[#262626] px-2 py-1 font-mono text-[10px] text-[#666]" title="fixed model, set on the relay">
-              {usingByok ? settings.byokModel || "byok" : pooledModel ?? "pooled"}
+              {pooledModel ?? "pooled"}
             </span>
             <button
               onClick={() => setShowSettings((v) => !v)}
@@ -467,7 +386,7 @@ function Ask() {
         )}
 
         {showSettings && (
-          <AskSettingsPanel settings={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
+          <AskSettings settings={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
         )}
 
         {/* messages */}
@@ -483,21 +402,19 @@ function Ask() {
             </div>
           )}
           <div className="space-y-4">
-            {messages.map((m, i) => (
-              <MsgView
-                key={m.id}
-                m={m}
-                executingSql={executingSql}
-                liveSql={i === messages.length - 1 ? liveSql : null}
-                openTool={openTool}
-                setOpenTool={setOpenTool}
-              />
+            {messages.map((m) => (
+              <MsgView key={m.id} m={m} executingTool={executingTool} openTool={openTool} setOpenTool={setOpenTool} />
             ))}
             {streaming && (
               <div className="flex items-center gap-2 font-mono text-[10px] text-[#666]">
                 <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-accent" />
-                {executingSql ? "running query…" : liveSql ? "writing SQL…" : "thinking…"}
+                {executingTool ? "running query…" : "thinking…"}
               </div>
+            )}
+            {error && (
+              <p className="rounded-md border border-danger/40 bg-danger/5 p-2 font-mono text-[10px] text-danger">
+                {error.message.slice(0, 300)}
+              </p>
             )}
           </div>
         </div>
@@ -507,7 +424,7 @@ function Ask() {
           className="mt-3 flex items-end gap-2"
           onSubmit={(e) => {
             e.preventDefault();
-            void send(input);
+            if (input.trim()) send(input);
           }}
         >
           <textarea
@@ -516,7 +433,7 @@ function Ask() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
-                void send(input);
+                if (input.trim()) send(input);
               }
             }}
             rows={1}
@@ -526,7 +443,7 @@ function Ask() {
           {streaming ? (
             <button
               type="button"
-              onClick={() => abortRef.current?.abort()}
+              onClick={() => stop()}
               className="h-[42px] rounded-lg border border-danger/50 px-4 font-mono text-xs text-danger transition-colors hover:bg-danger/10"
             >
               stop
@@ -550,89 +467,91 @@ function Ask() {
 
 function MsgView({
   m,
-  executingSql,
-  liveSql,
+  executingTool,
   openTool,
   setOpenTool,
 }: {
-  m: UiMsg;
-  executingSql: string | null;
-  liveSql: string | null;
+  m: UIMessage;
+  executingTool: string | null;
   openTool: string | null;
   setOpenTool: (id: string | null) => void;
 }) {
-  if (m.role === "note") {
+  if (m.role === "system") {
+    const text = m.parts.find((p) => p.type === "text");
     return (
       <div className="flex items-center gap-3 py-1">
         <span className="h-px flex-1 bg-[#262626]/60" />
-        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#666]">{m.content}</span>
+        <span className="font-mono text-[9px] uppercase tracking-[0.18em] text-[#666]">
+          {text && partText(text) ? partText(text) : ""}
+        </span>
         <span className="h-px flex-1 bg-[#262626]/60" />
       </div>
     );
   }
 
   if (m.role === "user") {
-    const [ctx, ...rest] = m.content.split("\n\n");
     return (
       <div className="flex justify-end">
         <div className="max-w-[85%] rounded-lg border border-[#262626] bg-[#141414] px-3.5 py-2.5">
-          {ctx.startsWith("VIEWING:") && <p className="mb-1 font-mono text-[9px] text-[#666]">{ctx}</p>}
-          <p className="whitespace-pre-wrap font-mono text-xs leading-5 text-[#ededed]">{rest.join("\n\n") || ctx}</p>
+          {m.parts.map((part, i) =>
+            part.type === "text" ? (
+              <p key={i} className="whitespace-pre-wrap font-mono text-xs leading-5 text-[#ededed]">{part.text}</p>
+            ) : null,
+          )}
         </div>
       </div>
     );
   }
 
-  if (m.role === "tool") {
-    const result = m.toolResults?.[m.toolCallId ?? ""];
-    const isOpen = openTool === m.toolCallId;
-    const isError = result && "error" in result;
-    const rows = result && "rows" in result ? result.rowCount : 0;
-    return (
-      <div>
-        <button
-          onClick={() => setOpenTool(isOpen ? null : m.toolCallId ?? null)}
-          className={`rounded border px-2 py-1 font-mono text-[10px] transition-colors ${
-            isError ? "border-danger/40 text-danger" : "border-accent/40 text-accent hover:bg-accent hover:text-white"
-          }`}
-        >
-          {isError ? "sql error ✕" : `run_sql · ${fmtN(rows)} rows`} {isOpen ? "▴" : "▾"}
-        </button>
-        {isOpen && result && (
-          <div className="mt-2 rounded-lg border border-[#262626] bg-[#050505] p-3">
-            {"sql" in result && (
-              <pre className="mb-2 overflow-x-auto font-mono text-[10px] leading-4 text-[#a1a1a1]">{result.sql}</pre>
-            )}
-            {"error" in result && result.error ? (
-              <p className="font-mono text-[10px] text-danger">{result.error}</p>
-            ) : (
-              <ResultTable result={result as SqlResult} />
-            )}
-          </div>
-        )}
-      </div>
-    );
-  }
-
+  // assistant — typed tool parts (live SQL via input-streaming state)
   return (
     <div className="max-w-[92%]">
-      <div className="space-y-2 text-sm leading-6 text-[#ededed]">{renderContent(m.content)}</div>
-      {typeof m.durationMs === "number" && (
-        <p className="mt-1 font-mono text-[9px] text-[#404040]">{(m.durationMs / 1000).toFixed(1)}s</p>
-      )}
-      {m.toolCalls?.map((tc) => {
-        const result = m.toolResults?.[tc.id];
-        const isErr = result && "error" in result;
-        return (
-          <div key={tc.id} className="mt-2">
-            <span className={`rounded border px-2 py-0.5 font-mono text-[9px] ${isErr ? "border-danger/40 text-danger" : "border-accent/40 text-accent"}`}>
-              ran {tc.name}
-            </span>
-          </div>
-        );
-      })}
+      <div className="space-y-2 text-sm leading-6 text-[#ededed]">
+        {m.parts.map((part, i) => {
+          if (part.type === "text") {
+            return <div key={i} className="space-y-2">{renderContent(part.text)}</div>;
+          }
+          if (part.type.startsWith("tool-")) {
+            const toolName = part.type.replace("tool-", "");
+            const p = part as {
+              state?: string;
+              input?: { sql?: string };
+              output?: string;
+              errorText?: string;
+            };
+            const running = p.state === "input-streaming" || p.state === "input-available";
+            const hasOutput = p.state === "output-available";
+            const isErr = p.state === "output-error";
+            return (
+              <div key={i}>
+                <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[9px] ${
+                  isErr ? "border-danger/40 text-danger" : running ? "border-accent/40 text-accent" : "border-[#262626] text-[#666]"
+                }`}>
+                  {running && <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-accent" />}
+                  {running ? `running ${toolName}…` : hasOutput ? `ran ${toolName}` : `${toolName} · ${p.state ?? ""}`}
+                </span>
+                {p.input?.sql && (
+                  <details className="mt-1" open={p.state === "input-streaming"}>
+                    <summary className="cursor-pointer font-mono text-[9px] text-[#666] hover:text-[#a1a1a1]">show SQL</summary>
+                    <pre className="mt-1 overflow-x-auto rounded-md border border-[#262626] bg-[#050505] p-2 font-mono text-[10px] text-[#a1a1a1]">{p.input.sql}</pre>
+                  </details>
+                )}
+                {hasOutput && p.output && <ResultTable output={p.output} />}
+                {isErr && p.errorText && (
+                  <p className="mt-1 font-mono text-[9px] text-danger">{p.errorText.slice(0, 200)}</p>
+                )}
+              </div>
+            );
+          }
+          return null;
+        })}
+      </div>
     </div>
   );
+}
+
+function partText(p: { type: string; text?: string }): string {
+  return p.text ?? "";
 }
 
 /** fenced-code-aware plain renderer (no markdown dep) */
@@ -649,22 +568,34 @@ function renderContent(content: string) {
   );
 }
 
-function ResultTable({ result }: { result: SqlResult }) {
-  const shown = result.rows.slice(0, 12);
+/** Parses the tool output JSON string and renders the result table. */
+function ResultTable({ output }: { output: string }) {
+  let parsed: SqlResult | { error: string } | null = null;
+  try {
+    parsed = JSON.parse(output) as SqlResult | { error: string };
+  } catch {
+    parsed = null;
+  }
+  if (!parsed || !("columns" in parsed) || !Array.isArray(parsed.rows)) {
+    if (parsed && "error" in parsed) {
+      return <p className="font-mono text-[10px] text-danger">{parsed.error}</p>;
+    }
+    return null;
+  }
   return (
     <div className="overflow-x-auto">
       <table className="w-full border-collapse font-mono text-[10px]">
         <thead>
           <tr>
-            {result.columns.map((c) => (
+            {parsed.columns.map((c) => (
               <th key={c} className="border-b border-[#262626] px-2 py-1 text-left uppercase tracking-wider text-[#666]">{c}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {shown.map((row, i) => (
+          {parsed.rows.slice(0, 12).map((row, i) => (
             <tr key={i}>
-              {result.columns.map((c) => (
+              {parsed.columns.map((c) => (
                 <td key={c} className="border-b border-[#262626]/40 px-2 py-1 tabular-nums text-[#ededed]">
                   {row[c] == null ? "—" : String(row[c])}
                 </td>
@@ -673,8 +604,8 @@ function ResultTable({ result }: { result: SqlResult }) {
           ))}
         </tbody>
       </table>
-      {result.rows.length > shown.length && (
-        <p className="mt-1 font-mono text-[9px] text-[#666]">+{result.rows.length - shown.length} more rows</p>
+      {parsed.rows.length > 12 && (
+        <p className="mt-1 font-mono text-[9px] text-[#666]">+{parsed.rows.length - 12} more rows</p>
       )}
     </div>
   );

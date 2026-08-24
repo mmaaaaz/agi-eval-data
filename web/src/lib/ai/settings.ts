@@ -1,35 +1,29 @@
-/** /ask settings v3 — pooled gateway by default, BYOK optional. localStorage only. */
+/** /ask settings v4 — pooled AI Gateway via relay. localStorage only. */
 
 export interface AskSettings {
-  /** relay base URL (the Worker/server that fronts the pooled gateway) */
+  /** relay base URL (Worker fronting the Vercel AI Gateway) */
   relay: string;
   /** optional shared gate for the relay */
   accessCode: string;
-  /** power users: bring your own key (bypasses pooled quota) */
-  byokEnabled: boolean;
-  byokBase: string;
-  byokKey: string;
-  byokModel: string;
-  byokProtocol: "openai" | "anthropic";
 }
 
-const LS_KEY = "ask.settings.v3";
-/** change this constant when the relay gets a permanent home */
+const LS_KEY = "ask.settings.v4";
 export const DEFAULT_RELAY = "https://agi-eval-relay.devmaaaaz.workers.dev";
 
 export function loadSettings(): AskSettings {
   const defaults: AskSettings = {
     relay: DEFAULT_RELAY,
     accessCode: "",
-    byokEnabled: false,
-    byokBase: "https://openrouter.ai/api/v1",
-    byokKey: "",
-    byokModel: "",
-    byokProtocol: "openai",
   };
   try {
     const raw = localStorage.getItem(LS_KEY);
     if (raw) return { ...defaults, ...(JSON.parse(raw) as Partial<AskSettings>) };
+    // migrate v3 (relay + accessCode carried over)
+    const v3raw = localStorage.getItem("ask.settings.v3");
+    if (v3raw) {
+      const v3 = JSON.parse(v3raw) as Partial<AskSettings>;
+      return { ...defaults, ...(v3.relay ? { relay: v3.relay } : {}), ...(v3.accessCode ? { accessCode: v3.accessCode } : {}) };
+    }
   } catch { /* fresh */ }
   return defaults;
 }

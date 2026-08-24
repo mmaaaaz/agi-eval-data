@@ -1,21 +1,12 @@
-/** Chat persistence — IndexedDB, zero dependencies. Graceful fallback to memory. */
-
-export interface UiMsg {
-  id: string;
-  role: "user" | "assistant" | "tool" | "note";
-  content: string;
-  toolCalls?: { id: string; name: string; args: string }[];
-  toolResults?: Record<string, { columns: string[]; rows: Record<string, unknown>[]; rowCount: number; sql: string } | { error: string }>;
-  toolCallId?: string;
-  durationMs?: number;
-}
+/** Chat persistence — UIMessage-based, IndexedDB, zero dependencies. Graceful fallback to memory. */
+import type { UIMessage } from "ai";
 
 export interface StoredChat {
   id: string;
   title: string;
   createdAt: number;
   updatedAt: number;
-  messages: UiMsg[];
+  messages: UIMessage[];
 }
 
 const DB_NAME = "agi-eval-chats";
@@ -79,9 +70,11 @@ export async function deleteChat(id: string): Promise<void> {
   await tx("readwrite", (s) => s.delete(id));
 }
 
-export function titleFrom(messages: UiMsg[]): string {
+export function titleFrom(messages: UIMessage[]): string {
   const first = messages.find((m) => m.role === "user");
   if (!first) return "new chat";
-  const body = first.content.split("\n\n").slice(-1)[0] || first.content;
-  return body.slice(0, 64) || "new chat";
+  for (const part of first.parts) {
+    if (part.type === "text") return part.text.slice(0, 64) || "new chat";
+  }
+  return "new chat";
 }

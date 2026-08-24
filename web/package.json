@@ -8,9 +8,11 @@
     "check": "tsc --noEmit"
   },
   "dependencies": {
+    "@ai-sdk/react": "^4.0.80",
     "@duckdb/duckdb-wasm": "^1.33.1-dev57.0",
     "@tanstack/react-router": "^1.114.0",
     "@tanstack/react-virtual": "^3.13.0",
+    "ai": "^7.0.77",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
     "zod": "^3.24.2"

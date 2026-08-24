@@ -1,14 +1,10 @@
 name = "agi-eval-relay"
-main = "worker.js"
+main = "src/worker.ts"
 compatibility_date = "2025-01-01"
 
-[vars]
-FREE_CHAIN = "groq,gemini,github,wai"
-GROQ_MODEL = "llama-3.3-70b-versatile"
-GEMINI_MODEL = "gemini-2.0-flash"
-GITHUB_MODEL = "openai/gpt-4.1-mini"
-WAI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
-RATE_LIMIT_PER_IP = "100"
+[observability]
+enabled = true
 
-[ai]
-binding = "AI"
+[vars]
+GATEWAY_MODEL = "openai/gpt-5-nano"
+RATE_LIMIT_PER_IP = "30"

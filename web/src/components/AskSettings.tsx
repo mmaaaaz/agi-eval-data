@@ -5,72 +5,34 @@ interface Props {
   onChange: (patch: Partial<AskSettings>) => void;
 }
 
-/** Optional BYOK panel — power users can bypass the pooled quota with their own key. */
+/** Pooled access settings — relay URL + optional shared access code. */
 export function AskSettings({ settings, onChange }: Props) {
   return (
-    <div className="mb-3 space-y-3 rounded-lg border border-[#262626] bg-[#0a0a0a] p-4">
-      <div className="flex items-center justify-between gap-3">
-        <div>
-          <p className="font-mono text-[11px] uppercase tracking-wider text-[#a1a1a1]">Bring your own key</p>
-          <p className="mt-0.5 font-mono text-[10px] text-[#666]">
-            optional · bypasses the shared daily limit · key never leaves this browser
-          </p>
-        </div>
-        <button
-          onClick={() => onChange({ byokEnabled: !settings.byokEnabled })}
-          className={`rounded-md border px-3 py-1.5 font-mono text-[11px] transition-colors ${
-            settings.byokEnabled
-              ? "border-white bg-white text-black"
-              : "border-[#262626] text-[#a1a1a1] hover:border-[#404040]"
-          }`}
-        >
-          {settings.byokEnabled ? "on" : "off"}
-        </button>
-      </div>
-
-      {settings.byokEnabled && (
-        <div className="grid gap-3 border-t border-[#262626]/60 pt-3 md:grid-cols-2">
-          <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">base url</span>
-            <input
-              value={settings.byokBase}
-              onChange={(e) => onChange({ byokBase: e.target.value })}
-              className="w-full rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-              placeholder="https://openrouter.ai/api/v1"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">api key</span>
-            <input
-              type="password"
-              value={settings.byokKey}
-              onChange={(e) => onChange({ byokKey: e.target.value })}
-              className="w-full rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-              placeholder="sk-…"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">model</span>
-            <input
-              value={settings.byokModel}
-              onChange={(e) => onChange({ byokModel: e.target.value })}
-              className="w-full rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-              placeholder="provider/model-id"
-            />
-          </label>
-          <label className="block">
-            <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">protocol</span>
-            <select
-              value={settings.byokProtocol}
-              onChange={(e) => onChange({ byokProtocol: e.target.value as AskSettings["byokProtocol"] })}
-              className="w-full rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-            >
-              <option value="openai">OpenAI-compatible</option>
-              <option value="anthropic">Anthropic</option>
-            </select>
-          </label>
-        </div>
-      )}
+    <div className="rounded-lg border border-[#262626] bg-[#0a0a0a] p-4">
+      <p className="font-mono text-[11px] uppercase tracking-wider text-[#a1a1a1]">Pooled access</p>
+      <p className="mt-1 font-mono text-[10px] leading-5 text-[#666]">
+        model: <span className="text-[#ededed]">openai/gpt-5-nano</span> · shared daily limit · nothing to configure. Keys live
+        server-side as Worker secrets — never in the browser.
+      </p>
+      <label className="mt-3 block">
+        <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">relay url</span>
+        <input
+          value={settings.relay}
+          onChange={(e) => onChange({ relay: e.target.value })}
+          className="w-full max-w-md rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
+          placeholder="https://agi-eval-relay.devmaaaaz.workers.dev"
+        />
+      </label>
+      <label className="mt-3 block">
+        <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">access code (optional)</span>
+        <input
+          type="password"
+          value={settings.accessCode}
+          onChange={(e) => onChange({ accessCode: e.target.value })}
+          className="w-full max-w-md rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
+          placeholder="only if the relay sets ACCESS_CODE"
+        />
+      </label>
     </div>
   );
 }
