@@ -83,7 +83,11 @@ async function loadArtifactInner(latest: Latest): Promise<void> {
   await db!.registerFileText("owners.json", JSON.stringify(ownerRows));
   await db!.registerFileText("dup_groups.json", JSON.stringify(dupRows));
 
-  await conn.query("CREATE TABLE images AS SELECT * FROM read_json_auto('images.json')");
+  // day is forced to VARCHAR: DuckDB auto-types ISO strings as DATE, which
+  // breaks LIKE / string comparisons the model tends to write
+  await conn.query(
+    "CREATE TABLE images AS SELECT id, name, ext, size, CAST(day AS VARCHAR) AS day, owner, md5, kind, width, height, megapixels, camera, orientation FROM read_json_auto('images.json')",
+  );
   await conn.query("CREATE TABLE owners AS SELECT * FROM read_json_auto('owners.json')");
   await conn.query("CREATE TABLE dup_groups AS SELECT * FROM read_json_auto('dup_groups.json')");
 
@@ -125,6 +129,9 @@ export async function runSql(rawSql: string): Promise<SqlResult | { error: strin
     });
     return { columns, rows, rowCount: rows.length, sql: guarded };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : String(e) };
+    let msg = e instanceof Error ? e.message : String(e);
+    if (/binder error/i.test(msg) && /day/i.test(msg))
+      msg += " (hint: day is VARCHAR 'YYYY-MM-DD' — filter with day >= '2026-08-01' or day LIKE '2026-08-%')";
+    return { error: msg };
   }
 }
