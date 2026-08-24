@@ -42,6 +42,37 @@ function allowIp(ip, limit) {
   return true;
 }
 
+/**
+ * Gateways are strict: every assistant tool_call needs an id, every tool
+ * message needs a matching tool_call_id. Older/buggy clients may omit them —
+ * synthesize deterministically here so the upstream never 400s.
+ */
+function sanitizeToolMessages(messages) {
+  let seq = 0;
+  const nextId = () => `call_auto_${Date.now().toString(36)}_${seq++}`;
+  const pending = [];
+  return messages.map((m) => {
+    if (m.role === "assistant" && Array.isArray(m.tool_calls)) {
+      const calls = m.tool_calls.map((tc) => {
+        const id = tc.id || nextId();
+        pending.push(id);
+        return { ...tc, id };
+      });
+      return { ...m, tool_calls: calls, content: m.content ?? "" };
+    }
+    if (m.role === "tool") {
+      let id = m.tool_call_id;
+      if (!id) id = pending.length ? pending.shift() : nextId();
+      else {
+        const idx = pending.indexOf(id);
+        if (idx >= 0) pending.splice(idx, 1);
+      }
+      return { ...m, tool_call_id: id, content: m.content ?? "" };
+    }
+    return m;
+  });
+}
+
 function ipOf(request) {
   return request.headers.get("cf-connecting-ip")
     ?? (request.headers.get("x-forwarded-for") || "").split(",")[0].trim()
@@ -159,9 +190,10 @@ export async function handle(request, env = {}) {
       );
 
     const msgs = system ? [{ role: "system", content: system }, ...messages] : messages;
+    const safeMsgs = sanitizeToolMessages(msgs);
     const payload = {
       model: env.GATEWAY_MODEL,
-      messages: msgs,
+      messages: safeMsgs,
       stream: true,
     };
     if (tools && tools.length)
