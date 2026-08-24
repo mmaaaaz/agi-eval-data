@@ -1,6 +1,7 @@
 # AI Chat Plan — dedicated dataset chat page
 
 _Supersedes the OpenViking verdict in `AI_INTELLIGENCE_PLAN.md` (that doc's BYOK analysis still holds; this is the concrete architecture)._
+> **STATUS (2026-08-25):** Shipped in evolved form — Cloudflare Worker relay + Vercel AI Gateway pooled key + AI SDK v7 `useChat` with client-side `run_sql`. TanStack AI and default-BYOK were **not** used. Live state: `HANDOFF.md`.
 
 Requirements from the team: dedicated chat page · contextual + URL-aware · backend OK (Railway or free host) · BYOK · OpenAI-compatible URLs + Anthropic · auto-fetched model lists · clean, healthy context.
 

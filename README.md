@@ -20,9 +20,10 @@ Thumbnails: lh3.googleusercontent.com/d/{fileId}=w400|w1600  (Google's CDN, zero
 
 ```
 scripts/          scanner + share-sync (Python, Drive API metadata scope only)
-data/latest.json  THE artifact — overwritten hourly by the bot (v2 schema)
+data/latest.json  THE artifact — overwritten hourly by the bot (v3 schema)
 web/              Vite · React 19 · TanStack Router · Tailwind v4 dashboard
-docs/             full deployment plan & decision log
+relay/            Cloudflare Worker — pooled-key AI chat relay behind /ask (AI Gateway)
+docs/             plans & decision log; docs/HANDOFF.md is the live state of the project
 ```
 
 ## Commands
@@ -32,6 +33,10 @@ docs/             full deployment plan & decision log
 cd web && bun install && bun run dev       # local dev
 bun run build                              # production build → dist/
 wrangler pages deploy dist --project-name agi-eval-data   # shell deploy (rare)
+
+# relay (AI chat Worker)
+cd relay && npx wrangler dev               # local dev — .dev.vars holds GATEWAY_KEY
+npx wrangler deploy                        # relay deploy (after `npx wrangler secret put GATEWAY_KEY` once)
 
 # data (local interactive scan w/ browser auth)
 python scripts/drive_scan.py               # snapshot + report tools

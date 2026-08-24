@@ -2,6 +2,8 @@
 
 _The insight (correct): sending JSON with every question scales linearly with the dataset and dies early. Sending a **schema** costs ~300 tokens forever, regardless of whether we have 21k or 500k rows. The AI writes SQL; a database inside the browser executes it against the real data._
 
+> **STATUS (2026-08-25):** S1+S2 shipped — DuckDB-WASM + guarded `run_sql` tool wired into `/ask` via AI SDK tool-calling (not BYOK/TanStack as drafted here). S3 (Parquet artifact) **not built**. Live state: `HANDOFF.md`.
+
 ---
 
 ## 1. The landscape (what you saw)

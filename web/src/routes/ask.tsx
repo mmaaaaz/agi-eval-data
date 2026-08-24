@@ -440,7 +440,7 @@ function Ask() {
         )}
 
         {showSettings && (
-          <AskSettings settings={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
+          <AskSettings settings={settings} model={pooledModel} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
         )}
 
         {/* messages */}

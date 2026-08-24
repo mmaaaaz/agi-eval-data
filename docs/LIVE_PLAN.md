@@ -1,6 +1,7 @@
 # LIVE DEPLOYMENT PLAN — agi-eval-data
 ### Immutable shell (Cloudflare Pages, deployed once) · volatile data (public GitHub, fetched at runtime)
 _Vite · React 19 · TanStack Router · Tailwind v4 · Geist. Minimal Vercel flavor._
+> **STATUS (2026-08-25):** Deployed and running. One deviation from "Infra unused" below: `/ask` now uses a Cloudflare Worker relay (`agi-eval-relay`) holding a pooled Vercel AI Gateway key. Everything else holds. Live state: `HANDOFF.md`.
 
 ---
 

@@ -93,7 +93,3 @@ export function SyncChip({ meta }: { meta: Latest["meta"] }) {
     </div>
   );
 }
-
-export function TzNote() {
-  return <span className="font-mono text-[10px] text-[#666]">local timezone</span>;
-}

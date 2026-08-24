@@ -189,24 +189,9 @@ export const Route = createRootRoute({
       window.scrollTo(0, 0);
     }, [pathname]);
 
-    const [palette, setPalette] = useState(false);
-
-    // global ⌘K / Ctrl-K
-    useEffect(() => {
-      const h = (e: KeyboardEvent) => {
-        if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
-          e.preventDefault();
-          setPalette((p) => !p);
-        }
-      };
-      window.addEventListener("keydown", h);
-      return () => window.removeEventListener("keydown", h);
-    }, []);
-
     return (
       <DataProvider value={latest}>
         <Shell />
-        {latest.data && <CommandPalette open={palette} onClose={() => setPalette(false)} />}
       </DataProvider>
     );
   },

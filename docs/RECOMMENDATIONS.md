@@ -12,7 +12,7 @@ Status legend: `idea` → `planned` → `shipped`
 - JSON schema in-repo defining reasoning categories: counting, spatial relations, perspective/occlusion, mirror symmetry, shadow consistency, pattern completion, …
 - Gallery tagging (keyboard-driven) writes to a review file; CI merges.
 - Payoff page: **coverage matrix** (category × contributor) exposing thin spots instantly.
-- Why first: turns an image collection into a benchmark. Do before the dataset doubles.
+- Why first: turns an image collection into a benchmark. Do before the dataset doubles again — it already doubled once since this list was written (~21k → 45.6k files by 2026-08-25).
 
 ### 2. Quality-flag engine in CI `idea` — cheapest big win
 - One Python pass in sync: flag screenshots (no camera + exact-pixel dims), <1MP, extreme ratios, software-edited (EXIF software tag), grayscale scans.
@@ -44,7 +44,8 @@ Status legend: `idea` → `planned` → `shipped`
 - Per-contributor (or per-image) rights attestation enum. Publishing hygiene — the answer should exist before it's needed. Effort: S.
 
 ### 8. Artifact sharding tripwire `idea`
-- At ~1–5k uploads/day, `latest.json` grows ~2 MB/week gzipped. Tripwire: raw > 25 MB → shard per contributor + manifest. Document threshold now; build later.
+
+- Measured 2026-08-25 @45.6k rows: ~10 MB raw / 4.6 MB gzip (~2 MB/week gzipped at 1–5k uploads/day). Tripwire unchanged: raw > 25 MB → shard per contributor + manifest.
 
 ## Tier 3 — Delights (half-day total)
 

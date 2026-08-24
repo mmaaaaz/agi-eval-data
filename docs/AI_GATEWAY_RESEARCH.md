@@ -1,6 +1,7 @@
 # AI Gateway Research — pooled-key chat feasibility
 
 _Question: can we make /ask "just work" for everyone without per-person API keys — using Vercel AI Gateway ($5/mo free credit) or Cloudflare — and what does each idea cost?_
+> **STATUS (2026-08-25):** G1 shipped as a single pooled path only (Vercel AI Gateway behind a Worker secret; no Workers-AI overflow, no BYOK tier). G2 shipped (IndexedDB chats + sidebar). G3 (`/sql` workbench) **not built**. Live state: `HANDOFF.md`.
 
 ---
 
