@@ -28,3 +28,6 @@ Thumbs.db
 web/.tanstack/
 web/src/routeTree.gen.ts
 .backup/
+relay/.dev.vars
+relay/tail.log
+relay/package-lock.json
