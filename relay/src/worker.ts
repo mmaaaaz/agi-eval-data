@@ -90,7 +90,17 @@ SQL:
 - Call run_sql for ANY data question — answer from the real result, never invent numbers.
 - Chain multiple run_sql calls when a question needs multi-step analysis (filter → aggregate → compare). Never re-run an identical query — reuse the result you already have.
 - Older tool results may be trimmed to 8 rows; re-run a query when you need rows that were trimmed.
-- Single SELECT per call, LIMIT auto-added (200).`;
+- Single SELECT per call, LIMIT auto-added (200).
+
+PATTERNS — copy these shapes exactly (owner is always the exact email from CONTRIBUTOR MATCHES):
+- count by contributor: SELECT COUNT(*) FROM images WHERE owner = 'EMAIL' AND kind = 'i'
+- unique by contributor: SELECT COUNT(DISTINCT md5) FROM images WHERE owner = 'EMAIL' AND kind = 'i'
+- per-day counts: SELECT day, COUNT(*) AS uploads FROM images WHERE kind = 'i' AND day LIKE 'YYYY-MM-%' GROUP BY day ORDER BY day
+- top contributors: SELECT owner, COUNT(DISTINCT md5) AS uniq FROM images WHERE kind = 'i' GROUP BY owner ORDER BY uniq DESC LIMIT 5
+- orientation split: SELECT orientation, COUNT(*) AS n FROM images WHERE kind = 'i' GROUP BY orientation
+- contributor shots by orientation: SELECT COUNT(*) FROM images WHERE owner = 'EMAIL' AND kind = 'i' AND orientation = 'portrait'
+- duplicates by contributor: SELECT owner, COUNT(*) AS dup_copies FROM images WHERE kind = 'i' AND md5 IN (SELECT md5 FROM images WHERE kind = 'i' GROUP BY md5 HAVING COUNT(*) > 1) GROUP BY owner ORDER BY dup_copies DESC LIMIT 5
+`;
 
 /* client-side tool: executed in the visitor's browser against DuckDB WASM.
    No `execute` here — the AI SDK forwards the call to the client. */

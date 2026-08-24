@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Latest, Row } from "./types";
 
+export type { Row };
+
 const REPO = import.meta.env.VITE_REPO ?? "mmaaaaz/agi-eval-data";
 const BRANCH = "main";
 const PRIMARY = `https://raw.githubusercontent.com/${REPO}/${BRANCH}/data/latest.json`;
