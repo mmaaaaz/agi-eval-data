@@ -54,7 +54,7 @@ function buildOpenAI(a: StreamArgs): {
     else if (m.role === "assistant" && m.toolCalls?.length)
       messages.push({
         role: "assistant",
-        content: m.content || null,
+        content: m.content || "",
         tool_calls: m.toolCalls.map((t) => ({ id: t.id, type: "function", function: { name: t.name, arguments: t.args } })),
       });
     else if (m.role === "assistant") messages.push({ role: "assistant", content: m.content });
@@ -140,7 +140,10 @@ async function parseOpenAiSse(res: Response, a: { onDelta: (t: string) => void }
 
   return {
     text,
-    toolCalls: [...toolAcc.values()].filter((t) => t.name),
+    // gateways (Vercel GW included) reject empty tool_call_id - synthesize if absent
+    toolCalls: [...toolAcc.values()]
+      .filter((t) => t.name)
+      .map((t, i) => ({ ...t, id: t.id || `call_${Date.now()}_${i}` })),
     stopReason: stop,
   };
 }

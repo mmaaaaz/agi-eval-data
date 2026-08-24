@@ -41,7 +41,6 @@ async function ensureDb(): Promise<duckdb.AsyncDuckDBConnection> {
       );
       await Promise.race([db.instantiate(bundle.mainModule, bundle.pthreadWorker ?? undefined), workerFailed, bootTimeout]);
       conn = await db.connect();
-      await conn.query("SET threads TO 2");
     })();
   }
   await initing;

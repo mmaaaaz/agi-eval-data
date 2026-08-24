@@ -277,24 +277,7 @@ function Ask() {
       )}
 
       {showSettings && (
-        <>
-          <div className="mb-3 rounded-lg border border-[#262626] bg-[#0a0a0a] p-4">
-            <p className="font-mono text-[11px] uppercase tracking-wider text-[#a1a1a1]">Pooled access (default)</p>
-            <p className="mt-1 font-mono text-[10px] leading-5 text-[#666]">
-              model: <span className="text-[#ededed]">{pooledModel ?? "…"}</span> · shared daily limit · nothing to configure.
-              relay url: <span className="text-[#ededed]">{settings.relay || "not set"}</span>
-            </p>
-            <label className="mt-2 block">
-              <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">relay url</span>
-              <input
-                value={settings.relay}
-                onChange={(e) => setSettings((s) => ({ ...s, relay: e.target.value }))}
-                className="w-full max-w-md rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-              />
-            </label>
-          </div>
-          <AskSettingsPanel settings={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
-        </>
+        <AskSettingsPanel settings={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
       )}
 
       {/* messages */}
