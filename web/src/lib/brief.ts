@@ -2,8 +2,17 @@ import type { Latest } from "./types";
 import { exifOf, orientationOf } from "./data";
 import { fmtB, fmtN } from "./format";
 
-/** Compact, token-lean dataset brief for the chat system prompt (~2.5 KB). */
+let briefCache: { scannedAt: string; text: string } | null = null;
+
+/** Compact, token-lean dataset brief for the chat system prompt. Cached per scan. */
 export function datasetBrief(latest: Latest): string {
+  if (briefCache?.scannedAt === latest.meta.scannedAt) return briefCache.text;
+  const text = buildBrief(latest);
+  briefCache = { scannedAt: latest.meta.scannedAt, text };
+  return text;
+}
+
+function buildBrief(latest: Latest): string {
   const c = latest.meta.counts;
   const imgs = latest.files.filter((f) => f[7] === "i");
 

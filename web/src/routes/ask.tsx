@@ -3,12 +3,8 @@ import { createFileRoute, useLocation } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { datasetBrief, viewingContext } from "../lib/brief";
 import { loadArtifact, isLoaded, runSql, type SqlResult } from "../lib/duck";
-import { presetById, fetchModels, type ModelInfo } from "../lib/ai/providers";
-import { streamChat, type ChatMessage } from "../lib/ai/stream";
-import {
-  loadSettings, saveSettings, accountLabel, activeAccount,
-  type AskSettings, type Account,
-} from "../lib/ai/settings";
+import { streamPooled, streamChat, type ChatMessage } from "../lib/ai/stream";
+import { loadSettings, saveSettings, type AskSettings } from "../lib/ai/settings";
 import { AskSettings as AskSettingsPanel } from "../components/AskSettings";
 import { Eyebrow } from "../components/Section";
 import { fmtN } from "../lib/format";
@@ -18,7 +14,7 @@ export const Route = createFileRoute("/ask")({ component: Ask });
 const SQL_TOOL = {
   name: "run_sql",
   description:
-    "Execute a read-only SELECT (DuckDB dialect) against the dataset. Tables: images(id, name, ext, size, day 'YYYY-MM-DD', owner email, md5, kind 'i'|'v'|'o'), owners(email, name), dup_groups(md5, copies, bytes). Use for ANY precise count, filter, group-by, ranking or listing question instead of guessing from the brief.",
+    "Execute a read-only SELECT (DuckDB dialect) against the dataset. Tables: images(id, name, ext, size, day 'YYYY-MM-DD', owner email, md5, kind 'i'|'v'|'o', width, height, megapixels, camera, orientation 'landscape'|'portrait'|'square'), owners(email, name), dup_groups(md5, copies, bytes). Use for ANY precise count, filter, group-by, ranking or listing question instead of guessing from the brief.",
   parameters: {
     type: "object",
     properties: {
@@ -46,6 +42,7 @@ function Ask() {
 
   const [settings, setSettings] = useState<AskSettings>(loadSettings);
   const [showSettings, setShowSettings] = useState(false);
+  const [pooledModel, setPooledModel] = useState<string | null>(null);
   const [messages, setMessages] = useState<UiMsg[]>([]);
   const [input, setInput] = useState("");
   const [streaming, setStreaming] = useState(false);
@@ -61,6 +58,15 @@ function Ask() {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages]);
 
+  // pooled model name for the chip
+  useEffect(() => {
+    const relay = settings.relay || "http://localhost:8787";
+    fetch(`${relay.replace(/\/+$/, "")}/api/info`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((j) => j?.model && setPooledModel(j.model))
+      .catch(() => {});
+  }, [settings.relay]);
+
   // load artifact into DuckDB as soon as data exists
   useEffect(() => {
     if (!data || isLoaded(data)) return;
@@ -68,89 +74,27 @@ function Ask() {
     loadArtifact(data)
       .then(() => setSqlStatus("ready"))
       .catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
         setSqlStatus("error");
-        setSqlError(e instanceof Error ? e.message : String(e));
+        setSqlError(msg);
+        console.error("[duckdb]", msg);
       });
   }, [data]);
 
-  /* ---------------- account ops ---------------- */
+  const retrySql = useCallback(() => {
+    if (!data) return;
+    setSqlStatus("loading");
+    loadArtifact(data)
+      .then(() => setSqlStatus("ready"))
+      .catch((e) => {
+        const msg = e instanceof Error ? e.message : String(e);
+        setSqlStatus("error");
+        setSqlError(msg);
+        console.error("[duckdb]", msg);
+      });
+  }, [data]);
 
-  const updateAccount = useCallback((id: string, patch: Partial<Account>) => {
-    setSettings((s) => ({
-      ...s,
-      accounts: s.accounts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
-    }));
-  }, []);
-
-  const addAccount = useCallback((providerId: string) => {
-    const preset = presetById(providerId);
-    setSettings((s) => {
-      const account: Account = {
-        id: `a${Date.now().toString(36)}`,
-        providerId: preset.id,
-        base: preset.base,
-        key: "",
-        models: [],
-        modelsState: "idle",
-      };
-      return {
-        ...s,
-        accounts: [...s.accounts, account],
-        activeAccountId: s.activeAccountId ?? account.id,
-        activeModel: s.activeModel ?? null,
-      };
-    });
-  }, []);
-
-  const removeAccount = useCallback((id: string) => {
-    setSettings((s) => {
-      const accounts = s.accounts.filter((a) => a.id !== id);
-      const isActive = s.activeAccountId === id;
-      return {
-        accounts,
-        activeAccountId: isActive ? null : s.activeAccountId,
-        activeModel: isActive ? null : s.activeModel,
-      };
-    });
-  }, []);
-
-  const fetchModelsFor = useCallback(async (id: string) => {
-    const account = settings.accounts.find((a) => a.id === id);
-    if (!account) return;
-    updateAccount(id, { modelsState: "loading", modelsError: undefined });
-    try {
-      const models: ModelInfo[] = await fetchModels(account.base, account.key, presetById(account.providerId).protocol);
-      updateAccount(id, { models, modelsState: "ok", modelsError: undefined });
-    } catch (e) {
-      const msg = e instanceof Error ? e.message : String(e);
-      const hint = /failed to fetch|networkerror/i.test(msg)
-        ? " — provider blocks browser CORS; this one needs a tunnel/proxy"
-        : "";
-      updateAccount(id, { modelsState: "error", modelsError: msg + hint });
-    }
-  }, [settings.accounts, updateAccount]);
-
-  /* ---------------- model selection ---------------- */
-
-  const active = activeAccount(settings);
-  const activeModelLabel = active
-    ? `${accountLabel(active)} · ${settings.activeModel ?? "no model"}`
-    : "no model selected";
-
-  const pickModel = (accountId: string, model: string) => {
-    const prevAccount = activeAccount(settings);
-    const prevLabel = prevAccount ? `${accountLabel(prevAccount)}/${settings.activeModel ?? "?"}` : "none";
-    const nextAccount = settings.accounts.find((a) => a.id === accountId);
-    const nextLabel = nextAccount ? `${accountLabel(nextAccount)}/${model}` : model;
-
-    setSettings((s) => ({ ...s, activeAccountId: accountId, activeModel: model }));
-
-    if (messages.length > 0 && (prevLabel !== nextLabel || settings.activeModel !== model)) {
-      setMessages((m) => [...m, { id: nextId(), role: "note", content: `model · ${prevLabel} → ${nextLabel}` }]);
-    }
-  };
-
-  /* ---------------- chat loop ---------------- */
+  /* ---------------- chat ---------------- */
 
   const send = async (raw: string) => {
     const text = raw.trim();
@@ -160,16 +104,13 @@ function Ask() {
       return;
     }
 
-    if (!active || !settings.activeModel) {
-      setShowSettings(true);
-      setMessages((m) => [
-        ...m,
-        { id: nextId(), role: "note", content: "pick a provider + model first (providers panel opened)" },
-      ]);
+    const useByok = settings.byokEnabled && settings.byokBase && settings.byokKey && settings.byokModel;
+    if (!useByok && !settings.relay) {
+      setMessages((m) => [...m, { id: nextId(), role: "note", content: "no relay URL configured — set it in providers" }]);
       return;
     }
 
-    // SQL engine is OPTIONAL: on failure we still chat, just without run_sql
+    // SQL engine is OPTIONAL: on failure we still chat from the brief
     let sqlAvailable = isLoaded(data);
     if (!sqlAvailable && sqlStatus !== "error") {
       setSqlStatus("loading");
@@ -181,6 +122,7 @@ function Ask() {
         const msg = e instanceof Error ? e.message : String(e);
         setSqlStatus("error");
         setSqlError(msg);
+        console.error("[duckdb]", msg);
         setMessages((m) => [
           ...m,
           { id: nextId(), role: "note", content: `sql engine unavailable (${msg}) — answering from the dataset summary only` },
@@ -188,8 +130,6 @@ function Ask() {
       }
     }
 
-    const account = active;
-    const protocol = presetById(account.providerId).protocol;
     const userMsg: UiMsg = {
       id: nextId(),
       role: "user",
@@ -208,26 +148,41 @@ function Ask() {
           .filter((m): m is UiMsg & { role: "user" | "assistant" | "tool" } => m.role !== "note")
           .map((m) => ({ role: m.role, content: m.content, toolCalls: m.toolCalls, toolCallId: m.toolCallId }));
 
-      let convo = toWire(baseMsgs);
+      // keep context healthy: recent turns only (the brief carries the facts)
+      let convo = toWire(baseMsgs.slice(-16));
 
       for (let iter = 0; iter < 5; iter++) {
         const assistantId = nextId();
         setMessages((m) => [...m, { id: assistantId, role: "assistant", content: "" }]);
 
-        const result = await streamChat({
-          protocol,
-          base: account.base,
-          key: account.key,
-          model: settings.activeModel!,
-          system: datasetBrief(data),
-          messages: convo,
-          tools: sqlAvailable ? [SQL_TOOL] : undefined,
-          signal: ctrl.signal,
-          onDelta: (t) =>
-            setMessages((m) =>
-              m.map((x) => (x.id === assistantId ? { ...x, content: x.content + t } : x)),
-            ),
-        });
+        const system = datasetBrief(data);
+        const result = useByok
+          ? await streamChat({
+              protocol: settings.byokProtocol,
+              base: settings.byokBase,
+              key: settings.byokKey,
+              model: settings.byokModel,
+              system,
+              messages: convo,
+              tools: sqlAvailable ? [SQL_TOOL] : undefined,
+              signal: ctrl.signal,
+              onDelta: (t) =>
+                setMessages((m) =>
+                  m.map((x) => (x.id === assistantId ? { ...x, content: x.content + t } : x)),
+                ),
+            })
+          : await streamPooled({
+              relay: settings.relay,
+              accessCode: settings.accessCode || undefined,
+              system,
+              messages: convo,
+              tools: sqlAvailable ? [SQL_TOOL] : undefined,
+              signal: ctrl.signal,
+              onDelta: (t) =>
+                setMessages((m) =>
+                  m.map((x) => (x.id === assistantId ? { ...x, content: x.content + t } : x)),
+                ),
+            });
 
         if (!result.toolCalls.length) break;
 
@@ -238,11 +193,11 @@ function Ask() {
           try {
             args = JSON.parse(tc.args || "{}");
           } catch { /* fall through */ }
-          const out = !sqlAvailable
-            ? { error: "sql engine unavailable in this session" }
-            : args.sql
+          const out = sqlAvailable
+            ? args.sql
               ? await runSql(args.sql)
-              : { error: "missing sql argument" };
+              : { error: "missing sql argument" }
+            : { error: "sql engine unavailable in this session" };
           toolResults[tc.id] = out as SqlResult | { error: string };
           toolMsgs.push({
             id: nextId(),
@@ -275,6 +230,7 @@ function Ask() {
   };
 
   const sqlReady = data && sqlStatus === "ready";
+  const usingByok = settings.byokEnabled;
 
   return (
     <div className="flex h-[calc(100dvh-11rem)] min-h-[440px] flex-col lg:h-[calc(100dvh-9rem)]">
@@ -295,11 +251,14 @@ function Ask() {
             SQL: {sqlStatus}
             {sqlReady && data ? ` · ${fmtN(data.files.length)} rows` : ""}
           </span>
+          <span className="rounded border border-[#262626] px-2 py-1 font-mono text-[10px] text-[#666]" title="fixed model, set on the relay">
+            {pooledModel && !usingByok ? pooledModel : usingByok ? settings.byokModel || "byok" : "pooled"}
+          </span>
           <button
             onClick={() => setShowSettings((v) => !v)}
             className="rounded-md border border-[#262626] px-2.5 py-1 font-mono text-[11px] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white"
           >
-            {showSettings ? "hide providers ▴" : "providers ▾"}
+            {showSettings ? "hide settings ▴" : "settings ▾"}
           </button>
         </div>
       </div>
@@ -308,18 +267,7 @@ function Ask() {
         <div className="mb-3 rounded-lg border border-danger/40 bg-danger/5 p-3">
           <p className="break-all font-mono text-[11px] leading-5 text-danger">{sqlError}</p>
           <button
-            onClick={() => {
-              if (!data) return;
-              setSqlStatus("loading");
-              loadArtifact(data)
-                .then(() => setSqlStatus("ready"))
-                .catch((e) => {
-                  const msg = e instanceof Error ? e.message : String(e);
-                  setSqlStatus("error");
-                  setSqlError(msg);
-                  console.error("[duckdb]", msg);
-                });
-            }}
+            onClick={retrySql}
             className="mt-2 rounded-md border border-danger/50 px-3 py-1.5 font-mono text-[11px] text-danger transition-colors hover:bg-danger/10"
           >
             retry SQL engine
@@ -329,13 +277,24 @@ function Ask() {
       )}
 
       {showSettings && (
-        <AskSettingsPanel
-          accounts={settings.accounts}
-          onUpdate={updateAccount}
-          onRemove={removeAccount}
-          onAdd={addAccount}
-          onFetchModels={(id) => void fetchModelsFor(id)}
-        />
+        <>
+          <div className="mb-3 rounded-lg border border-[#262626] bg-[#0a0a0a] p-4">
+            <p className="font-mono text-[11px] uppercase tracking-wider text-[#a1a1a1]">Pooled access (default)</p>
+            <p className="mt-1 font-mono text-[10px] leading-5 text-[#666]">
+              model: <span className="text-[#ededed]">{pooledModel ?? "…"}</span> · shared daily limit · nothing to configure.
+              relay url: <span className="text-[#ededed]">{settings.relay || "not set"}</span>
+            </p>
+            <label className="mt-2 block">
+              <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">relay url</span>
+              <input
+                value={settings.relay}
+                onChange={(e) => setSettings((s) => ({ ...s, relay: e.target.value }))}
+                className="w-full max-w-md rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
+              />
+            </label>
+          </div>
+          <AskSettingsPanel settings={settings} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
+        </>
       )}
 
       {/* messages */}
@@ -348,14 +307,6 @@ function Ask() {
             <p className="max-w-md font-mono text-[10px] leading-5 text-[#404040]">
               "how many landscape shots from bilal in august?" · "top 5 days by uploads" · "which contributor has the most duplicates?"
             </p>
-            {settings.accounts.length === 0 && (
-              <button
-                onClick={() => setShowSettings(true)}
-                className="rounded-md border border-accent/50 px-3 py-1.5 font-mono text-[11px] text-accent transition-colors hover:bg-accent hover:text-white"
-              >
-                + add a provider to start
-              </button>
-            )}
           </div>
         )}
         <div className="space-y-4">
@@ -370,81 +321,45 @@ function Ask() {
         </div>
       </div>
 
-      {/* composer + model selector */}
-      <div className="mt-3 space-y-2">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="font-mono text-[10px] uppercase tracking-wider text-[#666]">model</span>
-          {settings.accounts.length > 0 ? (
-            <select
-              value={settings.activeAccountId && settings.activeModel ? `${settings.activeAccountId}::${settings.activeModel}` : ""}
-              onChange={(e) => {
-                const [accountId, ...rest] = e.target.value.split("::");
-                pickModel(accountId, rest.join("::"));
-              }}
-              className="max-w-[420px] flex-1 rounded-md border border-[#262626] bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-            >
-              <option value="">— choose a model —</option>
-              {settings.accounts.map((a) => (
-                <optgroup key={a.id} label={accountLabel(a)}>
-                  {a.models.map((m) => (
-                    <option key={m.id} value={`${a.id}::${m.id}`}>
-                      {m.id}{m.pricing != null ? ` · $${m.pricing.toFixed(2)}/M` : ""}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
-          ) : (
-            <button
-              onClick={() => setShowSettings(true)}
-              className="rounded-md border border-accent/50 px-3 py-1.5 font-mono text-[11px] text-accent transition-colors hover:bg-accent hover:text-white"
-            >
-              + add a provider
-            </button>
-          )}
-          <span className="ml-auto truncate font-mono text-[10px] text-[#666]">{activeModelLabel}</span>
-        </div>
-
-        <form
-          className="flex items-end gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            void send(input);
+      {/* composer */}
+      <form
+        className="mt-3 flex items-end gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void send(input);
+        }}
+      >
+        <textarea
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" && !e.shiftKey) {
+              e.preventDefault();
+              void send(input);
+            }
           }}
-        >
-          <textarea
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                void send(input);
-              }
-            }}
-            rows={1}
-            placeholder={streaming ? "streaming…" : "ask about the dataset… (Enter to send, Shift+Enter newline)"}
-            className="max-h-40 min-h-[42px] flex-1 resize-y rounded-lg border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 font-mono text-xs text-[#ededed] outline-none transition-colors placeholder:text-[#666] focus:border-accent"
-          />
-          {streaming ? (
-            <button
-              type="button"
-              onClick={() => abortRef.current?.abort()}
-              className="h-[42px] rounded-lg border border-danger/50 px-4 font-mono text-xs text-danger transition-colors hover:bg-danger/10"
-            >
-              stop
-            </button>
-          ) : (
-            <button
-              type="submit"
-              disabled={!input.trim() || !settings.activeModel}
-              title={!settings.activeModel ? "choose a model first" : undefined}
-              className="h-[42px] rounded-lg bg-white px-4 font-mono text-xs font-semibold text-black transition-opacity disabled:opacity-30"
-            >
-              send
-            </button>
-          )}
-        </form>
-      </div>
+          rows={1}
+          placeholder={streaming ? "streaming…" : "ask about the dataset… (Enter to send, Shift+Enter newline)"}
+          className="max-h-40 min-h-[42px] flex-1 resize-y rounded-lg border border-[#262626] bg-[#0a0a0a] px-3.5 py-2.5 font-mono text-xs text-[#ededed] outline-none transition-colors placeholder:text-[#666] focus:border-accent"
+        />
+        {streaming ? (
+          <button
+            type="button"
+            onClick={() => abortRef.current?.abort()}
+            className="h-[42px] rounded-lg border border-danger/50 px-4 font-mono text-xs text-danger transition-colors hover:bg-danger/10"
+          >
+            stop
+          </button>
+        ) : (
+          <button
+            type="submit"
+            disabled={!input.trim()}
+            className="h-[42px] rounded-lg bg-white px-4 font-mono text-xs font-semibold text-black transition-opacity disabled:opacity-30"
+          >
+            send
+          </button>
+        )}
+      </form>
     </div>
   );
 }

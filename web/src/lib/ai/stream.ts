@@ -42,37 +42,58 @@ const trimBase = (b: string) => b.replace(/\/+$/, "");
 
 /* ---------------- OpenAI-compatible ---------------- */
 
-async function streamOpenAI(a: StreamArgs): Promise<StreamResult> {
+function buildOpenAI(a: StreamArgs): {
+  url: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+} {
   const messages: Record<string, unknown>[] = [];
   if (a.system) messages.push({ role: "system", content: a.system });
   for (const m of a.messages) {
     if (m.role === "user") messages.push({ role: "user", content: m.content });
     else if (m.role === "assistant" && m.toolCalls?.length)
-      messages.push({ role: "assistant", content: m.content || null, tool_calls: m.toolCalls.map((t) => ({ id: t.id, type: "function", function: { name: t.name, arguments: t.args } })) });
+      messages.push({
+        role: "assistant",
+        content: m.content || null,
+        tool_calls: m.toolCalls.map((t) => ({ id: t.id, type: "function", function: { name: t.name, arguments: t.args } })),
+      });
     else if (m.role === "assistant") messages.push({ role: "assistant", content: m.content });
     else if (m.role === "tool") messages.push({ role: "tool", tool_call_id: m.toolCallId, content: m.content });
   }
 
   const body: Record<string, unknown> = { model: a.model, messages, stream: true };
   if (a.tools?.length)
-    body.tools = a.tools.map((t) => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.parameters } }));
+    body.tools = a.tools.map((t) => ({
+      type: "function",
+      function: { name: t.name, description: t.description, parameters: t.parameters },
+    }));
 
-  let res = await fetch(`${trimBase(a.base)}/chat/completions`, {
-    method: "POST",
+  return {
+    url: `${trimBase(a.base)}/chat/completions`,
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${a.key}` },
-    body: JSON.stringify(body),
+    body,
+  };
+}
+
+async function streamOpenAI(a: StreamArgs): Promise<StreamResult> {
+  const built = buildOpenAI(a);
+
+  let res = await fetch(built.url, {
+    method: "POST",
+    headers: built.headers,
+    body: JSON.stringify(built.body),
     signal: a.signal,
   });
 
   // some gateways/reasoning-models reject tools unless reasoning_effort is "none"
-  if (!res.ok && body.tools) {
+  if (!res.ok && built.body.tools) {
     const detail = await res.text().catch(() => "");
     if (/reasoning_effort/i.test(detail)) {
-      body.reasoning_effort = "none";
-      res = await fetch(`${trimBase(a.base)}/chat/completions`, {
+      built.body.reasoning_effort = "none";
+      res = await fetch(built.url, {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${a.key}` },
-        body: JSON.stringify(body),
+        headers: built.headers,
+        body: JSON.stringify(built.body),
         signal: a.signal,
       });
     } else {
@@ -84,6 +105,11 @@ async function streamOpenAI(a: StreamArgs): Promise<StreamResult> {
     throw new Error(`provider HTTP ${res.status}: ${detail.slice(0, 300)}`);
   }
 
+  return parseOpenAiSse(res, a);
+}
+
+/** Shared OpenAI-compatible SSE parser (also used by the pooled relay path). */
+async function parseOpenAiSse(res: Response, a: { onDelta: (t: string) => void }): Promise<StreamResult> {
   let text = "";
   const toolAcc = new Map<number, { id: string; name: string; args: string }>();
   let stop: StreamResult["stopReason"] = "endturn";
@@ -234,4 +260,34 @@ async function readSse(res: Response, onData: (data: string) => void): Promise<v
 
 export function streamChat(a: StreamArgs): Promise<StreamResult> {
   return a.protocol === "anthropic" ? streamAnthropic(a) : streamOpenAI(a);
+}
+
+/* ---------------- pooled gateway (via relay) ---------------- */
+
+export interface PooledArgs {
+  relay: string;
+  accessCode?: string;
+  system?: string;
+  messages: ChatMessage[];
+  tools?: ToolSpec[];
+  signal?: AbortSignal;
+  onDelta: (text: string) => void;
+}
+
+/** Zero-config path: relay injects the team key + fixed model server-side. */
+export async function streamPooled(a: PooledArgs): Promise<StreamResult> {
+  const res = await fetch(`${trimBase(a.relay)}/api/chat`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      ...(a.accessCode ? { "x-access-code": a.accessCode } : {}),
+    },
+    body: JSON.stringify({ messages: a.messages, system: a.system, tools: a.tools }),
+    signal: a.signal,
+  });
+  if (!res.ok || !res.body) {
+    const detail = await res.text().catch(() => "");
+    throw new Error(`relay HTTP ${res.status}: ${detail.slice(0, 300)}`);
+  }
+  return parseOpenAiSse(res, a); // gateway streams OpenAI-compatible SSE
 }
