@@ -2,7 +2,9 @@ name: sync
 
 on:
   schedule:
-    - cron: "0 * * * *"          # hourly — public repo ⇒ unlimited Actions minutes
+    - cron: "*/10 * * * *"       # every 10 min — change-detection below prevents empty commits;
+                                  # public repo ⇒ unlimited Actions minutes; raw CDN TTL ~5 min
+                                  # makes ~10 min the effective freshness floor anyway
   workflow_dispatch:
     inputs:
       bootstrap:
