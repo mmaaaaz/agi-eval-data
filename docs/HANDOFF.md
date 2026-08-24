@@ -127,7 +127,7 @@ Snapshot of record (re-read `data/latest.json` for live numbers — they move ho
 2. **Model sometimes repeats identical tool calls** — mitigated: client-side `sqlCache` (identical SQL → instant cached result) + `ranSqlCount` cap (3 attempts → "answer from the summary" nudge). If it recurs with a better model, consider server-side dedup in the relay.
 3. **gpt-5-nano via the gateway emits long reasoning chains** — 8–9 s before the first tool call. `reasoning_effort: "none"` auto-retry exists in the client for gateways that 400 on tools+reasoning (opencode gateway). For the Vercel gateway, reasoning is on by default — a `providerOptions` reasoning-effort override could speed it up (untested).
 4. **`day` column type**: forced to VARCHAR at load (DuckDB auto-types ISO strings as DATE, breaking LIKE). If the model writes date-typed SQL anyway, the binder hint in `duck.ts` guides it.
-5. **routeTree.gen.ts is untracked** (regenerates at build/dev). Fresh clones need one `vite build`/`dev` before tsc passes.
+5. **routeTree.gen.ts is committed** and regenerates at build/dev — expect it to churn in diffs after any route change; include it in the same commit.
 
 ---
 
