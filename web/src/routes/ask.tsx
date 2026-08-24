@@ -49,6 +49,7 @@ function Ask() {
   const [sqlStatus, setSqlStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [sqlError, setSqlError] = useState("");
   const [openTool, setOpenTool] = useState<string | null>(null);
+  const [executingSql, setExecutingSql] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
@@ -193,6 +194,7 @@ function Ask() {
           try {
             args = JSON.parse(tc.args || "{}");
           } catch { /* fall through */ }
+          setExecutingSql(tc.id);
           const out = sqlAvailable
             ? args.sql
               ? await runSql(args.sql)
@@ -294,11 +296,12 @@ function Ask() {
         )}
         <div className="space-y-4">
           {messages.map((m) => (
-            <MsgView key={m.id} m={m} openTool={openTool} setOpenTool={setOpenTool} />
+            <MsgView key={m.id} m={m} executingSql={executingSql} openTool={openTool} setOpenTool={setOpenTool} />
           ))}
           {streaming && (
             <div className="flex items-center gap-2 font-mono text-[10px] text-[#666]">
-              <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-accent" /> thinking…
+              <span className="h-[6px] w-[6px] animate-pulse rounded-full bg-accent" />
+              {executingSql ? "running query…" : "thinking…"}
             </div>
           )}
         </div>
@@ -351,10 +354,12 @@ function Ask() {
 
 function MsgView({
   m,
+  executingSql,
   openTool,
   setOpenTool,
 }: {
   m: UiMsg;
+  executingSql: string | null;
   openTool: string | null;
   setOpenTool: (id: string | null) => void;
 }) {
@@ -417,10 +422,14 @@ function MsgView({
       {m.toolCalls?.map((tc) => {
         const result = m.toolResults?.[tc.id];
         const isErr = result && "error" in result;
+        const running = !result || executingSql === tc.id;
         return (
           <div key={tc.id} className="mt-2">
-            <span className={`rounded border px-2 py-0.5 font-mono text-[9px] ${isErr ? "border-danger/40 text-danger" : "border-accent/40 text-accent"}`}>
-              ran {tc.name}
+            <span className={`inline-flex items-center gap-1.5 rounded border px-2 py-0.5 font-mono text-[9px] ${
+              isErr ? "border-danger/40 text-danger" : "border-accent/40 text-accent"
+            }`}>
+              {running && <span className="h-[5px] w-[5px] animate-pulse rounded-full bg-accent" />}
+              {running ? `running ${tc.name}…` : `ran ${tc.name}`}
             </span>
           </div>
         );

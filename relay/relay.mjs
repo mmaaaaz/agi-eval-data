@@ -52,16 +52,22 @@ function sanitizeToolMessages(messages) {
   const nextId = () => `call_auto_${Date.now().toString(36)}_${seq++}`;
   const pending = [];
   return messages.map((m) => {
-    if (m.role === "assistant" && Array.isArray(m.tool_calls)) {
-      const calls = m.tool_calls.map((tc) => {
-        const id = tc.id || nextId();
+    // accept both snake_case (wire) and camelCase (older clients)
+    const calls = m.tool_calls ?? m.toolCalls;
+    if (m.role === "assistant" && Array.isArray(calls)) {
+      const norm = calls.map((tc) => {
+        const fn = tc.function ?? tc;
+        const id = tc.id || fn.id || nextId();
         pending.push(id);
-        return { ...tc, id };
+        const args = typeof (fn.arguments ?? tc.arguments) === "string"
+          ? (fn.arguments ?? tc.arguments)
+          : JSON.stringify(fn.arguments ?? tc.arguments ?? {});
+        return { id, type: "function", function: { name: fn.name ?? tc.name ?? "", arguments: args } };
       });
-      return { ...m, tool_calls: calls, content: m.content ?? "" };
+      return { ...m, tool_calls: norm, content: m.content ?? "" };
     }
     if (m.role === "tool") {
-      let id = m.tool_call_id;
+      let id = m.tool_call_id ?? m.toolCallId;
       if (!id) id = pending.length ? pending.shift() : nextId();
       else {
         const idx = pending.indexOf(id);

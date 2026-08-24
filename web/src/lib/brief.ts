@@ -75,7 +75,7 @@ function buildBrief(latest: Latest): string {
   ].join("\n");
 }
 
-/** One-line URL context injected per user turn. */
+/** One-line URL context injected per user turn (skipped when it adds nothing). */
 export function viewingContext(pathname: string, search: Record<string, unknown>): string {
   const params = new URLSearchParams();
   for (const [k, v] of Object.entries(search)) {
@@ -83,5 +83,6 @@ export function viewingContext(pathname: string, search: Record<string, unknown>
     params.set(k, String(v));
   }
   const qs = params.toString();
+  if (pathname === "/ask" && !qs) return "";
   return `VIEWING: ${pathname}${qs ? `?${qs}` : ""} (the user's current dashboard view — questions like "these" or "here" refer to it)`;
 }

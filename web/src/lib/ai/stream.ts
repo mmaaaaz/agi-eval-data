@@ -1,5 +1,5 @@
 /**
- * Minimal BYOK streaming chat client — OpenAI-compatible + Anthropic SSE.
+ * Minimal BYOK + pooled streaming chat client — OpenAI-compatible + Anthropic SSE.
  * Keys are passed per-call and never persisted here.
  */
 
@@ -38,7 +38,44 @@ export interface StreamResult {
   stopReason: "endturn" | "tool_use" | "aborted" | "error";
 }
 
+export interface PooledArgs {
+  relay: string;
+  accessCode?: string;
+  system?: string;
+  messages: ChatMessage[];
+  tools?: ToolSpec[];
+  signal?: AbortSignal;
+  onDelta: (text: string) => void;
+}
+
 const trimBase = (b: string) => b.replace(/\/+$/, "");
+
+/* ---------------- wire format (OpenAI shape, strict about ids) ---------------- */
+
+function toWireMessages(messages: ChatMessage[]): Record<string, unknown>[] {
+  const out: Record<string, unknown>[] = [];
+  for (const m of messages) {
+    if (m.role === "user") out.push({ role: "user", content: m.content });
+    else if (m.role === "assistant" && m.toolCalls?.length)
+      out.push({
+        role: "assistant",
+        content: m.content || "",
+        tool_calls: m.toolCalls.map((t) => ({
+          id: t.id || `call_${Math.random().toString(36).slice(2, 10)}`,
+          type: "function",
+          function: { name: t.name, arguments: t.args },
+        })),
+      });
+    else if (m.role === "assistant") out.push({ role: "assistant", content: m.content });
+    else if (m.role === "tool")
+      out.push({
+        role: "tool",
+        tool_call_id: m.toolCallId || `call_${Math.random().toString(36).slice(2, 10)}`,
+        content: m.content,
+      });
+  }
+  return out;
+}
 
 /* ---------------- OpenAI-compatible ---------------- */
 
@@ -47,21 +84,11 @@ function buildOpenAI(a: StreamArgs): {
   headers: Record<string, string>;
   body: Record<string, unknown>;
 } {
-  const messages: Record<string, unknown>[] = [];
-  if (a.system) messages.push({ role: "system", content: a.system });
-  for (const m of a.messages) {
-    if (m.role === "user") messages.push({ role: "user", content: m.content });
-    else if (m.role === "assistant" && m.toolCalls?.length)
-      messages.push({
-        role: "assistant",
-        content: m.content || "",
-        tool_calls: m.toolCalls.map((t) => ({ id: t.id, type: "function", function: { name: t.name, arguments: t.args } })),
-      });
-    else if (m.role === "assistant") messages.push({ role: "assistant", content: m.content });
-    else if (m.role === "tool") messages.push({ role: "tool", tool_call_id: m.toolCallId, content: m.content });
-  }
-
-  const body: Record<string, unknown> = { model: a.model, messages, stream: true };
+  const body: Record<string, unknown> = {
+    model: a.model,
+    messages: toWireMessages(a.messages),
+    stream: true,
+  };
   if (a.tools?.length)
     body.tools = a.tools.map((t) => ({
       type: "function",
@@ -109,14 +136,25 @@ async function streamOpenAI(a: StreamArgs): Promise<StreamResult> {
 }
 
 /** Shared OpenAI-compatible SSE parser (also used by the pooled relay path). */
-async function parseOpenAiSse(res: Response, a: { onDelta: (t: string) => void }): Promise<StreamResult> {
+async function parseOpenAiSse(
+  res: Response,
+  a: { onDelta: (t: string) => void },
+): Promise<StreamResult> {
   let text = "";
   const toolAcc = new Map<number, { id: string; name: string; args: string }>();
   let stop: StreamResult["stopReason"] = "endturn";
 
   await readSse(res, (data) => {
     if (data === "[DONE]") return;
-    let j: { choices?: { delta?: { content?: string | null; tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[] }; finish_reason?: string | null }[] };
+    let j: {
+      choices?: {
+        delta?: {
+          content?: string | null;
+          tool_calls?: { index: number; id?: string; function?: { name?: string; arguments?: string } }[];
+        };
+        finish_reason?: string | null;
+      }[];
+    };
     try {
       j = JSON.parse(data);
     } catch {
@@ -140,7 +178,7 @@ async function parseOpenAiSse(res: Response, a: { onDelta: (t: string) => void }
 
   return {
     text,
-    // gateways (Vercel GW included) reject empty tool_call_id - synthesize if absent
+    // gateways (Vercel GW included) reject empty tool_call_id — synthesize if absent
     toolCalls: [...toolAcc.values()]
       .filter((t) => t.name)
       .map((t, i) => ({ ...t, id: t.id || `call_${Date.now()}_${i}` })),
@@ -150,9 +188,11 @@ async function parseOpenAiSse(res: Response, a: { onDelta: (t: string) => void }
 
 /* ---------------- Anthropic ---------------- */
 
-async function streamAnthropic(a: StreamArgs): Promise<StreamResult> {
-  // Anthropic requires strict user/assistant alternation; tool results ride as
-  // user messages containing tool_result blocks.
+function buildAnthropic(a: StreamArgs): {
+  url: string;
+  headers: Record<string, string>;
+  body: Record<string, unknown>;
+} {
   const messages: Record<string, unknown>[] = [];
   for (const m of a.messages) {
     if (m.role === "user") messages.push({ role: "user", content: m.content });
@@ -168,29 +208,34 @@ async function streamAnthropic(a: StreamArgs): Promise<StreamResult> {
     else if (m.role === "tool")
       messages.push({
         role: "user",
-        content: [{ type: "tool_result", tool_use_id: m.toolCallId, content: m.content }],
+        content: [{ type: "tool_result", tool_use_id: m.toolCallId ?? "", content: m.content }],
       });
   }
 
-  const body: Record<string, unknown> = {
-    model: a.model,
-    max_tokens: 4096,
-    stream: true,
-    messages,
-  };
+  const body: Record<string, unknown> = { model: a.model, max_tokens: 4096, stream: true, messages };
   if (a.system) body.system = a.system;
   if (a.tools?.length)
     body.tools = a.tools.map((t) => ({ name: t.name, description: t.description, input_schema: t.parameters }));
 
-  const res = await fetch(`${trimBase(a.base)}/messages`, {
-    method: "POST",
+  return {
+    url: `${trimBase(a.base)}/messages`,
     headers: {
       "Content-Type": "application/json",
       "x-api-key": a.key,
       "anthropic-version": "2023-06-01",
       "anthropic-dangerous-direct-browser-access": "true",
     },
-    body: JSON.stringify(body),
+    body,
+  };
+}
+
+async function streamAnthropic(a: StreamArgs): Promise<StreamResult> {
+  const built = buildAnthropic(a);
+
+  const res = await fetch(built.url, {
+    method: "POST",
+    headers: built.headers,
+    body: JSON.stringify(built.body),
     signal: a.signal,
   });
   if (!res.ok || !res.body) {
@@ -223,8 +268,7 @@ async function streamAnthropic(a: StreamArgs): Promise<StreamResult> {
         text += j.delta.text;
         a.onDelta(j.delta.text);
       } else if (j.delta.type === "input_json_delta" && currentTool && j.delta.partial_json) {
-        const acc = toolAcc.get(currentTool)!;
-        acc.args += j.delta.partial_json;
+        toolAcc.get(currentTool)!.args += j.delta.partial_json;
       }
     } else if (j.type === "message_delta" && j.delta?.stop_reason) {
       stop = j.delta.stop_reason === "tool_use" ? "tool_use" : "endturn";
@@ -232,14 +276,6 @@ async function streamAnthropic(a: StreamArgs): Promise<StreamResult> {
   });
 
   return { text, toolCalls: [...toolAcc.values()].filter((t) => t.name), stopReason: stop };
-}
-
-function safeJson(s: string): unknown {
-  try {
-    return JSON.parse(s || "{}");
-  } catch {
-    return {};
-  }
 }
 
 /* ---------------- shared SSE reader ---------------- */
@@ -260,6 +296,16 @@ async function readSse(res: Response, onData: (data: string) => void): Promise<v
     }
   }
 }
+
+function safeJson(s: string): unknown {
+  try {
+    return JSON.parse(s || "{}");
+  } catch {
+    return {};
+  }
+}
+
+/* ---------------- entry: BYOK direct ---------------- */
 
 export function streamChat(a: StreamArgs): Promise<StreamResult> {
   return a.protocol === "anthropic" ? streamAnthropic(a) : streamOpenAI(a);
@@ -285,6 +331,7 @@ export async function streamPooled(a: PooledArgs): Promise<StreamResult> {
       "Content-Type": "application/json",
       ...(a.accessCode ? { "x-access-code": a.accessCode } : {}),
     },
+    // relay receives provider-neutral messages and converts to strict wire format
     body: JSON.stringify({ messages: a.messages, system: a.system, tools: a.tools }),
     signal: a.signal,
   });
