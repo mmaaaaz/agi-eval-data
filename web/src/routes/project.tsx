@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { fmtN } from "../lib/format";
+import { Eyebrow } from "../components/Section";
 
 export const Route = createFileRoute("/project")({ component: Project });
 
@@ -11,9 +12,7 @@ function Project() {
 
   return (
     <div className="max-w-3xl">
-      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
-        <span className="text-accent">07</span> — project
-      </p>
+      <Eyebrow n="07">project</Eyebrow>
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         agi-eval-data
       </h1>

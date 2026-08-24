@@ -2,6 +2,7 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
+import { Eyebrow } from "../components/Section";
 import { ThumbImage } from "../components/ThumbImage";
 
 export const Route = createFileRoute("/contributors/")({ component: Contributors });
@@ -13,9 +14,7 @@ function Contributors() {
 
   return (
     <div>
-      <p className="mb-1 font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">
-        <span className="text-accent">05</span> — contributors
-      </p>
+      <Eyebrow n="05">contributors</Eyebrow>
       <h1 className="mb-6 text-2xl font-semibold tracking-tight text-white">Who uploads what</h1>
 
       <div className="overflow-hidden rounded-lg border border-[#262626]">

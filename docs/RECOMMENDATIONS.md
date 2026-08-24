@@ -31,11 +31,6 @@ Status legend: `idea` → `planned` → `shipped`
 
 ## Tier 2 — Pipeline & hygiene
 
-### 5. History store → real trends `idea`
-- CI appends weekly summary to `data/history.json` (count, dupes, bytes, per-contributor).
-- Enables honest velocity charts + growth projection ("50k by Nov 30").
-- Effort: S. The sooner it starts, the sooner charts have data.
-
 ### 6. Weekly digest issue `idea`
 - Sync bot posts a Friday GitHub issue: "+1,842 images · 37 dupes · 2 new contributors · biggest day: Saturday."
 - Team ritual, zero UI. Effort: S.
@@ -66,5 +61,4 @@ Status legend: `idea` → `planned` → `shipped`
 1. #2 + #6 (one session, immediate value)
 2. #1 taxonomy (before dataset doubles again)
 3. #3 CLIP (after #1 — they multiply)
-4. #5 history (anytime)
-5. #4 verification loop (once collection stabilizes)
+4. #4 verification loop (once collection stabilizes)

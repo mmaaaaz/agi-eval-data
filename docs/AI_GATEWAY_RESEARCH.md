@@ -1,7 +1,7 @@
 # AI Gateway Research — pooled-key chat feasibility
 
 _Question: can we make /ask "just work" for everyone without per-person API keys — using Vercel AI Gateway ($5/mo free credit) or Cloudflare — and what does each idea cost?_
-> **STATUS (2026-08-25):** G1 shipped as a single pooled path only (Vercel AI Gateway behind a Worker secret; no Workers-AI overflow, no BYOK tier). G2 shipped (IndexedDB chats + sidebar). G3 (`/sql` workbench) **not built**. Live state: `HANDOFF.md`.
+> **STATUS (2026-08-25):** G1 shipped as a single pooled path only (Vercel AI Gateway behind a Worker secret; no Workers-AI overflow, no BYOK tier). G2 shipped (IndexedDB chats + sidebar). G3 (`/sql` workbench) dropped from scope by owner decision. Live state: `HANDOFF.md`.
 
 ---
 
@@ -40,7 +40,6 @@ _Question: can we make /ask "just work" for everyone without per-person API keys
 | CF Workers AI free neurons | ✅ feasible | Truly $0, zero external accounts. ~60 turns/day (70B) or ~380 (8B) |
 | CF AI Gateway as a layer | ✅ optional | Caching + analytics over the above; skip for v1 |
 | Multiple chats + persistence | ✅ trivial | IndexedDB conversation store; new/rename/delete/switch; per-conversation model memory |
-| Dedicated SQL page (/sql) | ✅ trivial | DuckDB is already wired — workbench = editor + run + schema sidebar + history + CSV export |
 | "Just works, no config" | ✅ via tiered fallback | pooled gateway (default) → Workers AI (overflow) → BYOK (power users) |
 
 ---
@@ -70,17 +69,6 @@ Worker relay (already exists)
 - Auto-title: first question truncated
 - Cap: keep last 50 conversations, trim oldest (IndexedDB has no practical limit for text)
 
-## Dedicated SQL page (/sql)
-
-- Route + nav ("SQL")
-- Left: schema reference (tables/columns from a static doc, generated from the artifact shape)
-- Center: query editor (textarea now; CodeMirror later), Ctrl+Enter run
-- Right/bottom: results table + row count + **export CSV** + "copy as JSONL"
-- Query history (localStorage, last 50) + example queries
-- Reuses `duck.ts` guards (read-only, auto-LIMIT, timeout) unchanged
-- Effort: S–M
-
----
 
 ## Phases
 
@@ -88,7 +76,6 @@ Worker relay (already exists)
 |---|---|---|
 | G1 | Relay: pooled path (Vercel GW secret) + per-IP cap + Workers AI fallback; /ask uses pooled by default, BYOK stays | M |
 | G2 | Multiple chats + IndexedDB persistence + sidebar | S–M |
-| G3 | /sql workbench page | S–M |
 | G4 (optional) | CF AI Gateway layer for caching/analytics | S |
 
 ## Decisions requested

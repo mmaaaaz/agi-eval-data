@@ -143,17 +143,45 @@ function Ask() {
 
   /* ---------------- AI SDK v5 chat ---------------- */
 
+  /* one-shot retry around the transport: transient network failures (e.g. the
+     auto-continuation after a tool result) get a second chance instead of a
+     dead-end NetworkError. HTTP errors are NOT retried. */
+  const fetchWithRetry = useMemo(() => {
+    const f: typeof fetch = async (input, init) => {
+      try {
+        return await fetch(input, init);
+      } catch (e) {
+        if (init?.signal?.aborted) throw e;
+        const sleep = Promise.withResolvers<void>();
+        setTimeout(sleep.resolve, 700);
+        await sleep.promise;
+        return fetch(input, init);
+      }
+    };
+    return f;
+  }, []);
+
   const transport = useMemo(
     () =>
       new DefaultChatTransport({
         api: `${settings.relay.replace(/\/+$/, "")}/api/chat`,
-        headers: settings.accessCode ? { "x-access-code": settings.accessCode } : undefined,
-        // the relay needs the tool schema to enable tool-calling on the model
+        // the relay needs the tool schema to enable tool-calling on the model.
+        // Also drop assistant messages left mid-stream by a failed/stopped
+        // turn (dangling tool calls, half-streamed reasoning) — the API
+        // rejects those, which would poison every later send in this chat.
         prepareSendMessagesRequest: ({ messages }) => ({
-          body: { messages, tools: [SQL_TOOL] },
+          body: {
+            messages: messages.filter((m) => {
+              if (m.role !== "assistant") return true;
+              const dead = new Set(["streaming", "input-streaming", "input-available"]);
+              return m.parts.every((p) => !("state" in p) || !dead.has(String(p.state)));
+            }),
+            tools: [SQL_TOOL],
+          },
         }),
+        fetch: fetchWithRetry,
       }),
-    [settings.relay, settings.accessCode],
+    [settings.relay, settings.accessCode, fetchWithRetry],
   );
 
 
@@ -172,26 +200,19 @@ function Ask() {
         return;
       }
 
-      // one execution per turn — nudge the model to answer from existing results
-      if (ranSqlCount.current >= 1) {
+      // per-turn attempt budget: lets the model self-correct after SQL errors,
+      // while capping runaway loops. Reset when the user sends a new question.
+      if (ranSqlCount.current >= 3) {
         addToolOutput({
           tool: "run_sql",
           toolCallId: toolCall.toolCallId,
-          output: JSON.stringify({ note: "you already have this query's result — answer the user now without calling tools again" }),
+          output: JSON.stringify({ error: "3 SQL attempts used for this question. Stop calling run_sql and answer from the results you already have." }),
         });
         return;
       }
 
       setExecutingTool(toolCall.toolCallId);
       try {
-        if (ranSqlCount.current >= 3) {
-          addToolOutput({
-            tool: "run_sql",
-            toolCallId: toolCall.toolCallId,
-            output: JSON.stringify({ error: "3 SQL attempts failed. Stop calling run_sql and answer the user from the dataset summary, or say what data you need." }),
-          });
-          return;
-        }
         const out = await runSql(input.sql ?? "");
         const output = JSON.stringify(out);
         if (!("error" in out)) {
@@ -256,6 +277,8 @@ function Ask() {
 
   const newChat = useCallback(() => {
     abortRef.current?.abort();
+    ranSqlCount.current = 0;
+    sqlCache.current.clear();
     const id = newChatId();
     setActiveId(id);
     setMessages([]);
@@ -269,6 +292,8 @@ function Ask() {
       abortRef.current?.abort();
       void (async () => {
         const chat = await getChat(id);
+        ranSqlCount.current = 0;
+        sqlCache.current.clear();
         setActiveId(id);
         setMessages(chat?.messages ?? []);
         setOpenTool(null);
@@ -298,6 +323,8 @@ function Ask() {
       return;
     }
 
+    // fresh question → fresh per-turn SQL attempt budget
+    ranSqlCount.current = 0;
     let sqlAvailable = isLoaded(data);
     if (!sqlAvailable && sqlStatus !== "error") {
       setSqlStatus("loading");
@@ -315,13 +342,15 @@ function Ask() {
     }
 
     // resolve mentioned contributors to exact emails (kills name-guessing):
-    // tokenize the question and match words against names/emails in both directions
-    const words = text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3);
+    // match question words against name/email TOKENS — never raw substrings,
+    // else "the" matches "theyellowdog123" and poisons the query context
+    const STOP = new Set(["the", "and", "has", "was", "all", "who", "how", "many", "much", "are", "did", "does", "what", "when", "where", "which", "with", "for", "from", "that", "this", "have", "been", "were", "their", "them", "they", "about", "into", "over", "under", "most", "least", "more", "some", "any", "total"]);
+    const words = text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOP.has(w));
+    const tokensOf = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
     const matches = Object.entries(data.owners)
       .filter(([email, name]) => {
-        const n = name.toLowerCase();
-        const e = email.toLowerCase();
-        return words.some((w) => n.includes(w) || e.includes(w));
+        const toks = [...tokensOf(name), ...tokensOf(email.split("@")[0])];
+        return words.some((w) => toks.some((t) => t === w || (t.startsWith(w) && w.length >= 4)));
       })
       .map(([email, name]) => `- ${name} <${email}>`);
     const matchLine = matches.length
