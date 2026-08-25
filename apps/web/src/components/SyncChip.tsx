@@ -1,27 +1,19 @@
 import { useEffect, useState } from "react";
-import type { Latest } from "../lib/types";
-import { timeAgo } from "../lib/format";
+import { nextSlotAfter, timeAgo } from "../lib/format";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
-const REPO = import.meta.env.VITE_REPO ?? "mmaaaaz/agi-eval-data";
-const ARTIFACT = `https://raw.githubusercontent.com/${REPO}/main/data/latest.json`;
-const INTERVAL_MIN = 10;
-/** GitHub delivers the */10/* cron at ~30-60 min real cadence (4-min runs queue);
-    past this the sync is genuinely stuck, not just GitHub being GitHub. */
-const DELAYED_AFTER_MIN = 65;
-
 /**
- * Sync pill v2 — countdown to the next 10-min scan; the moment a newer
- * artifact is detected (visibility-aware 60s Range-poll, ~300 bytes) it
- * flips to a hard-refresh button. No GitHub API, no stale tabs.
+ * Sync pill — counts down to the next DAILY data sync (06:00 UTC) and polls
+ * the baked version.json (same-origin, ~200 bytes) every minute. When a newer
+ * sync lands, the pill becomes a hard-refresh button. No GitHub API, no
+ * multi-megabyte requests.
  */
-export function SyncChip({ meta }: { meta: Latest["meta"] }) {
+export function SyncChip() {
   const [now, setNow] = useState(() => Date.now());
+  const [scannedAt, setScannedAt] = useState<string | null>(null);
+  const [cron, setCron] = useState("0 6 * * *");
   const [update, setUpdate] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
-  const scannedAtMs = Date.parse(
-    meta.scannedAt.endsWith("Z") ? meta.scannedAt : `${meta.scannedAt}Z`,
-  );
 
   // 1s tick for the countdown
   useEffect(() => {
@@ -29,62 +21,52 @@ export function SyncChip({ meta }: { meta: Latest["meta"] }) {
     return () => window.clearInterval(t);
   }, []);
 
-  // 60s poll for a newer artifact — visible tabs only.
-  // HEAD request: ~200 bytes, no body parse on the main thread (the artifact
-  // is 12+ MB — fetching/parsing it per minute is what stalled browsers).
-  const [baseline, setBaseline] = useState<{ len: string; lm: string } | null>(null);
+  // baseline + 60s poll of the tiny version file (visible tabs only)
   useEffect(() => {
-    let cancelled = false;
-    const probe = async () => {
-      try {
-        const res = await fetch(ARTIFACT, { method: "HEAD", cache: "no-store" });
-        const len = res.headers.get("content-length") ?? "";
-        const lm = res.headers.get("last-modified") ?? "";
-        if (cancelled) return;
-        setBaseline({ len, lm });
-        setCheckFailed(false);
-      } catch {
-        if (!cancelled) setCheckFailed(true);
-      }
-    };
-    void probe();
-    return () => { cancelled = true; };
-  }, [meta.scannedAt]);
-
-  useEffect(() => {
-    if (!baseline) return;
     let cancelled = false;
     const check = async () => {
       if (document.visibilityState !== "visible") return;
       try {
-        const res = await fetch(ARTIFACT, { method: "HEAD", cache: "no-store" });
-        const len = res.headers.get("content-length") ?? "";
-        const lm = res.headers.get("last-modified") ?? "";
+        const res = await fetch("/data/version.json", { cache: "no-store" });
+        if (!res.ok) throw new Error(String(res.status));
+        const v = (await res.json()) as { scannedAt: string; cron?: string };
         if (cancelled) return;
         setCheckFailed(false);
-        if ((len && len !== baseline.len) || (lm && lm !== baseline.lm)) setUpdate(true);
+        setCron(v.cron ?? "0 6 * * *");
+        setScannedAt((prev) => {
+          if (prev && v.scannedAt !== prev) setUpdate(true);
+          return v.scannedAt;
+        });
       } catch {
         if (!cancelled) setCheckFailed(true);
       }
     };
+    void check();
     const t = window.setInterval(check, 60_000);
-    const onVis = () => { if (document.visibilityState === "visible") void check(); };
+    const onVis = () => {
+      if (document.visibilityState === "visible") void check();
+    };
     document.addEventListener("visibilitychange", onVis);
     return () => {
       cancelled = true;
       window.clearInterval(t);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [baseline]);
+  }, []);
 
-  const nextAt = scannedAtMs + INTERVAL_MIN * 60_000;
-  const secsLeft = Math.max(0, Math.floor((nextAt - now) / 1000));
-  const mm = String(Math.floor(secsLeft / 60)).padStart(2, "0");
-  const ss = String(secsLeft % 60).padStart(2, "0");
-  const minsSince = Math.floor((now - scannedAtMs) / 60000);
-  const delayed = minsSince > DELAYED_AFTER_MIN && !update;
+  const scannedAtMs = scannedAt
+    ? Date.parse(scannedAt.endsWith("Z") ? scannedAt : `${scannedAt}Z`)
+    : null;
+  const next = scannedAtMs ? nextSlotAfter(cron, new Date(Math.max(now, scannedAtMs))) : null;
+  const secsLeft = next ? Math.max(0, Math.floor((next.getTime() - now) / 1000)) : null;
+  const mm = String(Math.floor((secsLeft ?? 0) / 3600) * 60 + Math.floor(((secsLeft ?? 0) % 3600) / 60)).padStart(2, "0");
+  const ss = String((secsLeft ?? 0) % 60).padStart(2, "0");
+  const minsSince = scannedAtMs ? Math.floor((now - scannedAtMs) / 60000) : 0;
+  const delayed = minsSince > 26 * 60 && !update;
 
-  const tooltip = `last scan ${timeAgo(new Date(scannedAtMs).toISOString())} · auto-checks every minute · cron ${meta.cron}`;
+  const tooltip = scannedAt
+    ? `last data sync ${timeAgo(new Date(scannedAtMs ?? now).toISOString())} · daily at 06:00 UTC · checks every minute`
+    : "waiting for sync data";
 
   if (update) {
     return (
@@ -97,17 +79,23 @@ export function SyncChip({ meta }: { meta: Latest["meta"] }) {
             ↻ new data — refresh
           </button>
         </TooltipTrigger>
-        <TooltipContent>a newer scan is available — reload to load it</TooltipContent>
+        <TooltipContent>a newer data sync is available — reload to load it</TooltipContent>
       </Tooltip>
     );
   }
 
   const dot = delayed
     ? "bg-danger"
-    : secsLeft > 0
+    : scannedAt
       ? "bg-[#0cce6b] animate-pulse"
-      : "bg-accent animate-pulse";
-  const label = delayed ? "sync delayed" : secsLeft > 0 ? `next ${mm}:${ss}` : "syncing…";
+      : "bg-[#666]";
+  const label = !scannedAt
+    ? "sync ?"
+    : delayed
+      ? "sync delayed"
+      : secsLeft != null && secsLeft > 0
+        ? `next ${mm}:${ss}`
+        : "syncing…";
 
   return (
     <Tooltip>

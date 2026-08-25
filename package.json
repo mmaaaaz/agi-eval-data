@@ -12,7 +12,8 @@
     "dev:web": "turbo run dev --filter=@agi-eval/web",
     "dev:relay": "turbo run dev --filter=@agi-eval/relay",
     "deploy:web": "bun run build --filter=@agi-eval/web && npx wrangler pages deploy apps/web/dist --project-name agi-eval-data --branch main --commit-dirty=true",
-    "deploy:relay": "cd apps/relay && npx wrangler deploy"
+    "deploy:relay": "cd apps/relay && npx wrangler deploy",
+    "data:build": "python scripts/build_data.py"
   },
   "devDependencies": {
     "turbo": "^2.10.11"

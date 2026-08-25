@@ -4,9 +4,8 @@ import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { UIMessage } from "ai";
 import { z } from "zod";
-import { useData } from "../lib/dataContext";
 import { viewingContext } from "../lib/brief";
-import { loadArtifact, isLoaded, runSql } from "../lib/duck";
+import { loadParquet, isParquetLoaded, runSql } from "../lib/duck";
 import {
   listChats, getChat, saveChat, deleteChat, titleFrom,
   type StoredChat,
@@ -40,17 +39,17 @@ const CONTRIBUTOR_STOP = new Set(["the", "and", "has", "was", "all", "who", "how
 
 /** Exact-email context for contributors the question mentions; "" when none.
  *  Token matching only — raw substrings once made "the" match "theyellowdog123". */
-function contributorContext(text: string, owners: Record<string, string>): string {
+function contributorContext(text: string, ownerEmails: string[]): string {
   const words = text.toLowerCase().split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !CONTRIBUTOR_STOP.has(w));
   if (words.length === 0) return "";
   const tokensOf = (s: string) => s.toLowerCase().split(/[^a-z0-9]+/).filter(Boolean);
-  const matches = Object.entries(owners)
-    .filter(([email, name]) => {
-      const toks = [...tokensOf(name), ...tokensOf(email.split("@")[0])];
-      return words.some((w) => toks.some((t) => t === w || (t.startsWith(w) && w.length >= 4)));
-    })
-    .map(([email, name]) => `- ${name} <${email}>`);
-  return matches.length ? `CONTRIBUTOR MATCHES (use these exact owner emails):\n${matches.join("\n")}` : "";
+  const matches = ownerEmails.filter((email) => {
+    const toks = tokensOf(email.split("@")[0]);
+    return words.some((w) => toks.some((t) => t === w || (t.startsWith(w) && w.length >= 4)));
+  });
+  return matches.length
+    ? `CONTRIBUTOR MATCHES (use these exact owner emails):\n${matches.map((e) => `- ${e}`).join("\n")}`
+    : "";
 }
 
 /** Request-side context window: 16 messages, old tool results compressed to 8 rows. */
@@ -87,7 +86,6 @@ function sysNote(content: string): UIMessage {
 }
 
 function Ask() {
-  const { data } = useData();
   const location = useLocation();
   const navigate = useNavigate();
   const search = Route.useSearch();
@@ -111,6 +109,8 @@ function Ask() {
   const sqlCache = useRef(new Map<string, string>());
   const ranSqlCount = useRef(0);
 
+  const [totalItems, setTotalItems] = useState<number | null>(null);
+  const [ownerEmails, setOwnerEmails] = useState<string[]>([]);
   const [sqlStatus, setSqlStatus] = useState<"idle" | "loading" | "ready" | "error">("idle");
   const [sqlError, setSqlError] = useState("");
 
@@ -119,9 +119,16 @@ function Ask() {
   /* ---------------- DuckDB preload ---------------- */
 
   useEffect(() => {
-    if (!data || isLoaded(data)) return;
+    if (isParquetLoaded()) { setSqlStatus("ready"); return; }
     setSqlStatus("loading");
-    loadArtifact(data)
+    fetch("/data/version.json")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((v) => {
+        if (v?.counts?.all != null) setTotalItems(v.counts.all);
+        if (Array.isArray(v?.owners)) setOwnerEmails(v.owners);
+      })
+      .catch(() => {});
+    loadParquet()
       .then(() => setSqlStatus("ready"))
       .catch((e) => {
         const msg = e instanceof Error ? e.message : String(e);
@@ -129,7 +136,7 @@ function Ask() {
         setSqlError(msg);
         console.error("[duckdb]", msg);
       });
-  }, [data]);
+  }, []);
 
   // pooled model name for the chip
   useEffect(() => {
@@ -144,9 +151,8 @@ function Ask() {
   }, [settings.relay]);
 
   const retrySql = useCallback(() => {
-    if (!data) return;
     setSqlStatus("loading");
-    loadArtifact(data)
+    loadParquet()
       .then(() => setSqlStatus("ready"))
       .catch((e) => {
         const msg = e instanceof Error ? e.message : String(e);
@@ -154,7 +160,7 @@ function Ask() {
         setSqlError(msg);
         console.error("[duckdb]", msg);
       });
-  }, [data]);
+  }, []);
 
   /* ---------------- persistence (debounced) ---------------- */
 
@@ -217,7 +223,7 @@ function Ask() {
           const lastUser = [...messages].reverse().find((m) => m.role === "user");
           const q = lastUser?.parts.find((p) => p.type === "text")?.text ?? "";
           const viewing = viewingContext(location.pathname, location.search as Record<string, unknown>);
-          const ctx = [viewing, data ? contributorContext(q, data.owners) : ""].filter(Boolean).join("\n\n");
+          const ctx = [viewing, ownerEmails.length ? contributorContext(q, ownerEmails) : ""].filter(Boolean).join("\n\n");
           return {
             body: {
               messages: leanHistory(messages),
@@ -228,7 +234,7 @@ function Ask() {
         },
         fetch: fetchWithRetry,
       }),
-    [settings.relay, settings.accessCode, data, location, fetchWithRetry],
+    [settings.relay, settings.accessCode, ownerEmails, location, fetchWithRetry],
   );
 
 
@@ -381,17 +387,17 @@ function Ask() {
   const send = (raw: string) => {
     const text = raw.trim();
     if (!text || streaming) return;
-    if (!data) {
-      setMessages((m) => [...m, sysNote("dataset still loading — try again in a moment")]);
+    if (sqlStatus === "error") {
+      setMessages((m) => [...m, sysNote("SQL engine unavailable — try again in a moment")]);
       return;
     }
 
     // fresh question → fresh per-turn SQL attempt budget
     ranSqlCount.current = 0;
-    let sqlAvailable = isLoaded(data);
-    if (!sqlAvailable && sqlStatus !== "error") {
+    let sqlAvailable = isParquetLoaded();
+    if (!sqlAvailable) {
       setSqlStatus("loading");
-      void loadArtifact(data)
+      void loadParquet()
         .then(() => {
           sqlAvailable = true;
           setSqlStatus("ready");
@@ -409,7 +415,7 @@ function Ask() {
     sendMessage({ text });
   };
 
-  const sqlReady = data && sqlStatus === "ready";
+  const sqlReady = sqlStatus === "ready";
   const sqlUsable = sqlStatus === "ready" || sqlStatus === "error";
 
   return (
@@ -488,7 +494,7 @@ function Ask() {
               title={sqlStatus === "error" ? sqlError : "in-browser DuckDB over the artifact"}
             >
               SQL: {sqlStatus}
-              {sqlReady && data ? ` · ${fmtN(data.files.length)} rows` : ""}
+              {sqlReady && totalItems != null ? ` · ${fmtN(totalItems)} rows` : ""}
             </span>
             <span className="rounded border border-[#262626] px-2 py-1 font-mono text-[10px] text-[#666]" title="fixed model, set on the relay">
               {pooledModel ?? "pooled"}
@@ -520,7 +526,7 @@ function Ask() {
           {messages.length === 0 && (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-center">
               <p className="font-mono text-xs text-[#666]">
-                ask anything — the AI answers from real SQL over {data ? fmtN(data.files.length) : "…"} rows
+                ask anything — the AI answers from real SQL over {totalItems != null ? fmtN(totalItems) : "…"} rows
               </p>
               <p className="max-w-md font-mono text-[10px] leading-5 text-[#404040]">
                 "how many landscape shots from bilal in august?" · "top 5 days by uploads" · "which contributor has the most duplicates?"

@@ -11,6 +11,7 @@ on:
     paths:
       - "apps/**"
       - "packages/**"
+      - "data/**"
       - "scripts/og/**"
       - "package.json"
       - "bun.lock"
@@ -98,6 +99,12 @@ jobs:
 
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
+
+      - name: Bake data artifacts (parquet + stats)
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install pyarrow && python scripts/build_data.py
 
       - name: Build site
         run: bunx turbo run build --filter=@agi-eval/web

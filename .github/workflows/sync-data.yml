@@ -1,23 +1,20 @@
-name: sync
+name: sync-data
+
+# Daily dataset pipeline: full Drive scan → OG cards (on change) →
+# link-share → commit (change-gated). The commit triggers the deploy
+# workflow, which bakes parquet + stats into the site.
 
 on:
   schedule:
-    - cron: "*/10 * * * *"       # every 10 min — change-detection below prevents empty commits;
-                                  # public repo ⇒ unlimited Actions minutes; raw CDN TTL ~5 min
-                                  # makes ~10 min the effective freshness floor anyway
+    - cron: "0 6 * * *" # daily 06:00 UTC
   workflow_dispatch:
-    inputs:
-      bootstrap:
-        description: "Bulk share pass (first run only)"
-        type: boolean
-        default: false
+
+concurrency:
+  group: sync-data
+  cancel-in-progress: false
 
 permissions:
   contents: write
-
-concurrency:
-  group: drive-sync
-  cancel-in-progress: false
 
 jobs:
   sync:
@@ -31,7 +28,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install deps
-        run: pip install google-api-python-client google-auth-oauthlib
+        run: pip install google-api-python-client google-auth-oauthlib pyarrow
 
       - name: Scan Drive metadata → data/latest.json
         env:
@@ -40,8 +37,7 @@ jobs:
           DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
         run: python scripts/drive_scan.py --ci
 
-      - name: Set up Node for OG render
-        uses: actions/setup-node@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 22
 
@@ -63,6 +59,7 @@ jobs:
               g.write(f"changed={str(changed).lower()}")
           print(f"real change detected: {changed}")
           PY
+
       - name: Render OG cards (takumi) — only when stats changed
         if: steps.change.outputs.changed == 'true'
         run: |
@@ -90,7 +87,6 @@ jobs:
           else
             git commit -m "chore(data): sync $(date -u '+%Y-%m-%dT%H:%MZ')"
           fi
-          # main may have moved while we scanned — rebase and retry once
           git fetch origin main
           git rebase origin/main || git rebase --abort
           if git diff --quiet origin/main; then

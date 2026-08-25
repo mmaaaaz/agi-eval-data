@@ -136,7 +136,7 @@ function Shell() {
                 search <kbd className="rounded bg-[#141414] px-1">⌘K</kbd>
               </button>
               <div className="flex items-center gap-2">
-                <SyncChip meta={latest.data.meta} />
+                <SyncChip />
                 <Link
                   to="/settings"
                   aria-label="Settings"

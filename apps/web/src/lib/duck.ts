@@ -137,3 +137,62 @@ export async function runSql(rawSql: string): Promise<SqlResult | { error: strin
     return { error: msg };
   }
 }
+
+/* ---------- baked Parquet path (preferred) ----------
+   The deploy pipeline bakes dist/data/*.parquet from data/latest.json.
+   /ask loads these (same-origin, ~5 MB total vs 12 MB JSON) and derives the
+   images table in SQL — the exact schema the AI's DDL promises. */
+
+let parquetLoaded = false;
+
+export function isParquetLoaded(): boolean {
+  return parquetLoaded;
+}
+
+export async function loadParquet(): Promise<void> {
+  if (parquetLoaded) return;
+  const timeout = new Promise<never>((_, rej) =>
+    setTimeout(() => rej(new Error("Parquet load timed out after 30s")), 30_000),
+  );
+  await Promise.race([loadParquetInner(), timeout]);
+}
+
+async function loadParquetInner(): Promise<void> {
+  const conn = await ensureDb();
+
+  const names = ["files", "exif", "dupGroups", "owners"] as const;
+  await Promise.all(
+    names.map(async (name) => {
+      const res = await fetch(`/data/${name}.parquet`);
+      if (!res.ok) throw new Error(`/data/${name}.parquet HTTP ${res.status} — run "bun run data:build" locally`);
+      await db!.registerFileBuffer(`${name}.parquet`, new Uint8Array(await res.arrayBuffer()));
+    }),
+  );
+
+  await conn.query("DROP TABLE IF EXISTS images");
+  await conn.query("DROP TABLE IF EXISTS owners");
+  await conn.query("DROP TABLE IF EXISTS dup_groups");
+  await conn.query("DROP TABLE IF EXISTS files");
+  await conn.query("DROP TABLE IF EXISTS exif");
+
+  await conn.query("CREATE TABLE files AS SELECT * FROM read_parquet('files.parquet')");
+  await conn.query("CREATE TABLE exif AS SELECT * FROM read_parquet('exif.parquet')");
+  await conn.query("CREATE TABLE owners AS SELECT * FROM read_parquet('owners.parquet')");
+  await conn.query("CREATE TABLE dup_groups AS SELECT * FROM read_parquet('dupGroups.parquet')");
+
+  // derive the images table in SQL — identical schema to the JSON path
+  await conn.query(`
+    CREATE TABLE images AS
+    SELECT f.id, f.name, f.ext, f.size, f.day, f.owner, f.md5, f.kind,
+           e.w AS width, e.h AS height,
+           ROUND(e.w * e.h / 1000000.0, 2) AS megapixels,
+           e.camera AS camera,
+           CASE WHEN e.w IS NULL THEN NULL
+                WHEN e.w * 1.0 / NULLIF(e.h, 0) > 1.05 THEN 'landscape'
+                WHEN e.w * 1.0 / NULLIF(e.h, 0) < 0.95 THEN 'portrait'
+                ELSE 'square' END AS orientation
+    FROM files f LEFT JOIN exif e ON f.id = e.id
+  `);
+
+  parquetLoaded = true;
+}
