@@ -1,5 +1,0 @@
-/composition /gallery/insights 301
-/duplicates /gallery/duplicates 301
-/contributors /gallery/contributors 301
-/contributors/* /gallery/contributors/:splat 301
-/evaluate /contribute/evaluate 301

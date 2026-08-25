@@ -43,3 +43,10 @@ setup-questions.cmd
 /relay/
 /shared/
 relay/dev.log
+
+/appsweb/
+/appsrelay/
+**/.turbo/
+/structuring.mdx
+/tree.json
+/turbo-config.mdx
