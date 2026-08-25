@@ -1,19 +1,20 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, createFileRoute, useNavigate } from "@tanstack/react-router";
 import { z } from "zod";
 import { useData } from "../lib/dataContext";
 import { imageRows, ownerName } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
-import type { DupGroup, Row } from "../lib/types";
-import { Eyebrow } from "../components/Section";
+import { loadSettings } from "../lib/ai/settings";
+import { questionsApi } from "../lib/questions";
 import { ThumbImage } from "../components/ThumbImage";
+import type { DupGroup, Row } from "../lib/types";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
   sort: z.enum(["wasted", "copies", "size", "recent", "name"]).catch("wasted"),
 });
 
-export const Route = createFileRoute("/duplicates")({
+export const Route = createFileRoute("/gallery/duplicates")({
   validateSearch: searchSchema,
   component: Duplicates,
 });
@@ -32,9 +33,26 @@ function Duplicates() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [open, setOpen] = useState<Set<string>>(new Set());
+  const settings = loadSettings();
+  const relay = settings.relay.replace(/\/+$/, "");
+  const code = settings.accessCode;
+  const [marked, setMarked] = useState<{ file_id: string; reason: string; created_at: string }[]>([]);
+
+  const refreshMarked = () => {
+    if (!relay) return;
+    questionsApi.excluded(relay, code).then((r) => setMarked(r.excluded)).catch(() => {});
+  };
+  useEffect(() => { refreshMarked(); /* eslint-disable-line react-hooks/exhaustive-deps */ }, []);
+
+  const unmark = async (fileId: string) => {
+    try {
+      await questionsApi.unexclude(relay, code, fileId);
+      refreshMarked();
+    } catch { /* noop */ }
+  };
 
   const patch = (p: Partial<typeof search>) =>
-    navigate({ to: "/duplicates", search: { ...search, ...p } });
+    navigate({ to: "/gallery/duplicates", search: { ...search, ...p } });
 
   /* md5 → actual copy rows (dupGroups.names is capped at 10 by the scanner) */
   const copiesByMd5 = useMemo(() => {
@@ -107,10 +125,44 @@ function Duplicates() {
 
   return (
     <div>
-      <Eyebrow n="06">duplicates</Eyebrow>
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         Byte-identical copies
       </h1>
+
+      {/* marked for removal */}
+      {marked.length > 0 && (
+        <div className="mt-5 rounded-lg border border-danger/30 bg-danger/[0.03] p-3">
+          <p className="font-mono text-[11px] text-danger">marked for removal ({marked.length}) — hidden from /contribute; trash them in Drive when ready</p>
+          <div className="mt-2 space-y-1.5">
+            {marked.map((x) => {
+              const img = data.files.find((r) => r[0] === x.file_id);
+              return (
+                <div key={x.file_id} className="flex items-center gap-2 rounded border border-[#262626]/60 px-2 py-1.5">
+                  {img && <ThumbImage fileId={x.file_id} alt="" className="h-7 w-9 shrink-0" />}
+                  <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[#a1a1a1]">
+                    {img ? img[1] : x.file_id}
+                    {x.reason && <span className="ml-1.5 text-[#666]">— {x.reason}</span>}
+                  </span>
+                  <a
+                    href={`https://drive.google.com/file/d/${x.file_id}/view`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 font-mono text-[9px] text-accent hover:underline"
+                  >
+                    drive ↗
+                  </a>
+                  <button
+                    onClick={() => unmark(x.file_id)}
+                    className="shrink-0 font-mono text-[9px] text-[#666] transition-colors hover:text-white"
+                  >
+                    unmark
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* summary tiles */}
       <section aria-label="duplicate stats" className="mt-5 grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#262626] bg-[#262626] sm:grid-cols-4">

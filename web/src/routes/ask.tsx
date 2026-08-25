@@ -12,7 +12,6 @@ import {
   type StoredChat,
 } from "../lib/chats";
 import { loadSettings, saveSettings, type AskSettings as AskSettingsData } from "../lib/ai/settings";
-import { AskSettings } from "../components/AskSettings";
 import { Eyebrow } from "../components/Section";
 import { fmtN } from "../lib/format";
 
@@ -91,7 +90,7 @@ function Ask() {
   const navigate = useNavigate();
   const search = Route.useSearch();
 
-  const [settings, setSettings] = useState<AskSettingsData>(loadSettings);
+  const [settings] = useState<AskSettingsData>(loadSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [pooledModel, setPooledModel] = useState<string | null>(null);
 
@@ -447,7 +446,7 @@ function Ask() {
 
       {/* main column */}
       <div className="flex min-w-0 flex-1 flex-col">
-        <Eyebrow n="04">ask ai</Eyebrow>
+        <Eyebrow n="03">ask ai</Eyebrow>
 
         {/* mobile chat switcher */}
         <div className="mb-2 flex items-center gap-2 lg:hidden">
@@ -512,10 +511,6 @@ function Ask() {
             </button>
             <p className="mt-2 font-mono text-[10px] text-[#666]">chat works without SQL — answers will come from the dataset summary only</p>
           </div>
-        )}
-
-        {showSettings && (
-          <AskSettings settings={settings} model={pooledModel} onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))} />
         )}
 
         {/* messages */}

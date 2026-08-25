@@ -4,8 +4,14 @@ compatibility_date = "2025-01-01"
 
 [observability]
 enabled = true
+
 [ai]
 binding = "AI"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "agi-eval-questions"
+database_id = "0d90cf33-9334-42ae-995a-d15805b95bdc"
 
 [vars]
 FORCE_FALLBACK = "0"

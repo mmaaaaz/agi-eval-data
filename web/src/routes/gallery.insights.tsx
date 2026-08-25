@@ -1,11 +1,12 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { Bar, BarChart, CartesianGrid, XAxis, YAxis } from "recharts";
 import { useData } from "../lib/dataContext";
 import { exifOf, imageRows, megapixels, orientationOf, type ExifInfo, type Row } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
-import { Eyebrow } from "../components/Section";
+import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
 import { ThumbImage } from "../components/ThumbImage";
 
-export const Route = createFileRoute("/composition")({ component: Composition });
+export const Route = createFileRoute("/gallery/insights")({ component: Composition });
 
 const MP_BUCKETS: [string, number, number][] = [
   // label, min, max
@@ -32,6 +33,8 @@ const ASPECTS: [string, number][] = [
   ["5:4", 5 / 4],
   ["1:1", 1],
 ];
+
+const AXIS_TICK = { fill: "#666666", fontSize: 9, fontFamily: "Geist Mono" };
 
 function nearestAspect(r: number): string {
   // portrait ratios are mirrored landscape ratios
@@ -71,7 +74,7 @@ function Composition() {
   const aspects = new Map<string, number>();
   const exts = new Map<string, number>();
   const mps: number[] = [];
-  let heaviest: { r: (typeof imgs)[0]; size: number } | null = null;
+  let heaviest: { r: Row; size: number } | null = null;
 
   for (const r of imgs) {
     exts.set(r[2], (exts.get(r[2]) ?? 0) + 1);
@@ -97,21 +100,31 @@ function Composition() {
   }
   const sortedMps = [...mps].sort((a, b) => a - b);
   const medMp = known ? percentile(sortedMps, 0.5) : 0;
-  const maxMp = Math.max(...mpCounts, 1);
-  const maxSize = Math.max(...sizeCounts, 1);
+
+  const resolutionData = MP_BUCKETS.map(([label], i) => ({ bucket: label, images: mpCounts[i] }));
+  const sizeData = SIZE_BUCKETS.map(([label], i) => ({ bucket: label, images: sizeCounts[i] }));
+  const resolutionConfig = { images: { label: "images", color: "var(--chart-1)" } } satisfies ChartConfig;
+  const sizeConfig = { images: { label: "images", color: "var(--chart-1)" } } satisfies ChartConfig;
 
   const camRows = [...cams.entries()].sort((a, b) => b[1].count - a[1].count);
   const topCams = camRows.slice(0, 8);
   const othersCount = camRows.slice(8).reduce((s, [, c]) => s + c.count, 0);
-  const maxCam = Math.max(...camRows.map(([, c]) => c.count), 1);
+  const camData = topCams.map(([cam, c]) => ({
+    camera: cam.length > 18 ? cam.slice(0, 17) + "…" : cam,
+    fullName: cam,
+    images: c.count,
+    medianMp: Number(percentile([...c.mps].sort((a, b) => a - b), 0.5).toFixed(1)),
+  }));
+  const camConfig = { images: { label: "images", color: "var(--chart-1)" } } satisfies ChartConfig;
+
+  const extRowsAll = [...exts.entries()].sort((a, b) => b[1] - a[1]);
+  const extData = extRowsAll.slice(0, 9).map(([e, c]) => ({ ext: `.${e}`, images: c }));
+  const extConfig = { images: { label: "images", color: "var(--chart-1)" } } satisfies ChartConfig;
 
   const aspectRows = [...aspects.entries()].sort((a, b) => b[1] - a[1]).slice(0, 6);
   const maxAspect = Math.max(...aspectRows.map(([, c]) => c), 1);
 
-  const extRows = [...exts.entries()].sort((a, b) => b[1] - a[1]);
-  const topExts = extRows.slice(0, 9);
-  const othersExtCount = extRows.slice(9).reduce((s, [, c]) => s + c, 0);
-  const maxExt = Math.max(...extRows.map(([, c]) => c), 1);
+  const othersExtCount = extRowsAll.slice(9).reduce((s, [, c]) => s + c, 0);
 
   const byMp = [...ex].sort((a, b) => megapixels(b.e.w, b.e.h) - megapixels(a.e.w, a.e.h));
   const smallest = byMp.at(-1);
@@ -119,7 +132,6 @@ function Composition() {
 
   return (
     <div>
-      <Eyebrow n="03">composition</Eyebrow>
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         What the dataset is made of
         <span className="ml-3 font-mono text-sm font-normal tabular-nums text-[#666]">
@@ -133,7 +145,7 @@ function Composition() {
         <Tile label="median resolution" value={`${medMp.toFixed(1)} MP`} />
         <Tile label="distinct cameras" value={fmtN(camRows.length)} />
         <Tile label="landscape share" value={`${Math.round((land / Math.max(known, 1)) * 100)}%`} />
-        <Tile label="file types" value={fmtN(extRows.length)} />
+        <Tile label="file types" value={fmtN(extRowsAll.length)} />
         <Tile label="heaviest file" value={heaviest ? fmtB(heaviest.size) : "—"} />
       </div>
 
@@ -166,49 +178,34 @@ function Composition() {
       </section>
 
       <div className="grid gap-10 pt-10 lg:grid-cols-2">
-        {/* resolution histogram */}
+        {/* resolution */}
         <section>
           <h2 className="mb-5 font-medium tracking-tight text-white">Resolution</h2>
-          <div className="flex h-44 items-end gap-3">
-            {MP_BUCKETS.map(([label], i) => (
-              <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                <span className="font-mono text-[10px] tabular-nums text-[#a1a1a1]">{fmtN(mpCounts[i])}</span>
-                <div
-                  className="w-full rounded-t-[3px] transition-colors hover:bg-accent"
-                  style={{
-                    height: `${Math.max(3, (mpCounts[i] / maxMp) * 100)}%`,
-                    backgroundColor: i === MP_BUCKETS.length - 1 ? "#0070f3" : "#262626",
-                  }}
-                  title={`${label} · ${fmtN(mpCounts[i])} images`}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex gap-3 border-t border-[#262626]/60 pt-2">
-            {MP_BUCKETS.map(([label]) => (
-              <span key={label} className="min-w-0 flex-1 text-center font-mono text-[9px] text-[#666]">{label}</span>
-            ))}
-          </div>
+          <ChartContainer config={resolutionConfig} className="h-44 w-full">
+            <BarChart data={resolutionData} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+              <CartesianGrid vertical={false} stroke="#1a1a1a" />
+              <XAxis dataKey="bucket" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={0} />
+              <YAxis hide />
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={{ fill: "#141414" }} />
+              <Bar dataKey="images" fill="var(--color-images)" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
         </section>
 
         {/* file types */}
         <section>
           <h2 className="mb-5 font-medium tracking-tight text-white">File types</h2>
-          {topExts.map(([e, c]) => (
-            <div key={e} className="mb-2.5 grid grid-cols-[76px_1fr_56px] items-center gap-3">
-              <span className="font-mono text-[11px] text-[#a1a1a1]">.{e}</span>
-              <span className="h-[10px] overflow-hidden rounded-full bg-[#161616]">
-                <span
-                  className="block h-full rounded-full bg-gradient-to-r from-[#155a9d] to-accent"
-                  style={{ width: `${Math.max(2, (c / maxExt) * 100)}%` }}
-                />
-              </span>
-              <span className="text-right font-mono text-[11px] tabular-nums text-[#ededed]">{fmtN(c)}</span>
-            </div>
-          ))}
+          <ChartContainer config={extConfig} className="h-44 w-full">
+            <BarChart data={extData} layout="vertical" margin={{ top: 0, right: 12, bottom: 0, left: 4 }}>
+              <XAxis type="number" hide />
+              <YAxis type="category" dataKey="ext" tick={AXIS_TICK} axisLine={false} tickLine={false} width={56} />
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={{ fill: "#141414" }} />
+              <Bar dataKey="images" fill="var(--color-images)" radius={[0, 3, 3, 0]} barSize={14} />
+            </BarChart>
+          </ChartContainer>
           {othersExtCount > 0 && (
             <p className="mt-3 font-mono text-[10px] text-[#666]">
-              + {fmtN(othersExtCount)} images across {extRows.length - topExts.length} other types
+              + {fmtN(othersExtCount)} images across {extRowsAll.length - 9} other types
             </p>
           )}
         </section>
@@ -218,26 +215,15 @@ function Composition() {
         {/* file size distribution */}
         <section>
           <h2 className="mb-5 font-medium tracking-tight text-white">File size</h2>
-          <div className="flex h-44 items-end gap-3">
-            {SIZE_BUCKETS.map(([label], i) => (
-              <div key={label} className="flex min-w-0 flex-1 flex-col items-center gap-2">
-                <span className="font-mono text-[10px] tabular-nums text-[#a1a1a1]">{fmtN(sizeCounts[i])}</span>
-                <div
-                  className="w-full rounded-t-[3px] transition-colors hover:bg-accent"
-                  style={{
-                    height: `${Math.max(3, (sizeCounts[i] / maxSize) * 100)}%`,
-                    backgroundColor: i === SIZE_BUCKETS.length - 1 ? "#0070f3" : "#262626",
-                  }}
-                  title={`${label} · ${fmtN(sizeCounts[i])} images`}
-                />
-              </div>
-            ))}
-          </div>
-          <div className="mt-2 flex gap-3 border-t border-[#262626]/60 pt-2">
-            {SIZE_BUCKETS.map(([label]) => (
-              <span key={label} className="min-w-0 flex-1 text-center font-mono text-[9px] text-[#666]">{label}</span>
-            ))}
-          </div>
+          <ChartContainer config={sizeConfig} className="h-44 w-full">
+            <BarChart data={sizeData} margin={{ top: 8, right: 4, bottom: 0, left: 4 }}>
+              <CartesianGrid vertical={false} stroke="#1a1a1a" />
+              <XAxis dataKey="bucket" tick={AXIS_TICK} axisLine={false} tickLine={false} interval={0} />
+              <YAxis hide />
+              <ChartTooltip content={<ChartTooltipContent hideLabel />} cursor={{ fill: "#141414" }} />
+              <Bar dataKey="images" fill="var(--color-images)" radius={[3, 3, 0, 0]} />
+            </BarChart>
+          </ChartContainer>
         </section>
 
         {/* aspect ratios */}
@@ -258,6 +244,40 @@ function Composition() {
           <p className="mt-2 font-mono text-[10px] text-[#666]">↺ = rotated (portrait variant of the ratio)</p>
         </section>
       </div>
+
+      {/* cameras */}
+      <section className="pt-10">
+        <h2 className="mb-5 font-medium tracking-tight text-white">
+          Cameras
+          <span className="ml-2 font-mono text-xs font-normal tabular-nums text-[#666]">
+            top {camData.length} of {camRows.length} · hover for median MP
+          </span>
+        </h2>
+        <ChartContainer config={camConfig} className="h-64 w-full">
+          <BarChart data={camData} layout="vertical" margin={{ top: 0, right: 16, bottom: 0, left: 4 }}>
+            <XAxis type="number" hide />
+            <YAxis type="category" dataKey="camera" tick={AXIS_TICK} axisLine={false} tickLine={false} width={130} />
+            <ChartTooltip
+              content={<ChartTooltipContent hideLabel />}
+              cursor={{ fill: "#141414" }}
+              formatter={(_value, _name, item) => (
+                <span className="font-mono text-[10px] text-[#ededed]">
+                  {fmtN(Number(item.payload.images))} images · median {item.payload.medianMp} MP
+                </span>
+              )}
+            />
+            <Bar dataKey="images" fill="var(--color-images)" radius={[0, 3, 3, 0]} barSize={16} />
+          </BarChart>
+        </ChartContainer>
+        {othersCount > 0 && (
+          <p className="mt-3 font-mono text-[10px] text-[#666]">
+            + {fmtN(othersCount)} images across {camRows.length - topCams.length} other devices
+          </p>
+        )}
+        <p className="mt-6 font-mono text-[10px] leading-5 text-[#666]">
+          source: drive imageMediaMetadata · cameras self-reported by exif · unknown-camera images excluded from gear stats
+        </p>
+      </section>
 
       {/* resolution extremes */}
       {known > 0 && smallest && largest && (
@@ -280,41 +300,6 @@ function Composition() {
           </div>
         </section>
       )}
-
-      {/* cameras */}
-      <section className="pt-10">
-        <h2 className="mb-5 font-medium tracking-tight text-white">
-          Cameras
-          <span className="ml-2 font-mono text-xs font-normal tabular-nums text-[#666]">top {topCams.length} of {camRows.length}</span>
-        </h2>
-        {topCams.map(([cam, c]) => {
-          const camSorted = [...c.mps].sort((a, b) => a - b);
-          const camMed = percentile(camSorted, 0.5);
-          return (
-            <div key={cam} className="mb-2.5 grid grid-cols-[minmax(110px,240px)_1fr_64px_88px] items-center gap-3">
-              <span className="truncate font-mono text-[11px] text-[#a1a1a1]" title={cam}>{cam}</span>
-              <span className="h-[10px] overflow-hidden rounded-full bg-[#161616]">
-                <span
-                  className="block h-full rounded-full bg-gradient-to-r from-[#155a9d] to-accent"
-                  style={{ width: `${Math.max(2, (c.count / maxCam) * 100)}%` }}
-                />
-              </span>
-              <span className="text-right font-mono text-[11px] tabular-nums text-[#ededed]">{fmtN(c.count)}</span>
-              <span className="text-right font-mono text-[10px] tabular-nums text-[#666]" title="median MP across this camera's images">
-                ⌀ {camMed.toFixed(1)} MP
-              </span>
-            </div>
-          );
-        })}
-        {othersCount > 0 && (
-          <p className="mt-3 font-mono text-[10px] text-[#666]">
-            + {fmtN(othersCount)} images across {camRows.length - topCams.length} other devices
-          </p>
-        )}
-        <p className="mt-6 font-mono text-[10px] leading-5 text-[#666]">
-          source: drive imageMediaMetadata · cameras self-reported by exif · unknown-camera images excluded from gear stats
-        </p>
-      </section>
     </div>
   );
 }
@@ -334,7 +319,7 @@ function ExtremeCard({
   meta,
 }: {
   title: string;
-  row: { 0: string; 1: string; 5: string };
+  row: Row;
   meta: string;
 }) {
   return (

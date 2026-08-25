@@ -51,25 +51,25 @@ const routes = [
     url: "/ask",
   },
   {
-    dir: "composition",
+    dir: "gallery/insights",
     title: `Composition · ${BASE}`,
     desc: `What the dataset is made of: orientation split, resolution histogram, aspect ratios, ${fmt(Object.keys(data.exif ?? {}).length)} images of camera EXIF.`,
     image: "composition.png",
-    url: "/composition",
+    url: "/gallery/insights",
   },
   {
-    dir: "contributors",
+    dir: "gallery/contributors",
     title: `Contributors · ${BASE}`,
     desc: `${owners.length} people building the benchmark — top collector: ${top.name} with ${fmt(top.raw)} pictures.`,
     image: "contributors.png",
-    url: "/contributors",
+    url: "/gallery/contributors",
   },
   {
-    dir: "duplicates",
+    dir: "gallery/duplicates",
     title: `Duplicates · ${BASE}`,
     desc: `${fmt(data.dupGroups.length)} byte-identical duplicate groups · ${fmt(c.dupCopies)} copies flagged by checksum.`,
     image: "duplicates.png",
-    url: "/duplicates",
+    url: "/gallery/duplicates",
   },
   {
     dir: "project",
@@ -83,11 +83,11 @@ const routes = [
 // one page per contributor — shared links get their personal card
 for (const o of owners) {
   routes.push({
-    dir: `contributors/${o.email}`,
+    dir: `gallery/contributors/${o.email}`,
     title: `${o.name} · Contributors · ${BASE}`,
     desc: `${fmt(o.raw)} pictures · ${fmt(o.unique)} unique · contributor on the agi-eval-data benchmark dataset.`,
     image: `contributors/${o.email}.png`,
-    url: `/contributors/${encodeURIComponent(o.email)}`,
+    url: `/gallery/contributors/${encodeURIComponent(o.email)}`,
   });
 }
 

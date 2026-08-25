@@ -1,10 +1,12 @@
 /** Route → what "these / here" means on that page. Order matters. */
 const ROUTE_HINTS: [RegExp, string][] = [
-  [/^\/gallery$/, "the image gallery — 'these' means the images matching the visible filters (who/ext/orient/minmp in the query string)"],
-  [/^\/duplicates/, "the duplicates page — 'these' means the byte-identical duplicate groups listed"],
-  [/^\/composition/, "the composition stats page (orientation, resolution, cameras)"],
-  [/^\/contributors\/.+$/, "a single contributor's page — 'these' means that contributor's images"],
-  [/^\/contributors$/, "the contributors ranking table"],
+  [/^\/gallery\/?$/, "the image gallery — 'these' means the images matching the visible filters (who/ext/orient/minmp in the query string)"],
+  [/^\/gallery\/insights/, "the dataset insights page (orientation, resolution, file types, cameras)"],
+  [/^\/gallery\/duplicates/, "the duplicates page — 'these' means the byte-identical duplicate groups listed"],
+  [/^\/gallery\/contributors\/.+$/, "a single contributor's page — 'these' means that contributor's images"],
+  [/^\/gallery\/contributors$/, "the contributors ranking table"],
+  [/^\/contribute\/evaluate/, "the model evaluation page (grading VLM responses)"],
+  [/^\/contribute\/?$/, "the question authoring page"],
   [/^\/project/, "the project description page"],
   [/^\/$/, "the overview page"],
 ];

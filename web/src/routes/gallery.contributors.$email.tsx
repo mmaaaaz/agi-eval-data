@@ -9,7 +9,7 @@ import { ThumbImage } from "../components/ThumbImage";
 import { VirtualGallery } from "../components/VirtualGallery";
 import { Lightbox } from "../components/Lightbox";
 
-export const Route = createFileRoute("/contributors/$email")({ component: Contributor });
+export const Route = createFileRoute("/gallery/contributors/$email")({ component: Contributor });
 
 function Contributor() {
   const { data } = useData();
@@ -30,7 +30,7 @@ function Contributor() {
     return (
       <div className="py-20 text-center">
         <p className="font-mono text-xs text-[#666]">no contributor “{email}” in this snapshot</p>
-        <Link to="/contributors" className="mt-3 inline-block font-mono text-xs text-accent hover:underline">
+        <Link to="/gallery/contributors" className="mt-3 inline-block font-mono text-xs text-accent hover:underline">
           ← all contributors
         </Link>
       </div>
@@ -45,7 +45,7 @@ function Contributor() {
 
   return (
     <div>
-      <Link to="/contributors" className="font-mono text-[11px] text-[#666] transition-colors hover:text-white">
+      <Link to="/gallery/contributors" className="font-mono text-[11px] text-[#666] transition-colors hover:text-white">
         ← contributors
       </Link>
 

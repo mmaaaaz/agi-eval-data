@@ -12,7 +12,7 @@ function Project() {
 
   return (
     <div className="max-w-3xl">
-      <Eyebrow n="07">project</Eyebrow>
+      <Eyebrow n="05">project</Eyebrow>
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         agi-eval-data
       </h1>

@@ -2,18 +2,16 @@ import { Link, createFileRoute, Outlet } from "@tanstack/react-router";
 import { Eyebrow } from "../components/Section";
 
 const TABS = [
-  { to: "/gallery", label: "Images", exact: true },
-  { to: "/gallery/insights", label: "Insights", exact: false },
-  { to: "/gallery/duplicates", label: "Duplicates", exact: false },
-  { to: "/gallery/contributors", label: "Contributors", exact: false },
+  { to: "/contribute", label: "Questions", exact: true },
+  { to: "/contribute/evaluate", label: "Evaluate", exact: false },
 ];
 
-export const Route = createFileRoute("/gallery")({ component: GalleryLayout });
+export const Route = createFileRoute("/contribute")({ component: ContributeLayout });
 
-function GalleryLayout() {
+function ContributeLayout() {
   return (
     <div>
-      <Eyebrow n="02">gallery</Eyebrow>
+      <Eyebrow n="04">contribute</Eyebrow>
       <div className="scrollbar-none mb-6 flex gap-1 overflow-x-auto">
         {TABS.map((t) => (
           <Link

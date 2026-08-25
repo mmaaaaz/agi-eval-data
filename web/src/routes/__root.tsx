@@ -4,14 +4,16 @@ import { useLatest } from "../lib/data";
 import { DataProvider, useData } from "../lib/dataContext";
 import { SyncChip } from "../components/SyncChip";
 import { CommandPalette } from "../components/CommandPalette";
+import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
+import { Menu } from "lucide-react";
 
 const NAV = [
   { to: "/", label: "Overview" },
   { to: "/gallery", label: "Gallery" },
-  { to: "/composition", label: "Composition" },
   { to: "/ask", label: "Ask" },
-  { to: "/contributors", label: "Contributors" },
-  { to: "/duplicates", label: "Duplicates" },
+  { to: "/contribute", label: "Contribute" },
   { to: "/project", label: "Project" },
 ] as const;
 
@@ -96,7 +98,30 @@ function Shell() {
         <div className="mx-auto max-w-[1400px] px-4 sm:px-5">
           {/* row 1: brand · palette · sync */}
           <div className="flex h-12 items-center justify-between gap-3 lg:h-14">
-            <Brand />
+            <div className="flex items-center gap-2">
+              {/* mobile menu */}
+              <Sheet>
+                <SheetTrigger asChild>
+                  <button
+                    aria-label="Open menu"
+                    className="flex h-8 w-8 items-center justify-center rounded-md border border-[#262626] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white lg:hidden"
+                  >
+                    <Menu className="h-4 w-4" />
+                  </button>
+                </SheetTrigger>
+                <SheetContent side="left" className="w-64 border-[#262626] bg-black">
+                  <SheetTitle className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">navigation</SheetTitle>
+                  <nav className="mt-4 flex flex-col gap-1">
+                    {NAV.map((n) => (
+                      <NavLink key={n.to} to={n.to} label={n.label} />
+                    ))}
+                    <div className="my-2 h-px bg-[#262626]" />
+                    <NavLink to="/settings" label="Settings" />
+                  </nav>
+                </SheetContent>
+              </Sheet>
+              <Brand />
+            </div>
             <nav className="hidden items-center gap-1 lg:flex">
               {NAV.map((n) => (
                 <NavLink key={n.to} to={n.to} label={n.label} />
@@ -110,15 +135,18 @@ function Shell() {
               >
                 search <kbd className="rounded bg-[#141414] px-1">⌘K</kbd>
               </button>
-              <SyncChip meta={latest.data.meta} />
+              <div className="flex items-center gap-2">
+                <SyncChip meta={latest.data.meta} />
+                <Link
+                  to="/settings"
+                  aria-label="Settings"
+                  className="flex h-7 w-7 items-center justify-center rounded-md border border-[#262626] font-mono text-[11px] text-[#666] transition-colors hover:border-[#404040] hover:text-white"
+                >
+                  ⚙
+                </Link>
+              </div>
             </div>
           </div>
-          {/* row 2 (mobile/tablet): scrollable nav */}
-          <nav className="scrollbar-none -mx-4 mb-1 flex items-center gap-1 overflow-x-auto px-4 sm:-mx-5 sm:px-5 lg:hidden">
-            {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} label={n.label} />
-            ))}
-          </nav>
         </div>
       </header>
 
@@ -147,6 +175,7 @@ function Shell() {
         </footer>
 
         <CommandPalette open={palette} onClose={() => setPalette(false)} />
+        <Toaster position="bottom-right" />
       </div>
   );
 }
@@ -166,10 +195,12 @@ function NavLink({ to, label }: { to: string; label: string }) {
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
   "/gallery": "Gallery",
-  "/composition": "Composition",
+  "/gallery/insights": "Insights",
+  "/gallery/duplicates": "Duplicates",
+  "/gallery/contributors": "Contributors",
   "/ask": "Ask AI",
-  "/contributors": "Contributors",
-  "/duplicates": "Duplicates",
+  "/contribute": "Contribute",
+  "/contribute/evaluate": "Evaluate",
   "/project": "Project",
 };
 
@@ -190,9 +221,11 @@ export const Route = createRootRoute({
     }, [pathname]);
 
     return (
-      <DataProvider value={latest}>
-        <Shell />
-      </DataProvider>
+      <TooltipProvider delayDuration={200}>
+        <DataProvider value={latest}>
+          <Shell />
+        </DataProvider>
+      </TooltipProvider>
     );
   },
   notFoundComponent: NotFound,

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import type { Row } from "../lib/types";
 import { ThumbImage } from "./ThumbImage";
@@ -7,6 +7,8 @@ interface Props {
   rows: Row[];
   dupSet: Set<string>;
   onOpen: (index: number) => void;
+  /** optional per-image badge (e.g. question count) rendered beside the caption */
+  badge?: (row: Row) => ReactNode;
 }
 
 const MIN_COL = 168;
@@ -14,7 +16,7 @@ const GAP = 8;
 const CAPTION = 30;
 
 /** Windowed responsive thumbnail grid — handles 20k+ rows smoothly. */
-export function VirtualGallery({ rows, dupSet, onOpen }: Props) {
+export function VirtualGallery({ rows, dupSet, onOpen, badge }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -74,9 +76,12 @@ export function VirtualGallery({ rows, dupSet, onOpen }: Props) {
                       style={{ height: imgH }}
                       className={`w-full rounded-md border transition-colors ${isDup ? "border-danger/50" : "border-[#262626] group-hover:border-[#404040]"}`}
                     />
-                    <div className="mt-1.5 truncate font-mono text-[10px] text-[#666] group-hover:text-[#a1a1a1]" title={r[1]}>
-                      {isDup && <span className="mr-1 inline-block h-[5px] w-[5px] rounded-full bg-danger align-middle" />}
-                      {r[1]}
+                    <div className="mt-1.5 flex items-center gap-1.5">
+                      <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[#666] group-hover:text-[#a1a1a1]" title={r[1]}>
+                        {isDup && <span className="mr-1 inline-block h-[5px] w-[5px] rounded-full bg-danger align-middle" />}
+                        {r[1]}
+                      </span>
+                      {badge?.(r) && <span className="shrink-0">{badge(r)}</span>}
                     </div>
                   </button>
                 );

@@ -23,9 +23,9 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
     const pages: Item[] = [
       { key: "p-overview", label: "Overview", group: "Pages", run: () => navigate({ to: "/" }) },
       { key: "p-gallery", label: "Gallery", group: "Pages", run: () => navigate({ to: "/gallery" }) },
-      { key: "p-composition", label: "Composition", group: "Pages", run: () => navigate({ to: "/composition" }) },
-      { key: "p-contribs", label: "Contributors", group: "Pages", run: () => navigate({ to: "/contributors" }) },
-      { key: "p-dups", label: "Duplicates", group: "Pages", run: () => navigate({ to: "/duplicates" }) },
+      { key: "p-insights", label: "Insights", group: "Pages", run: () => navigate({ to: "/gallery/insights" }) },
+      { key: "p-contribs", label: "Contributors", group: "Pages", run: () => navigate({ to: "/gallery/contributors" }) },
+      { key: "p-dups", label: "Duplicates", group: "Pages", run: () => navigate({ to: "/gallery/duplicates" }) },
       { key: "p-project", label: "Project", group: "Pages", run: () => navigate({ to: "/project" }) },
     ];
     if (!data) return pages;
@@ -64,7 +64,7 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       label: data.owners[o.email] ?? o.email,
       hint: `${o.raw.toLocaleString()} pics`,
       group: "People",
-      run: () => navigate({ to: "/contributors/$email", params: { email: encodeURIComponent(o.email) } }),
+      run: () => navigate({ to: "/gallery/contributors/$email", params: { email: encodeURIComponent(o.email) } }),
     }));
     return [...pages, ...actions, ...people];
   }, [data, navigate, refresh]);

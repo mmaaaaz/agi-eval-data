@@ -294,7 +294,7 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
 
             <MetaBlock label="uploader">
               <Link
-                to="/contributors/$email"
+                to="/gallery/contributors/$email"
                 params={{ email: encodeURIComponent(who) }}
                 className="text-xs text-accent hover:underline"
               >

@@ -9,16 +9,7 @@ import {
   type UIMessage,
 } from "ai";
 import { z } from "zod";
-
-export interface Env {
-  GATEWAY_KEY?: string;
-  GATEWAY_MODEL?: string;
-  ACCESS_CODE?: string;
-  RATE_LIMIT_PER_IP?: string;
-  FORCE_FALLBACK?: string;
-  /** Workers AI binding (wrangler.toml [ai]) — free-tier overflow engine */
-  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<{ response?: string }> };
-}
+import { handleQuestionsApi, type Env } from "./questions";
 
 /** Workers AI model used when the gateway rate-limits (free 10k neurons/day). */
 const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
@@ -32,8 +23,8 @@ const FALLBACK_SYSTEM_PROMPT = `You are the assistant for agi-eval-data — an A
 Questions ABOUT the dataset, its purpose, stats or project: answer directly and helpfully. The precise SQL tool is temporarily unavailable (the primary model is rate-limited), so if a question needs an exact count, ranking or filter, say: "Precise numbers are temporarily unavailable — ask again in a couple of minutes." Keep answers to 1-3 sentences. Off-topic questions: reply with exactly one line: "I only answer questions about the agi-eval-data dataset."`;
 const CORS = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, GET, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Access-Code",
+  "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
+  "Access-Control-Allow-Headers": "Content-Type, X-Access-Code, X-Questions-Code",
   "Access-Control-Max-Age": "86400",
 };
 
@@ -254,6 +245,12 @@ export default {
         stream,
         headers: { ...UI_MESSAGE_STREAM_HEADERS, ...CORS },
       });
+    }
+
+    if ((url.pathname.startsWith("/api/questions") || url.pathname.startsWith("/api/evaluations") || url.pathname.startsWith("/api/insights") || url.pathname.startsWith("/api/excluded"))) {
+      if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS });
+      const questionsResponse = await handleQuestionsApi(request, env, url);
+      if (questionsResponse) return questionsResponse;
     }
 
     return json({ error: "not found" }, 404, { ...CORS });

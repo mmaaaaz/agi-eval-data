@@ -2,10 +2,9 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
-import { Eyebrow } from "../components/Section";
 import { ThumbImage } from "../components/ThumbImage";
 
-export const Route = createFileRoute("/contributors/")({ component: Contributors });
+export const Route = createFileRoute("/gallery/contributors")({ component: Contributors });
 
 function Contributors() {
   const { data } = useData();
@@ -14,7 +13,6 @@ function Contributors() {
 
   return (
     <div>
-      <Eyebrow n="05">contributors</Eyebrow>
       <h1 className="mb-6 text-2xl font-semibold tracking-tight text-white">Who uploads what</h1>
 
       <div className="overflow-hidden rounded-lg border border-[#262626]">
@@ -32,7 +30,7 @@ function Contributors() {
           return (
             <Link
               key={o.email}
-              to="/contributors/$email"
+              to="/gallery/contributors/$email"
               params={{ email: o.email }}
               className="block border-b border-[#262626]/50 px-4 py-3 transition-colors last:border-b-0 hover:bg-[#0a0a0a] md:grid md:grid-cols-[40px_minmax(0,1fr)_repeat(5,minmax(0,90px))_110px] md:items-center md:gap-4"
             >
