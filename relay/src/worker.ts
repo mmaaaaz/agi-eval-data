@@ -10,6 +10,7 @@ import {
 } from "ai";
 import { z } from "zod";
 import { handleQuestionsApi, type Env } from "./questions";
+import { CORS_HEADERS, jsonResponse as json } from "./http";
 
 /** Workers AI model used when the gateway rate-limits (free 10k neurons/day). */
 const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
@@ -21,19 +22,6 @@ let gwFallbackUntil = 0;
  *  answer narratively and say when precise numbers are unavailable. */
 const FALLBACK_SYSTEM_PROMPT = `You are the assistant for agi-eval-data — an AGI benchmark dataset of real-world images where vision models fail, plus geometric reasoning problems (~45k images, 7 contributors, syncing hourly from Google Drive).
 Questions ABOUT the dataset, its purpose, stats or project: answer directly and helpfully. The precise SQL tool is temporarily unavailable (the primary model is rate-limited), so if a question needs an exact count, ranking or filter, say: "Precise numbers are temporarily unavailable — ask again in a couple of minutes." Keep answers to 1-3 sentences. Off-topic questions: reply with exactly one line: "I only answer questions about the agi-eval-data dataset."`;
-const CORS = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Access-Code, X-Questions-Code",
-  "Access-Control-Max-Age": "86400",
-};
-
-const json = (obj: Record<string, unknown>, status = 200) =>
-  new Response(JSON.stringify(obj), {
-    status,
-    headers: { "Content-Type": "application/json", ...CORS },
-  });
-
 /* per-IP daily cap (best-effort, in-memory) */
 const rateMap = new Map();
 function allowIp(ip: string, limit: number) {
@@ -110,21 +98,21 @@ export default {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS")
-      return new Response(null, { status: 204, headers: CORS });
+      return new Response(null, { status: 204, headers: CORS_HEADERS });
 
     if (url.pathname === "/api/health")
-      return json({ ok: true, service: "agi-eval-relay" }, 200, { ...CORS });
+      return json({ ok: true, service: "agi-eval-relay" }, 200, { ...CORS_HEADERS });
 
     if (url.pathname === "/api/info")
       return json(
         { model: env.GATEWAY_MODEL ?? "unset", transport: "ai-sdk-v5" },
         200,
-        { ...CORS },
+        { ...CORS_HEADERS },
       );
 
     if (url.pathname === "/api/chat" && request.method === "POST") {
       if (env.ACCESS_CODE && request.headers.get("x-access-code") !== env.ACCESS_CODE)
-        return json({ error: "invalid access code" }, 401, { ...CORS });
+        return json({ error: "invalid access code" }, 401, { ...CORS_HEADERS });
 
       const limit = Number(env.RATE_LIMIT_PER_IP || 30);
       if (!allowIp(ipOf(request), limit))
@@ -133,14 +121,14 @@ export default {
             error: `daily limit reached for your address (${limit} questions/day). Add your own key via settings, or try again after 00:00 UTC.`,
           },
           429,
-          { ...CORS },
+          { ...CORS_HEADERS },
         );
 
       if (!env.GATEWAY_KEY)
         return json(
           { error: "pooled chat is not configured (missing GATEWAY_KEY)" },
           503,
-          { ...CORS },
+          { ...CORS_HEADERS },
         );
 
       const { messages, context } = (await request.json()) as {
@@ -243,16 +231,16 @@ export default {
       });
       return createUIMessageStreamResponse({
         stream,
-        headers: { ...UI_MESSAGE_STREAM_HEADERS, ...CORS },
+        headers: { ...UI_MESSAGE_STREAM_HEADERS, ...CORS_HEADERS },
       });
     }
 
     if ((url.pathname.startsWith("/api/questions") || url.pathname.startsWith("/api/evaluations") || url.pathname.startsWith("/api/insights") || url.pathname.startsWith("/api/excluded"))) {
-      if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS });
+      if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS_HEADERS });
       const questionsResponse = await handleQuestionsApi(request, env, url);
       if (questionsResponse) return questionsResponse;
     }
 
-    return json({ error: "not found" }, 404, { ...CORS });
+    return json({ error: "not found" }, 404, { ...CORS_HEADERS });
   },
 } satisfies ExportedHandler<Env>;

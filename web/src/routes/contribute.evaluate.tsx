@@ -25,10 +25,10 @@ export const Route = createFileRoute("/contribute/evaluate")({ component: Evalua
 
 const VERDICTS = ["correct", "close", "wrong", "unanswered"] as const;
 
-type Sort = "recent" | "most" | "fewest";
+type Sort = "most" | "fewest";
 
 function Evaluate() {
-  const settings = loadSettings();
+  const [settings] = useState(loadSettings);
   const relay = settings.relay.replace(/\/+$/, "");
   const code = settings.accessCode;
 
@@ -52,6 +52,7 @@ function Evaluate() {
 
   /* response + grading */
   const [response, setResponse] = useState("");
+  const [source, setSource] = useState<"openrouter" | "manual">("manual");
   const [running, setRunning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -76,7 +77,6 @@ function Evaluate() {
     const cmp: Record<Sort, (a: (typeof items)[0], b: (typeof items)[0]) => number> = {
       most: (a, b) => b.n - a.n,
       fewest: (a, b) => a.n - b.n,
-      recent: (a, b) => b.fileId.localeCompare(a.fileId),
     };
     return items.sort(cmp[sort]).map((x) => x.fileId);
   }, [counts, countsLoaded, sort]);
@@ -114,7 +114,7 @@ function Evaluate() {
         model,
         response,
         verdict,
-        source: running ? "openrouter" : "manual",
+        source,
         graded_by: "",
       });
       loadEvals(selected.id);
@@ -130,6 +130,7 @@ function Evaluate() {
 
   const runModel = async () => {
     if (!selected || !model || !orKey) return;
+    setSource("openrouter");
     setRunning(true);
     setResponse("");
     try {

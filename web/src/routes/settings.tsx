@@ -17,7 +17,19 @@ function Settings() {
 
 
 
-  const exportUrl = questionsApi.exportUrl(settings.relay.replace(/\/+$/, ""), settings.accessCode);
+  const downloadExport = async () => {
+    const res = await fetch(questionsApi.exportUrl(settings.relay.replace(/\/+$/, "")), {
+      headers: { "x-questions-code": settings.accessCode },
+    });
+    if (!res.ok) { toast.error(`export failed: HTTP ${res.status}`); return; }
+    const blob = await res.blob();
+    const a = document.createElement("a");
+    a.href = URL.createObjectURL(blob);
+    a.download = "questions.jsonl";
+    a.click();
+    URL.revokeObjectURL(a.href);
+    toast.success("questions.jsonl downloaded");
+  };
 
   return (
     <div className="max-w-2xl">
@@ -80,12 +92,12 @@ function Settings() {
             all approved, answered questions as VQA-style JSONL — this is what lands in the repo as data/questions.jsonl
           </p>
         </div>
-        <a
-          href={exportUrl}
+        <button
+          onClick={downloadExport}
           className="inline-block rounded-lg border border-accent/60 px-4 py-2 font-mono text-xs text-accent transition-colors hover:bg-accent hover:text-white"
         >
           download questions.jsonl
-        </a>
+        </button>
       </section>
     </div>
   );

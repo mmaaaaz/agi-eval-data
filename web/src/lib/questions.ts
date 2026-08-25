@@ -175,7 +175,7 @@ export const questionsApi = {
   tags(relay: string, code: string): Promise<{ tags: [string, number][] }> {
     return call(relay, code, "/api/questions/tags");
   },
-  exportUrl(relay: string, code: string): string {
+  exportUrl(relay: string): string {
     return `${relay.replace(/\/+$/, "")}/api/questions/export.jsonl`;
   },
   evaluations(relay: string, code: string, opts: { question_id?: number; model?: string; limit?: number }): Promise<{ evaluations: EvalRow[] }> {

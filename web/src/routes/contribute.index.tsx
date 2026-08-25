@@ -18,7 +18,7 @@ type Sort = "needs" | "recent" | "name";
 function ContributeQuestions() {
   const { data } = useData();
   const navigate = useNavigate();
-  const settings = loadSettings();
+  const [settings] = useState(loadSettings);
   const relay = settings.relay.replace(/\/+$/, "");
   const code = settings.accessCode;
 

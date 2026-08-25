@@ -33,7 +33,7 @@ function Duplicates() {
   const navigate = useNavigate();
   const search = Route.useSearch();
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const settings = loadSettings();
+  const [settings] = useState(loadSettings);
   const relay = settings.relay.replace(/\/+$/, "");
   const code = settings.accessCode;
   const [marked, setMarked] = useState<{ file_id: string; reason: string; created_at: string }[]>([]);

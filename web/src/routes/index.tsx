@@ -14,7 +14,7 @@ export const Route = createFileRoute("/")({ component: Overview });
 
 function Overview() {
   const { data } = useData();
-  const settings = loadSettings();
+  const [settings] = useState(loadSettings);
   const relay = settings.relay.replace(/\/+$/, "");
   const [progress, setProgress] = useState<{
     questions: number;

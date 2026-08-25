@@ -67,6 +67,8 @@ interface EvalRow {
   created_at: string;
 }
 
+import { CORS_HEADERS, jsonResponse as json } from "./http";
+
 export function normQ(q: string): string {
   return q.toLowerCase().replace(/[?!.,'"():;`]/g, " ").replace(/\s+/g, " ").trim();
 }
@@ -78,19 +80,6 @@ export function normTags(raw: string): string[] {
     if (tag) seen.add(tag);
   }
   return [...seen];
-}
-
-function json(obj: unknown, status = 200, extraHeaders: Record<string, string> = {}): Response {
-  return new Response(JSON.stringify(obj), {
-    status,
-    headers: {
-      "Content-Type": "application/json",
-      "Access-Control-Allow-Origin": "*",
-      "Access-Control-Allow-Headers": "Content-Type, X-Questions-Code",
-        "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-      ...extraHeaders,
-    },
-  });
 }
 
 function gated(request: Request, env: Env): boolean {
@@ -137,28 +126,36 @@ async function insertQuestion(env: Env, payload: {
   return Number(meta?.last_row_id ?? 0);
 }
 
-export async function handleQuestionsApi(request: Request, env: Env, url: URL): Promise<Response | null> {
-  const p = url.pathname;
-  if (!p.startsWith("/api/questions") && !p.startsWith("/api/evaluations") && !p.startsWith("/api/insights") && !p.startsWith("/api/excluded")) return null;
-  if (request.method === "OPTIONS") return null; // handled by CORS preflight in worker
+interface RouteCtx {
+  request: Request;
+  env: Env;
+  url: URL;
+}
 
-  if (!gated(request, env)) {
-    return json({ error: "questions API is locked — set the access code in settings" }, 401);
-  }
+interface Route {
+  method: string;
+  pattern: RegExp;
+  handler: (ctx: RouteCtx) => Promise<Response> | Response;
+}
 
-  try {
-    /* ---------- GET /api/questions/counts ---------- */
-    if (p === "/api/questions/counts" && request.method === "GET") {
+/** One row per endpoint — single gate, single error boundary, table-driven dispatch. */
+const ROUTES: Route[] = [
+  {
+    method: "GET",
+    pattern: /^\/api\/questions\/counts$/,
+    handler: async ({ request, env, url }) => {
       const res = await env.DB.prepare(
         "SELECT file_id, COUNT(*) AS n FROM questions WHERE status != 'draft' GROUP BY file_id",
       ).all<{ file_id: string; n: number }>();
       const counts: Record<string, number> = {};
       for (const row of res.results) counts[row.file_id] = row.n;
       return json({ counts, images: Object.keys(counts).length });
-    }
-
-    /* ---------- GET /api/questions/check ---------- */
-    if (p === "/api/questions/check" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/questions\/check$/,
+    handler: async ({ request, env, url }) => {
       const fileId = url.searchParams.get("file_id") ?? "";
       const q = url.searchParams.get("q") ?? "";
       if (!fileId || q.trim().length < 4) return json({ matches: [] });
@@ -167,10 +164,12 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
         "SELECT id, question FROM questions WHERE file_id = ?1 AND (qnorm = ?2 OR qnorm LIKE ?3) LIMIT 5",
       ).bind(fileId, qn, qn + "%").all<{ id: number; question: string }>();
       return json({ matches: res.results });
-    }
-
-    /* ---------- GET /api/questions (list) ---------- */
-    if (p === "/api/questions" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/questions$/,
+    handler: async ({ request, env, url }) => {
       const fileId = url.searchParams.get("file_id");
       const search = url.searchParams.get("search");
       const limit = Math.min(200, Number(url.searchParams.get("limit") ?? 50));
@@ -185,10 +184,12 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
       }
       const res = await stmt.all<QuestionRow>();
       return json({ questions: res.results });
-    }
-
-    /* ---------- POST /api/questions ---------- */
-    if (p === "/api/questions" && request.method === "POST") {
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/questions$/,
+    handler: async ({ request, env, url }) => {
       const body = await readBody<{
         file_id?: string;
         contributor?: string;
@@ -235,10 +236,12 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
         if (/UNIQUE/i.test(msg)) return json({ error: "duplicate — an identical question already exists for this image" }, 409);
         return json({ error: msg }, 500);
       }
-    }
-
-    /* ---------- DELETE /api/questions?id= ---------- */
-    if (p === "/api/questions" && request.method === "DELETE") {
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: /^\/api\/questions$/,
+    handler: async ({ request, env, url }) => {
       const id = Number(url.searchParams.get("id"));
       if (!id) return json({ error: "id required" }, 400);
       const row = await env.DB.prepare("SELECT tags FROM questions WHERE id = ?1").bind(id).first<{ tags: string }>();
@@ -254,16 +257,20 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
       }
       await env.DB.batch(stmts);
       return json({ ok: true });
-    }
-
-    /* ---------- GET /api/questions/tags ---------- */
-    if (p === "/api/questions/tags" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/questions\/tags$/,
+    handler: async ({ request, env, url }) => {
       const res = await env.DB.prepare("SELECT tag, count FROM tags ORDER BY count DESC LIMIT 200").all<{ tag: string; count: number }>();
       return json({ tags: res.results.map((r) => [r.tag, r.count]) });
-    }
-
-    /* ---------- GET /api/questions/export.jsonl ---------- */
-    if (p === "/api/questions/export.jsonl" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/questions\/export\.jsonl$/,
+    handler: async ({ request, env, url }) => {
       let last = 0;
       const parts: string[] = [];
       for (;;) {
@@ -292,13 +299,15 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
         headers: {
           "Content-Type": "application/x-ndjson",
           "Content-Disposition": 'attachment; filename="questions.jsonl"',
-          "Access-Control-Allow-Origin": "*",
+          ...CORS_HEADERS,
         },
       });
-    }
-
-    /* ---------- GET /api/evaluations ---------- */
-    if (p === "/api/evaluations" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/evaluations$/,
+    handler: async ({ request, env, url }) => {
       const questionId = Number(url.searchParams.get("question_id") ?? 0);
       const model = url.searchParams.get("model");
       const limit = Math.min(200, Number(url.searchParams.get("limit") ?? 100));
@@ -311,10 +320,12 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
         res = await env.DB.prepare("SELECT * FROM evaluations ORDER BY id DESC LIMIT ?1").bind(limit).all<EvalRow>();
       }
       return json({ evaluations: res.results });
-    }
-
-    /* ---------- POST /api/evaluations (upsert per question+model) ---------- */
-    if (p === "/api/evaluations" && request.method === "POST") {
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/evaluations$/,
+    handler: async ({ request, env, url }) => {
       const body = await readBody<{
         question_id?: number;
         model?: string;
@@ -326,6 +337,8 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
       const questionId = Number(body.question_id ?? 0);
       const model = (body.model ?? "").trim();
       if (!questionId || !model) return json({ error: "question_id and model are required" }, 400);
+      const questionExists = await env.DB.prepare("SELECT id FROM questions WHERE id = ?1").bind(questionId).first();
+      if (!questionExists) return json({ error: "question not found" }, 404);
       const verdict = ["correct", "close", "wrong", "unanswered"].includes(body.verdict ?? "")
         ? (body.verdict as string) : null;
       await env.DB.prepare(
@@ -338,16 +351,20 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
            graded_by = COALESCE(NULLIF(?6, ''), evaluations.graded_by)`,
       ).bind(questionId, model, body.response ?? "", verdict, body.source ?? "manual", body.graded_by ?? "").run();
       return json({ ok: true });
-    }
-
-    /* ---------- GET /api/excluded ---------- */
-    if (p === "/api/excluded" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/excluded$/,
+    handler: async ({ request, env, url }) => {
       const res = await env.DB.prepare("SELECT file_id, reason, marked_by, created_at FROM excluded ORDER BY created_at DESC").all<{ file_id: string; reason: string; marked_by: string; created_at: string }>();
       return json({ excluded: res.results });
-    }
-
-    /* ---------- POST /api/excluded ---------- */
-    if (p === "/api/excluded" && request.method === "POST") {
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/excluded$/,
+    handler: async ({ request, env, url }) => {
       const body = await readBody<{ file_id?: string; reason?: string; marked_by?: string }>(request);
       const fileId = (body.file_id ?? "").trim();
       if (!fileId) return json({ error: "file_id required" }, 400);
@@ -356,18 +373,22 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
          ON CONFLICT(file_id) DO UPDATE SET reason = ?2, marked_by = ?3`,
       ).bind(fileId, (body.reason ?? "").trim(), (body.marked_by ?? "").trim()).run();
       return json({ ok: true });
-    }
-
-    /* ---------- DELETE /api/excluded ---------- */
-    if (p === "/api/excluded" && request.method === "DELETE") {
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: /^\/api\/excluded$/,
+    handler: async ({ request, env, url }) => {
       const fileId = url.searchParams.get("file_id") ?? "";
       if (!fileId) return json({ error: "file_id required" }, 400);
       await env.DB.prepare("DELETE FROM excluded WHERE file_id = ?1").bind(fileId).run();
       return json({ ok: true });
-    }
-
-    /* ---------- GET /api/insights ---------- */
-    if (p === "/api/insights" && request.method === "GET") {
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/insights$/,
+    handler: async ({ request, env, url }) => {
       const board = await env.DB.prepare(
         `SELECT model,
            COUNT(*) AS graded,
@@ -397,13 +418,35 @@ export async function handleQuestionsApi(request: Request, env: Env, url: URL): 
         .sort((a, b) => b.graded - a.graded)
         .slice(0, 50);
       return json({ leaderboard: board.results, byTag });
-    }
+    },
+  },
+];
 
-    return json({ error: "not found" }, 404);
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e);
-    return json({ error: msg }, 500);
+export async function handleQuestionsApi(request: Request, env: Env, url: URL): Promise<Response | null> {
+  const p = url.pathname;
+  if (!p.startsWith("/api/questions") && !p.startsWith("/api/evaluations") && !p.startsWith("/api/insights") && !p.startsWith("/api/excluded")) return null;
+  if (request.method === "OPTIONS") return null; // handled by CORS preflight in worker
+
+  if (!gated(request, env)) {
+    return json({ error: "questions API is locked — set the access code in settings" }, 401);
   }
+
+  if (!env.DB) {
+    return json({ error: "questions API is not configured (missing D1 binding)" }, 503);
+  }
+
+  for (const route of ROUTES) {
+    if (request.method !== route.method) continue;
+    if (!route.pattern.test(p)) continue;
+    try {
+      return await route.handler({ request, env, url });
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      if (/UNIQUE/i.test(msg)) return json({ error: "duplicate — an identical question already exists for this image" }, 409);
+      return json({ error: msg }, 500);
+    }
+  }
+  return json({ error: "not found" }, 404);
 }
 
 function answer_type_label(t: string): string {
