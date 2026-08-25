@@ -1,0 +1,234 @@
+{
+    "wallTime": 1,
+    "cpuTime": 0,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "exception",
+    "scriptVersion": {
+        "id": "a92da214-eec1-4b5a-8b73-9bd13a71e931"
+    },
+    "scriptName": "agi-eval-relay",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [
+        {
+            "stack": "    at Object.fetch (worker.js:26166:53)",
+            "name": "ReferenceError",
+            "message": "gwFallbackUntil is not defined",
+            "timestamp": 1787612095638
+        }
+    ],
+    "logs": [],
+    "eventTimestamp": 1787612095638,
+    "event": {
+        "request": {
+            "url": "https://agi-eval-relay.devmaaaaz.workers.dev/api/chat",
+            "method": "POST",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "2400:adc1:47f:b800:3d1d:68eb:c60f:e408",
+                "cf-ipcountry": "PK",
+                "cf-ray": "a305f10dbf9eb7dc",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "content-length": "78",
+                "content-type": "application/json",
+                "host": "agi-eval-relay.devmaaaaz.workers.dev",
+                "user-agent": "curl/8.21.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "2400:adc1:47f:b800:3d1d:68eb:c60f:e408"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/1.1",
+                "requestPriority": "",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 5,
+                "clientQuicRtt": 0,
+                "colo": "KHI",
+                "asn": 9541,
+                "asOrganization": "Cyber Internet Services Pakistan",
+                "country": "PK",
+                "isEUCountry": false,
+                "city": "Karachi",
+                "continent": "AS",
+                "region": "Sindh",
+                "regionCode": "SD",
+                "timezone": "Asia/Karachi",
+                "longitude": "67.0104",
+                "latitude": "24.8608",
+                "postalCode": "74000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "V1tYz5W434sV+7gd9aEzgdHkTaDU5tUh5R0aG0bZ8Yg=",
+                "tlsClientCiphersSha1": "kTkJ+HAwBvIuoPFncb1wEDLcgfg=",
+                "tlsClientExtensionsSha1": "p2XN7z/lcnmBD9Q+f8xSyG4x4VA=",
+                "tlsClientExtensionsSha1Le": "ydwLHTahJx17MvHnnvv2lsdgs/g=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "7b289aa1b29472b1d1e5a5658ffb4f53f2ed259260b679e27865c660927f8bf65de2699cb773b03fbb190d8be3a2f9a0",
+                    "serverHandshake": "0576aec4d5bd1f8209687ca9e926f0e7572893558a5592d5be9e9ba6d29efbe959ed4ff2992e26cbf93a2d25deb64191",
+                    "clientFinished": "a1b62f304175c08f664ccc1552324e25e9ad95c567dd1965d65a0aa464dedc4a4b8ab85c18e85dc829f8a94528b759da",
+                    "serverFinished": "7cc07ae8a653fb90aafc57751af439d5c9f9c5ec1f4782414a630fd2423f281301eae2d33d4862dda63d53e10a91723c"
+                },
+                "tlsClientHelloLength": "474",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 952825
+                }
+            }
+        },
+        "response": {
+            "status": 500
+        }
+    }
+}
+{
+    "wallTime": 7094,
+    "cpuTime": 39,
+    "truncated": false,
+    "executionModel": "stateless",
+    "outcome": "ok",
+    "scriptVersion": {
+        "id": "8b93f56e-3631-49f2-9b4a-b9745c5675a6"
+    },
+    "scriptName": "agi-eval-relay",
+    "diagnosticsChannelEvents": [],
+    "exceptions": [],
+    "logs": [],
+    "eventTimestamp": 1787612217096,
+    "event": {
+        "request": {
+            "url": "https://agi-eval-relay.devmaaaaz.workers.dev/api/chat",
+            "method": "POST",
+            "headers": {
+                "accept": "*/*",
+                "accept-encoding": "gzip, br",
+                "cf-connecting-ip": "2400:adc1:47f:b800:3d1d:68eb:c60f:e408",
+                "cf-ipcountry": "PK",
+                "cf-ray": "a305f404cf38abfc",
+                "cf-visitor": "{\"scheme\":\"https\"}",
+                "connection": "Keep-Alive",
+                "content-length": "107",
+                "content-type": "application/json",
+                "host": "agi-eval-relay.devmaaaaz.workers.dev",
+                "user-agent": "curl/8.21.0",
+                "x-forwarded-proto": "https",
+                "x-real-ip": "2400:adc1:47f:b800:3d1d:68eb:c60f:e408"
+            },
+            "cf": {
+                "httpProtocol": "HTTP/1.1",
+                "requestPriority": "",
+                "edgeRequestKeepAliveStatus": 1,
+                "requestHeaderNames": {},
+                "clientTcpRtt": 4,
+                "clientQuicRtt": 0,
+                "colo": "KHI",
+                "asn": 9541,
+                "asOrganization": "Cyber Internet Services Pakistan",
+                "country": "PK",
+                "isEUCountry": false,
+                "city": "Karachi",
+                "continent": "AS",
+                "region": "Sindh",
+                "regionCode": "SD",
+                "timezone": "Asia/Karachi",
+                "longitude": "67.0104",
+                "latitude": "24.8608",
+                "postalCode": "74000",
+                "tlsVersion": "TLSv1.3",
+                "tlsCipher": "AEAD-AES256-GCM-SHA384",
+                "tlsClientRandom": "EEbzw8h3Ys9Fm1pt3fG0YrJclNed+ItzSOjC66sh8Dw=",
+                "tlsClientCiphersSha1": "kTkJ+HAwBvIuoPFncb1wEDLcgfg=",
+                "tlsClientExtensionsSha1": "p2XN7z/lcnmBD9Q+f8xSyG4x4VA=",
+                "tlsClientExtensionsSha1Le": "ydwLHTahJx17MvHnnvv2lsdgs/g=",
+                "tlsExportedAuthenticator": {
+                    "clientHandshake": "848ad642e9aeb91d5a4d02d0fd354dc12f212aa90f405bd1ce487784da91e84e293db7b3ac7e4be8d1c17d1765344d28",
+                    "serverHandshake": "50e1796f68a1fae42e6222bd50e6598c173e46f0c29ce3e2aec0461cee084480499fec2c255195967c7cebecbc0ebbae",
+                    "clientFinished": "1b2c0189a6f29ca23f9bdb9eb6f06d1fe35ca11b8b34fda5e412b79d541caeace7cc15f22c8d5c6b7933ee5f77c2403f",
+                    "serverFinished": "1ec1c415d6dd76d91cba158ed0867c107515ca5dfeddcbd51b038fa2feecb3587657716182f37e377c31a567cd4ff0f2"
+                },
+                "tlsClientHelloLength": "474",
+                "tlsClientAuth": {
+                    "certPresented": "0",
+                    "certVerified": "NONE",
+                    "certRevoked": "0",
+                    "certIssuerDN": "",
+                    "certSubjectDN": "",
+                    "certIssuerDNRFC2253": "",
+                    "certSubjectDNRFC2253": "",
+                    "certIssuerDNLegacy": "",
+                    "certSubjectDNLegacy": "",
+                    "certSerial": "",
+                    "certIssuerSerial": "",
+                    "certSKI": "",
+                    "certIssuerSKI": "",
+                    "certFingerprintSHA1": "",
+                    "certFingerprintSHA256": "",
+                    "certNotBefore": "",
+                    "certNotAfter": "",
+                    "certRFC9440": "",
+                    "certRFC9440TooLarge": false,
+                    "certChainRFC9440": "",
+                    "certChainRFC9440TooLarge": false
+                },
+                "verifiedBotCategory": "",
+                "edgeL4": {
+                    "deliveryRate": 940092
+                }
+            }
+        },
+        "response": {
+            "status": 200
+        }
+    }
+}
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mFailed to fetch auth token: 400 Bad Request {"error":"invalid_grant","error_description":"The provided authorization grant (e.g., authorization code, resource owner credentials) or refresh token is invalid, expired, revoked, does not match the redirection URI used in the authorization request, or was issued to another client. The refresh token was already used."}[0m
+
+
+[31m✘ [41;31m[[41;97mERROR[41;31m][0m [1mTypeError: Body is unusable: Body has already been read[0m
+
+      at consumeBody (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:16698:15)
+      at _Response.text (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:16650:18)
+      at getJSONFromResponse (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:120598:31)
+      at exchangeRefreshTokenForAccessToken (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:120124:35)
+      at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+      at async refreshToken (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:120429:9)
+      at async loginOrRefreshIfRequired (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:120272:24)
+      at async requireLoggedIn (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119615:20)
+      at async performApiFetch (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119516:3)
+      at async fetchInternal (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119558:20)
+
+
+This error originated either by throwing inside of an async function without a catch block, or by rejecting a promise which was not handled with .catch(). The promise rejected with the reason:
+Error: Not logged in.
+    at requireLoggedIn (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119617:11)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async performApiFetch (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119516:3)
+    at async fetchInternal (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119558:20)
+    at async fetchResult (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:119749:47)
+    at async deleteTail (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:220033:5)
+    at async _WebSocket.exit (C:\Users\Maaz\.bun\install\global\node_modules\wrangler\wrangler-dist\cli.js:264030:11)
+🪵  Logs were written to "C:\Users\Maaz\AppData\Roaming\xdg.config\.wrangler\logs\wrangler-2026-08-24_22-54-39_359.log"

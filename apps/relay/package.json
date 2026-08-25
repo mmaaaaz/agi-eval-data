@@ -1,0 +1,17 @@
+{
+  "name": "@agi-eval/relay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "ai": "^7.0.0",
+    "zod": "^3.25.0",
+    "@agi-eval/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^4.125.0"
+  }
+}

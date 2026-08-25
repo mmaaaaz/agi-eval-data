@@ -38,3 +38,8 @@ relay/dev3.log
 relay/tail.log
 vite.log
 setup-questions.cmd
+
+/web/
+/relay/
+/shared/
+relay/dev.log

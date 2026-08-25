@@ -3,7 +3,7 @@
 # Step 0 re-authenticates wrangler (browser opens — click Allow).
 
 $ErrorActionPreference = "Stop"
-Set-Location relay
+Set-Location apps\relay
 
 Write-Host "== 0/6 wrangler login (browser opens — click Allow) ==" -ForegroundColor Cyan
 npx wrangler login
@@ -40,7 +40,7 @@ Write-Host "== 4/6 deploying relay ==" -ForegroundColor Cyan
 npx wrangler deploy
 
 Write-Host "== 5/6 building + deploying the site ==" -ForegroundColor Cyan
-Set-Location ..\web
+Set-Location ..\apps\web
 npx wrangler pages deploy dist --project-name agi-eval-data --branch main --commit-dirty=true
 
 Write-Host ""

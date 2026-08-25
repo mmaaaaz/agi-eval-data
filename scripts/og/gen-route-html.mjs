@@ -12,7 +12,7 @@ import { fileURLToPath } from "node:url";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..", "..");
-const dist = join(root, "web", "dist");
+const dist = join(root, "apps", "web", "dist");
 const data = JSON.parse(readFileSync(join(root, "data", "latest.json"), "utf-8"));
 
 const RAW = "https://raw.githubusercontent.com/mmaaaaz/agi-eval-data/main/og";

@@ -52,16 +52,22 @@ lh3.googleusercontent.com/d/{fileId}=w400      ← thumbnails, direct from Googl
 ## 3. Repository map
 
 ```
-.github/workflows/sync.yml   hourly cron: scan → share-sync → commit data
-relay/src/worker.ts          AI SDK v5 Worker: streamText + gateway + client-side run_sql tool
-relay/wrangler.toml          vars: GATEWAY_MODEL, RATE_LIMIT_PER_IP; [ai] binding NOT used anymore
-scripts/drive_scan.py        Drive metadata scanner (--ci for headless; --from-snapshot offline)
-scripts/share_sync.py        delta link-sharing (thumbnails need "anyone-with-link")
-scripts/gen_og.py            social card generator (Pillow)
-data/latest.json             THE artifact — v3 schema (below)
-web/                         the Vite app
-  src/routes/ask.tsx         the chat page (useChat, IndexedDB persistence, sidebar)
-  src/lib/duck.ts            DuckDB-WASM singleton: loadArtifact + guarded runSql
+.github/workflows/sync.yml     cron */10: scan → share-sync → commit data (change-gated)
+.github/workflows/ci.yml       typecheck + build — gates PRs
+.github/workflows/deploy.yml   deploys relay + pages on main code pushes (secrets-gated)
+apps/relay/src/worker.ts       AI SDK v7 Worker: streamText + gateway + Workers AI fallback + client-side run_sql tool
+apps/relay/src/questions.ts    questions/evaluations/insights API (D1) — route-table dispatch
+apps/relay/wrangler.toml       vars: GATEWAY_MODEL, RATE_LIMIT_PER_IP, FORCE_FALLBACK; [ai] binding (fallback); [[d1_databases]] DB
+scripts/drive_scan.py          Drive metadata scanner (--ci for headless; --from-snapshot offline)
+scripts/share_sync.py          delta link-sharing (thumbnails need "anyone-with-link")
+scripts/og/render-og.mjs       OG card renderer (takumi, no headless browser)
+data/latest.json               THE artifact — v3 schema (below)
+apps/web                       the Vite app (shadcn/ui + Recharts)
+  src/routes/ask.tsx           the chat page (useChat, IndexedDB persistence)
+  src/routes/contribute.index.tsx   question authoring (gallery grid + sheet)
+  src/routes/contribute.evaluate.tsx model grading (combobox + leaderboard)
+  src/lib/duck.ts              DuckDB-WASM singleton: loadArtifact + guarded runSql
+  src/lib/questions.ts         questions/evaluations client (workspace shared normQ)
   src/lib/chats.ts           IndexedDB conversation store (UIMessage-based)
   src/lib/ai/settings.ts     v4 settings (relay URL + access code only)
   src/lib/brief.ts           viewingContext (URL-aware line; suppressed on bare /ask)
@@ -146,10 +152,15 @@ Snapshot of record (re-read `data/latest.json` for live numbers — they move ho
 ## 10. Ops runbook
 
 ```bash
-# web dev
-cd web && bun install && bun run dev            # localhost:5173
-bun run build                                   # → dist/
-npx wrangler pages deploy dist --project-name agi-eval-data --branch main
+# workspace (root)
+bun install                                     # installs apps + packages
+bun run dev:web                                 # localhost:5173
+bun run dev:relay                               # localhost:8787
+bun run typecheck                               # tsc across the workspace
+bun run build                                   # turbo build (cached)
+
+# deploys happen from GitHub Actions on main pushes (code paths only).
+# local deploy (rare — e.g. prod incident):
 
 # relay local dev (uses .dev.vars for secrets)
 cd relay && npx wrangler dev                    # localhost:8787
@@ -179,6 +190,14 @@ SQL chip shows `ready · <current file count> rows`.
 - OAuth refresh token: app must stay In Production on Google Cloud (Testing-mode tokens expire in 7 days).
 - Version skew (deliberate): web pins `ai@^7` + `@ai-sdk/react@^4`; relay pins `ai@^5`. The UIMessage wire protocol is compatible — verified working. When upgrading either side, upgrade and re-verify the tool-call loop together.
 - The hourly bot commits to main — always `git pull --rebase` before pushing.
+
+## 11b. CI/CD + branch protection (2026-08-25)
+
+- **`main` is protected**: PR-only merges, `ci` status check required. The data-sync bot (`github-actions[bot]`) is bypass-allowed so hourly dataset commits keep flowing. Ruleset managed via `gh api` (name: `main-protection`) — disable with:
+  `gh api -X PATCH repos/mmaaaaz/agi-eval-data/rulesets/<ruleset-id> -f enforcement=disabled`
+- **`deploy` workflow**: deploys relay + pages on main pushes that touch code (data-only commits skip it). Requires repo secrets `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID`; the `guard` job skips deploys gracefully while they're unset.
+- **Local deploys** are for incidents only — normal flow is merge-to-main.
+- The questions export → `data/questions.jsonl` bot step is BACKLOG (not wired).
 
 ## 12. Verification checklist for any change
 
