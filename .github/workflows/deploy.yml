@@ -1,7 +1,9 @@
 name: deploy
 
 # Deploys to Cloudflare run from GitHub — never from a local machine.
-# Triggers only on code changes (the sync bot's data commits skip this workflow).
+# Per-app path filtering: shared package changes deploy BOTH apps;
+# web-only changes deploy the site; relay-only changes deploy the worker.
+# The sync bot's data commits (data/latest.json) skip this workflow entirely.
 
 on:
   push:
@@ -20,20 +22,47 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  guard:
+  changes:
     runs-on: ubuntu-latest
     outputs:
-      ok: ${{ steps.check.outputs.ok }}
+      web: ${{ steps.filter.outputs.web }}
+      relay: ${{ steps.filter.outputs.relay }}
+      secrets: ${{ steps.secrets.outputs.ok }}
     steps:
-      - id: check
+      - uses: actions/checkout@v4
+
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            web:
+              - "apps/web/**"
+              - "packages/shared/**"
+              - "scripts/og/**"
+              - "package.json"
+              - "bun.lock"
+              - "turbo.json"
+              - ".github/workflows/deploy.yml"
+            relay:
+              - "apps/relay/**"
+              - "packages/shared/**"
+              - ".github/workflows/deploy.yml"
+
+      - id: secrets
         env:
           HAS_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN != '' }}
-        run: echo "ok=$HAS_TOKEN" >> "$GITHUB_OUTPUT"
+          HAS_ACCOUNT: ${{ secrets.CLOUDFLARE_ACCOUNT_ID != '' }}
+        run: |
+          if [ "$HAS_TOKEN" = "true" ] && [ "$HAS_ACCOUNT" = "true" ]; then
+            echo "ok=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "ok=false — set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets" >> "$GITHUB_OUTPUT"
+          fi
 
   relay:
     name: deploy relay
-    needs: guard
-    if: needs.guard.outputs.ok == 'true'
+    needs: changes
+    if: needs.changes.outputs.relay == 'true' && needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -57,8 +86,8 @@ jobs:
 
   pages:
     name: deploy pages
-    needs: guard
-    if: needs.guard.outputs.ok == 'true'
+    needs: changes
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

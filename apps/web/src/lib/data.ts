@@ -167,12 +167,10 @@ export function useLatest(): LatestState & { refresh: () => void } {
       setState((s) => ({ ...s, data: cached, loadingFirst: false, progress: 1 }));
     });
     void load();
-    const onVis = () => document.visibilityState === "visible" && void load();
-    document.addEventListener("visibilitychange", onVis);
-    return () => {
-      alive = false;
-      document.removeEventListener("visibilitychange", onVis);
-    };
+    // NOTE: no visibilitychange refetch — the artifact is 12+ MB and parsing
+    // it on every tab switch stalled browsers. New-data detection lives in
+    // the SyncPill (HEAD poll) whose refresh button reloads the page.
+    return () => { alive = false; };
   }, [load]);
 
   return { ...state, refresh: () => void load() };
