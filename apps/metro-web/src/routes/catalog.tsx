@@ -57,7 +57,7 @@ function Catalog() {
           >
             {b.label}
             <span className="ml-1.5 opacity-50">
-              {fmtN(branchCountries.length)}
+              {fmtN(countries.filter((s) => s.branch === b.id).length)}
             </span>
           </Link>
         ))}
