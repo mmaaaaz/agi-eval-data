@@ -84,12 +84,12 @@ jobs:
       - name: Typecheck
         run: bunx turbo run typecheck --filter=@agi-eval/web
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/relay
-          command: deploy
+      - name: Deploy relay
+        run: npx wrangler deploy
+        working-directory: apps/relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   pages:
     name: deploy pages
@@ -120,12 +120,12 @@ jobs:
       - name: Stamp per-route OG tags
         run: node scripts/og/gen-route-html.mjs
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/web
-          command: pages deploy dist --project-name=agi-eval-data --branch=main --commit-dirty=true
+      - name: Deploy pages
+        run: npx wrangler pages deploy dist --project-name=agi-eval-data --branch=main --commit-dirty=true
+        working-directory: apps/web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   metro-relay:
     name: deploy metro relay
@@ -145,12 +145,12 @@ jobs:
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/metro-relay
-          command: deploy
+      - name: Deploy metro relay
+        run: npx wrangler deploy
+        working-directory: apps/metro-relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   metro-pages:
     name: deploy metro pages
@@ -170,14 +170,17 @@ jobs:
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
 
+      - name: Bake metro sync feed
+        run: python scripts/metro_build_data.py
+
       - name: Build metro site
         run: bunx turbo run build --filter=@metro/web
         env:
           VITE_REPO_METRO: ${{ github.repository }}
 
-      - uses: cloudflare/wrangler-action@v3
-        with:
-          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          workingDirectory: apps/metro-web
-          command: pages deploy dist --project-name=metro-eval --branch=main --commit-dirty=true
+      - name: Deploy metro pages
+        run: npx wrangler pages deploy dist --project-name=metro-eval --branch=main --commit-dirty=true
+        working-directory: apps/metro-web
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
