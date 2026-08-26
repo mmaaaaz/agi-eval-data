@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Link, createRootRoute, Outlet, useRouterState } from "@tanstack/react-router";
 import { useLatest } from "../lib/data";
 import { DataProvider, useData } from "../lib/dataContext";
+import { SyncChip } from "../components/SyncChip";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/sheet";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
@@ -12,6 +13,7 @@ const NAV = [
   { to: "/catalog", label: "Catalog", icon: Globe },
   { to: "/gallery", label: "Gallery", icon: Images },
   { to: "/contribute", label: "Contribute", icon: PenLine },
+  { to: "/project", label: "Project", icon: Info },
 ] as const;
 
 function Loader({ progress }: { progress: number | null }) {
@@ -138,6 +140,7 @@ function Shell() {
               ))}
             </nav>
             <div className="flex items-center gap-2">
+              <SyncChip />
               <Link
                 to="/settings"
                 aria-label="Settings"
