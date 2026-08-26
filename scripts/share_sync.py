@@ -42,7 +42,7 @@ def main():
     while True:
         resp = with_backoff(lambda: service.files().list(
             # NOTE: 'shared' is not queryable — fetch it as a field, filter client-side
-            q="mimeType contains 'image/' and trashed = false",
+            q="(mimeType contains 'image/' or mimeType = 'application/pdf') and trashed = false",
             pageSize=1000,
             fields="nextPageToken, files(id, shared)",
             pageToken=page_token, supportsAllDrives=True,

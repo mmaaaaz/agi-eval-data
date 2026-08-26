@@ -51,3 +51,5 @@ relay/dev.log
 /tree.json
 /turbo-config.mdx
 **/.vite/
+metro-relay/tmp/
+apps/metro-web/public/data/

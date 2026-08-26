@@ -10,27 +10,22 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AskRouteImport } from './routes/ask'
+import { Route as CatalogRouteImport } from './routes/catalog'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as ProjectRouteImport } from './routes/project'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
 import { Route as ContributeEvaluateRouteImport } from './routes/contribute.evaluate'
-import { Route as GalleryIndexRouteImport } from './routes/gallery.index'
-import { Route as GalleryDuplicatesRouteImport } from './routes/gallery.duplicates'
-import { Route as GalleryInsightsRouteImport } from './routes/gallery.insights'
-import { Route as GalleryContributorsIndexRouteImport } from './routes/gallery.contributors.index'
-import { Route as GalleryContributorsEmailRouteImport } from './routes/gallery.contributors.$email'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
-const AskRoute = AskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
+const CatalogRoute = CatalogRouteImport.update({
+  id: '/catalog',
+  path: '/catalog',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContributeRoute = ContributeRouteImport.update({
@@ -63,129 +58,74 @@ const ContributeEvaluateRoute = ContributeEvaluateRouteImport.update({
   path: '/evaluate',
   getParentRoute: () => ContributeRoute,
 } as any)
-const GalleryIndexRoute = GalleryIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => GalleryRoute,
-} as any)
-const GalleryDuplicatesRoute = GalleryDuplicatesRouteImport.update({
-  id: '/duplicates',
-  path: '/duplicates',
-  getParentRoute: () => GalleryRoute,
-} as any)
-const GalleryInsightsRoute = GalleryInsightsRouteImport.update({
-  id: '/insights',
-  path: '/insights',
-  getParentRoute: () => GalleryRoute,
-} as any)
-const GalleryContributorsIndexRoute =
-  GalleryContributorsIndexRouteImport.update({
-    id: '/contributors/',
-    path: '/contributors/',
-    getParentRoute: () => GalleryRoute,
-  } as any)
-const GalleryContributorsEmailRoute =
-  GalleryContributorsEmailRouteImport.update({
-    id: '/contributors/$email',
-    path: '/contributors/$email',
-    getParentRoute: () => GalleryRoute,
-  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
+  '/catalog': typeof CatalogRoute
   '/contribute': typeof ContributeRouteWithChildren
-  '/gallery': typeof GalleryRouteWithChildren
+  '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
-  '/gallery/duplicates': typeof GalleryDuplicatesRoute
-  '/gallery/insights': typeof GalleryInsightsRoute
   '/contribute/': typeof ContributeIndexRoute
-  '/gallery/': typeof GalleryIndexRoute
-  '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
-  '/gallery/contributors/': typeof GalleryContributorsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
+  '/catalog': typeof CatalogRoute
+  '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
-  '/gallery/duplicates': typeof GalleryDuplicatesRoute
-  '/gallery/insights': typeof GalleryInsightsRoute
   '/contribute': typeof ContributeIndexRoute
-  '/gallery': typeof GalleryIndexRoute
-  '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
-  '/gallery/contributors': typeof GalleryContributorsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
+  '/catalog': typeof CatalogRoute
   '/contribute': typeof ContributeRouteWithChildren
-  '/gallery': typeof GalleryRouteWithChildren
+  '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
-  '/gallery/duplicates': typeof GalleryDuplicatesRoute
-  '/gallery/insights': typeof GalleryInsightsRoute
   '/contribute/': typeof ContributeIndexRoute
-  '/gallery/': typeof GalleryIndexRoute
-  '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
-  '/gallery/contributors/': typeof GalleryContributorsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ask'
+    | '/catalog'
     | '/contribute'
     | '/gallery'
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
-    | '/gallery/duplicates'
-    | '/gallery/insights'
     | '/contribute/'
-    | '/gallery/'
-    | '/gallery/contributors/$email'
-    | '/gallery/contributors/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/ask'
+    | '/catalog'
+    | '/gallery'
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
-    | '/gallery/duplicates'
-    | '/gallery/insights'
     | '/contribute'
-    | '/gallery'
-    | '/gallery/contributors/$email'
-    | '/gallery/contributors'
   id:
     | '__root__'
     | '/'
-    | '/ask'
+    | '/catalog'
     | '/contribute'
     | '/gallery'
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
-    | '/gallery/duplicates'
-    | '/gallery/insights'
     | '/contribute/'
-    | '/gallery/'
-    | '/gallery/contributors/$email'
-    | '/gallery/contributors/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AskRoute: typeof AskRoute
+  CatalogRoute: typeof CatalogRoute
   ContributeRoute: typeof ContributeRouteWithChildren
-  GalleryRoute: typeof GalleryRouteWithChildren
+  GalleryRoute: typeof GalleryRoute
   ProjectRoute: typeof ProjectRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -199,11 +139,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/ask': {
-      id: '/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AskRouteImport
+    '/catalog': {
+      id: '/catalog'
+      path: '/catalog'
+      fullPath: '/catalog'
+      preLoaderRoute: typeof CatalogRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contribute': {
@@ -248,41 +188,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContributeEvaluateRouteImport
       parentRoute: typeof ContributeRoute
     }
-    '/gallery/': {
-      id: '/gallery/'
-      path: '/'
-      fullPath: '/gallery/'
-      preLoaderRoute: typeof GalleryIndexRouteImport
-      parentRoute: typeof GalleryRoute
-    }
-    '/gallery/duplicates': {
-      id: '/gallery/duplicates'
-      path: '/duplicates'
-      fullPath: '/gallery/duplicates'
-      preLoaderRoute: typeof GalleryDuplicatesRouteImport
-      parentRoute: typeof GalleryRoute
-    }
-    '/gallery/insights': {
-      id: '/gallery/insights'
-      path: '/insights'
-      fullPath: '/gallery/insights'
-      preLoaderRoute: typeof GalleryInsightsRouteImport
-      parentRoute: typeof GalleryRoute
-    }
-    '/gallery/contributors/': {
-      id: '/gallery/contributors/'
-      path: '/contributors'
-      fullPath: '/gallery/contributors/'
-      preLoaderRoute: typeof GalleryContributorsIndexRouteImport
-      parentRoute: typeof GalleryRoute
-    }
-    '/gallery/contributors/$email': {
-      id: '/gallery/contributors/$email'
-      path: '/contributors/$email'
-      fullPath: '/gallery/contributors/$email'
-      preLoaderRoute: typeof GalleryContributorsEmailRouteImport
-      parentRoute: typeof GalleryRoute
-    }
   }
 }
 
@@ -300,30 +205,11 @@ const ContributeRouteWithChildren = ContributeRoute._addFileChildren(
   ContributeRouteChildren,
 )
 
-interface GalleryRouteChildren {
-  GalleryDuplicatesRoute: typeof GalleryDuplicatesRoute
-  GalleryInsightsRoute: typeof GalleryInsightsRoute
-  GalleryIndexRoute: typeof GalleryIndexRoute
-  GalleryContributorsEmailRoute: typeof GalleryContributorsEmailRoute
-  GalleryContributorsIndexRoute: typeof GalleryContributorsIndexRoute
-}
-
-const GalleryRouteChildren: GalleryRouteChildren = {
-  GalleryDuplicatesRoute: GalleryDuplicatesRoute,
-  GalleryInsightsRoute: GalleryInsightsRoute,
-  GalleryIndexRoute: GalleryIndexRoute,
-  GalleryContributorsEmailRoute: GalleryContributorsEmailRoute,
-  GalleryContributorsIndexRoute: GalleryContributorsIndexRoute,
-}
-
-const GalleryRouteWithChildren =
-  GalleryRoute._addFileChildren(GalleryRouteChildren)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AskRoute: AskRoute,
+  CatalogRoute: CatalogRoute,
   ContributeRoute: ContributeRouteWithChildren,
-  GalleryRoute: GalleryRouteWithChildren,
+  GalleryRoute: GalleryRoute,
   ProjectRoute: ProjectRoute,
   SettingsRoute: SettingsRoute,
 }

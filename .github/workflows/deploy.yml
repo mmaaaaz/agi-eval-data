@@ -28,6 +28,8 @@ jobs:
     outputs:
       web: ${{ steps.filter.outputs.web }}
       relay: ${{ steps.filter.outputs.relay }}
+      metro_web: ${{ steps.filter.outputs.metro_web }}
+      metro_app: ${{ steps.filter.outputs.metro_app }}
       secrets: ${{ steps.secrets.outputs.ok }}
     steps:
       - uses: actions/checkout@v4
@@ -44,9 +46,13 @@ jobs:
               - "bun.lock"
               - "turbo.json"
               - ".github/workflows/deploy.yml"
-            relay:
-              - "apps/relay/**"
-              - "packages/shared/**"
+            metro_web:
+              - "apps/metro-web/**"
+              - "packages/metro-shared/**"
+              - ".github/workflows/deploy.yml"
+            metro_app:
+              - "apps/metro-relay/**"
+              - "packages/metro-shared/**"
               - ".github/workflows/deploy.yml"
 
       - id: secrets
@@ -63,7 +69,7 @@ jobs:
   relay:
     name: deploy relay
     needs: changes
-    if: needs.changes.outputs.relay == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.relay == 'true' && needs.changes.outputs.metro_app == 'false' && needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -88,7 +94,7 @@ jobs:
   pages:
     name: deploy pages
     needs: changes
-    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.metro_web == 'false' && needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -120,3 +126,58 @@ jobs:
           accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
           workingDirectory: apps/web
           command: pages deploy dist --project-name=agi-eval-data --branch=main --commit-dirty=true
+
+  metro-relay:
+    name: deploy metro relay
+    needs: changes
+    if: needs.changes.outputs.metro_app == 'true' && needs.changes.outputs.secrets == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-metro
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/metro-relay
+          command: deploy
+
+  metro-pages:
+    name: deploy metro pages
+    needs: changes
+    if: needs.changes.outputs.metro_web == 'true' && needs.changes.outputs.secrets == 'true'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-metro
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install (frozen lockfile)
+        run: bun install --frozen-lockfile
+
+      - name: Build metro site
+        run: bunx turbo run build --filter=@metro/web
+        env:
+          VITE_REPO_METRO: ${{ github.repository }}
+
+      - uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          workingDirectory: apps/metro-web
+          command: pages deploy dist --project-name=metro-eval --branch=main --commit-dirty=true

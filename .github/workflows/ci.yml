@@ -42,3 +42,11 @@ jobs:
         run: bunx turbo run build --filter=@agi-eval/web
         env:
           VITE_REPO: ${{ github.repository }}
+
+      - name: Typecheck metro
+        run: bunx turbo run typecheck --filter=@metro/web
+
+      - name: Build metro
+        run: bunx turbo run build --filter=@metro/web
+        env:
+          VITE_REPO_METRO: ${{ github.repository }}

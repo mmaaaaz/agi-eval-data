@@ -1,0 +1,11 @@
+name = "metro-eval-relay"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+
+[observability]
+enabled = true
+
+[[d1_databases]]
+binding = "DB"
+database_name = "metro-eval-questions"
+database_id = "eccd2276-9d61-4a6d-8199-e181b7c69052"

@@ -1,8 +1,7 @@
-name: sync-data
+name: sync-metro
 
-# Daily dataset pipeline: full Drive scan → OG cards (on change) →
-# link-share → commit (change-gated). The commit triggers the deploy
-# workflow, which bakes parquet + stats into the site.
+# Daily metro dataset pipeline: folder-scoped Drive scan → data/metro.json →
+# change-gated commit. The commit triggers the deploy workflow (metro jobs).
 
 on:
   schedule:
@@ -10,7 +9,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: sync-data-main
+  group: sync-metro
   cancel-in-progress: false
 
 permissions:
@@ -28,23 +27,19 @@ jobs:
           python-version: "3.12"
 
       - name: Install deps
-        run: pip install google-api-python-client google-auth-oauthlib pyarrow
+        run: pip install google-api-python-client google-auth-oauthlib
 
-      - name: Scan Drive metadata → data/latest.json
+      - name: Scan Drive folder → data/metro.json
         env:
           DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
           DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
           DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
-        run: python scripts/drive_scan.py --ci
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
+        run: python scripts/metro_scan.py --ci
 
       - name: Detect real change (ignore scan timestamp)
         id: change
         run: |
-          git show HEAD:data/latest.json > /tmp/prev.json 2>/dev/null || echo "{}" > /tmp/prev.json
+          git show HEAD:data/metro.json > /tmp/prev.json 2>/dev/null || echo "{}" > /tmp/prev.json
           python3 - <<'PY'
           import json, os
           def norm(path):
@@ -54,38 +49,21 @@ jobs:
                   return "{}"
               d.get("meta", {}).pop("scannedAt", None)
               return json.dumps(d, sort_keys=True)
-          changed = norm("/tmp/prev.json") != norm("data/latest.json")
+          changed = norm("/tmp/prev.json") != norm("data/metro.json")
           with open(os.environ["GITHUB_OUTPUT"], "a") as g:
               g.write(f"changed={str(changed).lower()}")
           print(f"real change detected: {changed}")
           PY
 
-      - name: Render OG cards (takumi) — only when stats changed
-        if: steps.change.outputs.changed == 'true'
-        run: |
-          cd scripts/og
-          npm install --no-fund --no-audit
-          node render-og.mjs
-
-      - name: Share-sync new images (delta)
-        env:
-          DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
-          DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
-          DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
-        run: python scripts/share_sync.py --max ${{ github.event.inputs.bootstrap == 'true' && '100000' || '400' }}
-
       - name: Commit artifact
         run: |
           git config user.name  "agi-eval-bot"
           git config user.email "bot@agi-eval-data.local"
-          git add data/latest.json
-          if [ "${{ steps.change.outputs.changed }}" = "true" ]; then
-            git add og/
-          fi
+          git add data/metro.json
           if git diff --cached --quiet; then
             echo "No changes since last sync."
           else
-            git commit -m "chore(data): sync $(date -u '+%Y-%m-%dT%H:%MZ')"
+            git commit -m "chore(metro): sync $(date -u '+%Y-%m-%dT%H:%MZ')"
           fi
           git fetch origin main
           git pull --rebase origin main   # last writer wins; next sync re-applies the data
@@ -107,7 +85,7 @@ jobs:
             if (issues.length === 0) {
               await github.rest.issues.create({
                 owner: context.repo.owner, repo: context.repo.repo,
-                title: `Sync failed @ ${new Date().toISOString()}`,
+                title: `Metro sync failed @ ${new Date().toISOString()}`,
                 labels: ['sync-failed'],
                 body: `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`,
               });
