@@ -14,7 +14,7 @@ def main():
     d = json.load(open(SRC, encoding="utf-8"))
     version = {
         "scannedAt": d["meta"]["scannedAt"],
-        "cron": "0 6 * * *",
+        "cron": "0 * * * *",
         "counts": d["meta"]["counts"],
     }
     os.makedirs(OUT_DIR, exist_ok=True)

@@ -176,6 +176,53 @@ export function catalogRows(latest: Latest): Row[] {
   return latest.files.filter((r) => r[7] === "i" || r[7] === "o");
 }
 
+
+export interface OwnerStat {
+  email: string;
+  raw: number;
+  unique: number;
+  dupes: number;
+  pdfs: number;
+  bytes: number;
+  days: Map<string, number>;
+  lastDay: string;
+  /** file id of their most recent upload — used as avatar */
+  lastId: string;
+}
+
+/** Per-owner aggregates. The metro dataset has a single shared mailbox, but
+ *  the page still renders the breakdown for completeness. */
+export function ownerStats(latest: Latest): OwnerStat[] {
+  interface Acc extends OwnerStat {
+    seen: Set<string>;
+  }
+  const map = new Map<string, Acc>();
+  for (const r of latest.files) {
+    const o =
+      map.get(r[5]) ??
+      ({
+        email: r[5], raw: 0, unique: 0, dupes: 0, pdfs: 0,
+        bytes: 0, days: new Map(), lastDay: "", lastId: "", seen: new Set<string>(),
+      } satisfies Acc);
+    o.bytes += r[3];
+    if (r[4] > o.lastDay) {
+      o.lastDay = r[4];
+      o.lastId = r[0];
+    }
+    if (r[7] === "i") {
+      o.raw++;
+      if (r[6]) o.seen.add(r[6]);
+      o.days.set(r[4], (o.days.get(r[4]) ?? 0) + 1);
+    } else if (r[7] === "o") {
+      o.pdfs++;
+    }
+    map.set(r[5], o);
+  }
+  return [...map.values()]
+    .map(({ seen, ...o }) => ({ ...o, unique: seen.size, dupes: Math.max(0, o.raw - seen.size) }))
+    .sort((a, b) => b.raw - a.raw);
+}
+
 export interface CountryStat {
   name: string;
   branch: string;

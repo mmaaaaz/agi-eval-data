@@ -65,7 +65,9 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
   const previewUrl = isImage
     ? `https://lh3.googleusercontent.com/d/${id}=w1600`
     : `https://drive.google.com/file/d/${id}/preview`;
-  const downloadUrl = `https://drive.google.com/uc?export=download&id=${id}`;
+  const downloadUrl = isImage
+    ? `https://drive.google.com/uc?export=download&id=${id}`
+    : `https://drive.google.com/uc?export=download&id=${id}`;
 
   return (
     <div

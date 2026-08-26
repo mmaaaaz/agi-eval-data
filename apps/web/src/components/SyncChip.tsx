@@ -59,7 +59,9 @@ export function SyncChip() {
     : null;
   const next = scannedAtMs ? nextSlotAfter(cron, new Date(Math.max(now, scannedAtMs))) : null;
   const secsLeft = next ? Math.max(0, Math.floor((next.getTime() - now) / 1000)) : null;
-  const mm = String(Math.floor((secsLeft ?? 0) / 3600) * 60 + Math.floor(((secsLeft ?? 0) % 3600) / 60)).padStart(2, "0");
+  const daysLeft = Math.floor((secsLeft ?? 0) / 86400);
+  const hrsLeft = Math.floor(((secsLeft ?? 0) % 86400) / 3600);
+  const minsLeft = Math.floor(((secsLeft ?? 0) % 3600) / 60);
   const ss = String((secsLeft ?? 0) % 60).padStart(2, "0");
   const minsSince = scannedAtMs ? Math.floor((now - scannedAtMs) / 60000) : 0;
   const delayed = minsSince > 26 * 60 && !update;
@@ -94,7 +96,11 @@ export function SyncChip() {
     : delayed
       ? "sync delayed"
       : secsLeft != null && secsLeft > 0
-        ? `next ${mm}:${ss}`
+        ? daysLeft > 0
+          ? `next ${daysLeft}d ${hrsLeft}h`
+          : hrsLeft > 0
+            ? `next ${hrsLeft}h ${String(minsLeft).padStart(2, "0")}m`
+            : `next ${String(minsLeft).padStart(2, "0")}:${ss}`
         : "syncing…";
 
   return (

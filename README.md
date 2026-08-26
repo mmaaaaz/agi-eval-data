@@ -6,8 +6,8 @@ shape problems.
 
 | Site | URL | Dataset | Sync |
 |---|---|---|---|
-| **Real-world images** | [agi-eval-data.pages.dev](https://agi-eval-data.pages.dev) | 54.5k+ photos where VLMs fail | hourly Drive scan → `data/latest.json` |
-| **Metro / transit** | [metro-eval.pages.dev](https://metro-eval.pages.dev) | 85 metro network maps · 38 countries · 30 official PDFs | daily Drive scan → `data/metro.json` |
+| **Real-world images** | [agi-eval-data.pages.dev](https://agi-eval-data.pages.dev) | 54.5k+ photos where VLMs fail | daily Drive scan → `data/latest.json` |
+| **Metro / transit** | [metro-eval.pages.dev](https://metro-eval.pages.dev) | 85 metro network maps · 38 countries · 30 official PDFs | hourly Drive scan → `data/metro.json` |
 
 Questions are authored on the sites (access-gated) and frontier VLMs are graded against them.
 
@@ -47,7 +47,7 @@ VQA-style `questions.jsonl`.
 - **Gallery** — all 85 maps + 30 PDFs in one grid.
 - **Contribute / Evaluate** — same questions workspace as the foundation, backed by its
   own D1 (`metro-eval-questions`), target 5 questions per map.
-- **Sync pill** — counts down to the daily 06:00 UTC data sync; becomes a refresh button
+- **Sync pill** — counts down to the hourly data sync; becomes a refresh button
   when new data lands.
 
 ## Local development
@@ -78,7 +78,7 @@ Defaults point at the deployed workers.
 | `ci` | PRs + pushes touching code | typecheck + build both sites (gates merges) |
 | `deploy` | pushes to `main` touching code | deploy both relays (Workers) + both sites (Pages), per-app path filtering |
 | `sync-data` | daily 06:00 UTC + manual | real-world Drive scan → `data/latest.json` → commit (change-gated) |
-| `sync-metro` | daily 06:00 UTC + manual | metro folder scan → `data/metro.json` → commit (change-gated) |
+| `sync-metro` | hourly (every :00) + manual | metro folder scan → `data/metro.json` → commit (change-gated) |
 | `sync-share` | every 30 min | link-share new images + PDFs (thumbnails/previews work anonymously) |
 
 **Required repo secrets**: `CLOUDFLARE_API_TOKEN` (Workers Scripts:Edit + Cloudflare

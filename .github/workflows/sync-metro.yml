@@ -5,7 +5,7 @@ name: sync-metro
 
 on:
   schedule:
-    - cron: "0 6 * * *" # daily 06:00 UTC
+    - cron: "0 * * * *" # hourly — new dataset, wants fresh data
   workflow_dispatch:
 
 concurrency:

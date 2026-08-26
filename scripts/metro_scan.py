@@ -222,7 +222,7 @@ def build_payload(files, folders, root_id):
         "version": 4,
         "meta": {
             "scannedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "cron": "0 6 * * *",
+            "cron": "0 * * * *",
             "root": root_id,
             "counts": {
                 "all": len(files), "images": n_img, "pdfs": n_pdf,

@@ -17,6 +17,10 @@ import { Route as ProjectRouteImport } from './routes/project'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
 import { Route as ContributeEvaluateRouteImport } from './routes/contribute.evaluate'
+import { Route as GalleryIndexRouteImport } from './routes/gallery.index'
+import { Route as GalleryContributorsRouteImport } from './routes/gallery.contributors'
+import { Route as GalleryDuplicatesRouteImport } from './routes/gallery.duplicates'
+import { Route as GalleryPdfsRouteImport } from './routes/gallery.pdfs'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -58,36 +62,67 @@ const ContributeEvaluateRoute = ContributeEvaluateRouteImport.update({
   path: '/evaluate',
   getParentRoute: () => ContributeRoute,
 } as any)
+const GalleryIndexRoute = GalleryIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GalleryRoute,
+} as any)
+const GalleryContributorsRoute = GalleryContributorsRouteImport.update({
+  id: '/contributors',
+  path: '/contributors',
+  getParentRoute: () => GalleryRoute,
+} as any)
+const GalleryDuplicatesRoute = GalleryDuplicatesRouteImport.update({
+  id: '/duplicates',
+  path: '/duplicates',
+  getParentRoute: () => GalleryRoute,
+} as any)
+const GalleryPdfsRoute = GalleryPdfsRouteImport.update({
+  id: '/pdfs',
+  path: '/pdfs',
+  getParentRoute: () => GalleryRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
   '/contribute': typeof ContributeRouteWithChildren
-  '/gallery': typeof GalleryRoute
+  '/gallery': typeof GalleryRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
+  '/gallery/contributors': typeof GalleryContributorsRoute
+  '/gallery/duplicates': typeof GalleryDuplicatesRoute
+  '/gallery/pdfs': typeof GalleryPdfsRoute
   '/contribute/': typeof ContributeIndexRoute
+  '/gallery/': typeof GalleryIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
-  '/gallery': typeof GalleryRoute
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
+  '/gallery/contributors': typeof GalleryContributorsRoute
+  '/gallery/duplicates': typeof GalleryDuplicatesRoute
+  '/gallery/pdfs': typeof GalleryPdfsRoute
   '/contribute': typeof ContributeIndexRoute
+  '/gallery': typeof GalleryIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
   '/contribute': typeof ContributeRouteWithChildren
-  '/gallery': typeof GalleryRoute
+  '/gallery': typeof GalleryRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
+  '/gallery/contributors': typeof GalleryContributorsRoute
+  '/gallery/duplicates': typeof GalleryDuplicatesRoute
+  '/gallery/pdfs': typeof GalleryPdfsRoute
   '/contribute/': typeof ContributeIndexRoute
+  '/gallery/': typeof GalleryIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -99,16 +134,23 @@ export interface FileRouteTypes {
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
+    | '/gallery/contributors'
+    | '/gallery/duplicates'
+    | '/gallery/pdfs'
     | '/contribute/'
+    | '/gallery/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/catalog'
-    | '/gallery'
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
+    | '/gallery/contributors'
+    | '/gallery/duplicates'
+    | '/gallery/pdfs'
     | '/contribute'
+    | '/gallery'
   id:
     | '__root__'
     | '/'
@@ -118,14 +160,18 @@ export interface FileRouteTypes {
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
+    | '/gallery/contributors'
+    | '/gallery/duplicates'
+    | '/gallery/pdfs'
     | '/contribute/'
+    | '/gallery/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CatalogRoute: typeof CatalogRoute
   ContributeRoute: typeof ContributeRouteWithChildren
-  GalleryRoute: typeof GalleryRoute
+  GalleryRoute: typeof GalleryRouteWithChildren
   ProjectRoute: typeof ProjectRoute
   SettingsRoute: typeof SettingsRoute
 }
@@ -188,6 +234,34 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContributeEvaluateRouteImport
       parentRoute: typeof ContributeRoute
     }
+    '/gallery/': {
+      id: '/gallery/'
+      path: '/'
+      fullPath: '/gallery/'
+      preLoaderRoute: typeof GalleryIndexRouteImport
+      parentRoute: typeof GalleryRoute
+    }
+    '/gallery/contributors': {
+      id: '/gallery/contributors'
+      path: '/contributors'
+      fullPath: '/gallery/contributors'
+      preLoaderRoute: typeof GalleryContributorsRouteImport
+      parentRoute: typeof GalleryRoute
+    }
+    '/gallery/duplicates': {
+      id: '/gallery/duplicates'
+      path: '/duplicates'
+      fullPath: '/gallery/duplicates'
+      preLoaderRoute: typeof GalleryDuplicatesRouteImport
+      parentRoute: typeof GalleryRoute
+    }
+    '/gallery/pdfs': {
+      id: '/gallery/pdfs'
+      path: '/pdfs'
+      fullPath: '/gallery/pdfs'
+      preLoaderRoute: typeof GalleryPdfsRouteImport
+      parentRoute: typeof GalleryRoute
+    }
   }
 }
 
@@ -205,11 +279,28 @@ const ContributeRouteWithChildren = ContributeRoute._addFileChildren(
   ContributeRouteChildren,
 )
 
+interface GalleryRouteChildren {
+  GalleryContributorsRoute: typeof GalleryContributorsRoute
+  GalleryDuplicatesRoute: typeof GalleryDuplicatesRoute
+  GalleryPdfsRoute: typeof GalleryPdfsRoute
+  GalleryIndexRoute: typeof GalleryIndexRoute
+}
+
+const GalleryRouteChildren: GalleryRouteChildren = {
+  GalleryContributorsRoute: GalleryContributorsRoute,
+  GalleryDuplicatesRoute: GalleryDuplicatesRoute,
+  GalleryPdfsRoute: GalleryPdfsRoute,
+  GalleryIndexRoute: GalleryIndexRoute,
+}
+
+const GalleryRouteWithChildren =
+  GalleryRoute._addFileChildren(GalleryRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CatalogRoute: CatalogRoute,
   ContributeRoute: ContributeRouteWithChildren,
-  GalleryRoute: GalleryRoute,
+  GalleryRoute: GalleryRouteWithChildren,
   ProjectRoute: ProjectRoute,
   SettingsRoute: SettingsRoute,
 }

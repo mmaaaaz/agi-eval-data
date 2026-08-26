@@ -200,7 +200,7 @@ def build_ci_payload(files, reports, buckets):
         "version": 3,
         "meta": {
             "scannedAt": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
-            "cron": "0 * * * *",
+            "cron": "0 6 * * *",
             "counts": {
                 "all": len(files), "imagesRaw": img["total"], "imagesUnique": img["unique"],
                 "dupCopies": img["duplicate_copies"], "videos": len(buckets["videos"]),

@@ -11,7 +11,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 export function SyncChip() {
   const [now, setNow] = useState(() => Date.now());
   const [scannedAt, setScannedAt] = useState<string | null>(null);
-  const [cron, setCron] = useState("0 6 * * *");
+  const [cron, setCron] = useState("0 * * * *");
   const [update, setUpdate] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
 
@@ -32,7 +32,7 @@ export function SyncChip() {
         const v = (await res.json()) as { scannedAt: string; cron?: string };
         if (cancelled) return;
         setCheckFailed(false);
-        setCron(v.cron ?? "0 6 * * *");
+        setCron(v.cron ?? "0 * * * *");
         setScannedAt((prev) => {
           if (prev && v.scannedAt !== prev) setUpdate(true);
           return v.scannedAt;
@@ -59,13 +59,15 @@ export function SyncChip() {
     : null;
   const next = scannedAtMs ? nextSlotAfter(cron, new Date(Math.max(now, scannedAtMs))) : null;
   const secsLeft = next ? Math.max(0, Math.floor((next.getTime() - now) / 1000)) : null;
-  const mm = String(Math.floor((secsLeft ?? 0) / 3600) * 60 + Math.floor(((secsLeft ?? 0) % 3600) / 60)).padStart(2, "0");
+  const daysLeft = Math.floor((secsLeft ?? 0) / 86400);
+  const hrsLeft = Math.floor(((secsLeft ?? 0) % 86400) / 3600);
+  const minsLeft = Math.floor(((secsLeft ?? 0) % 3600) / 60);
   const ss = String((secsLeft ?? 0) % 60).padStart(2, "0");
   const minsSince = scannedAtMs ? Math.floor((now - scannedAtMs) / 60000) : 0;
   const delayed = minsSince > 26 * 60 && !update;
 
   const tooltip = scannedAt
-    ? `last data sync ${timeAgo(new Date(scannedAtMs ?? now).toISOString())} · daily at 06:00 UTC · checks every minute`
+    ? `last data sync ${timeAgo(new Date(scannedAtMs ?? now).toISOString())} · hourly at :00 · checks every minute`
     : "waiting for sync data";
 
   if (update) {
@@ -94,7 +96,11 @@ export function SyncChip() {
     : delayed
       ? "sync delayed"
       : secsLeft != null && secsLeft > 0
-        ? `next ${mm}:${ss}`
+        ? daysLeft > 0
+          ? `next ${daysLeft}d ${hrsLeft}h`
+          : hrsLeft > 0
+            ? `next ${hrsLeft}h ${String(minsLeft).padStart(2, "0")}m`
+            : `next ${String(minsLeft).padStart(2, "0")}:${ss}`
         : "syncing…";
 
   return (
