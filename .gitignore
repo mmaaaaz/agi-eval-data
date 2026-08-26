@@ -31,7 +31,6 @@ web/src/routeTree.gen.ts
 relay/.dev.vars
 relay/tail.log
 relay/package-lock.json
-docs/QUESTIONS_PLAN.md
 relay/dev.log
 relay/dev2.log
 relay/dev3.log
