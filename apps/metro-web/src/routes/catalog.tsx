@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { countriesOf, cityName } from "../lib/data";
 import { fmtN } from "../lib/format";
 import { ThumbImage } from "../components/ThumbImage";
+import { Lightbox } from "../components/Lightbox";
 import { Eyebrow } from "../components/Section";
 import type { Row } from "@metro/shared/types";
 
@@ -64,7 +66,7 @@ function Catalog() {
       </div>
 
       {activeCountry ? (
-        <CountryView country={activeCountry.name} rows={rows} onBack={() => undefined} />
+        <CountryView country={activeCountry.name} rows={rows} />
       ) : (
         <div className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#262626] bg-[#262626] sm:grid-cols-3 lg:grid-cols-4">
           {branchCountries.map((s) => (
@@ -94,9 +96,15 @@ function Catalog() {
   );
 }
 
-function CountryView({ country, rows, onBack }: { country: string; rows: Row[]; onBack: () => void }) {
+function CountryView({ country, rows }: { country: string; rows: Row[] }) {
   const imgs = rows.filter((r) => r[7] === "i");
   const pdfs = rows.filter((r) => r[7] === "o");
+  const all = [...imgs, ...pdfs];
+  const [openIdx, setOpenIdx] = useState<number | null>(null);
+  const openRow = openIdx != null ? all[openIdx] ?? null : null;
+
+  const step = (dir: 1 | -1) =>
+    setOpenIdx((i) => (i == null ? null : Math.max(0, Math.min(all.length - 1, i + dir))));
 
   return (
     <div>
@@ -117,8 +125,12 @@ function CountryView({ country, rows, onBack }: { country: string; rows: Row[]; 
             network maps · {imgs.length}
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {imgs.map((r) => (
-              <div key={r[0]} className="group">
+            {imgs.map((r, i) => (
+              <button
+                key={r[0]}
+                onClick={() => setOpenIdx(i)}
+                className="group text-left"
+              >
                 <div className="overflow-hidden rounded-lg border border-[#262626]">
                   <ThumbImage fileId={r[0]} w={1600} alt={r[1]} className="aspect-[3/4] w-full" />
                 </div>
@@ -126,7 +138,7 @@ function CountryView({ country, rows, onBack }: { country: string; rows: Row[]; 
                   {cityName(r) || r[1]}
                 </p>
                 <p className="truncate font-mono text-[9px] text-[#666]">{r[1]}</p>
-              </div>
+              </button>
             ))}
           </div>
         </section>
@@ -138,34 +150,33 @@ function CountryView({ country, rows, onBack }: { country: string; rows: Row[]; 
             official plans (PDF) · {pdfs.length}
           </h2>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-            {pdfs.map((r) => (
-              <div key={r[0]} className="group rounded-lg border border-[#262626] p-3">
+            {pdfs.map((r, i) => (
+              <button
+                key={r[0]}
+                onClick={() => setOpenIdx(imgs.length + i)}
+                className="group rounded-lg border border-[#262626] p-3 text-left"
+              >
                 <div className="overflow-hidden rounded-md border border-[#262626]">
                   <ThumbImage fileId={r[0]} kind="o" alt={r[1]} className="aspect-[3/4] w-full" />
                 </div>
                 <p className="mt-2 line-clamp-2 font-mono text-[10px] text-[#a1a1a1]" title={r[1]}>
                   {r[1]}
                 </p>
-                <div className="mt-2 flex gap-2">
-                  <a
-                    href={`https://drive.google.com/file/d/${r[0]}/preview`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex-1 rounded border border-[#262626] px-2 py-1 text-center font-mono text-[10px] text-[#ededed] transition-colors hover:border-[#404040]"
-                  >
-                    preview
-                  </a>
-                  <a
-                    href={`https://drive.google.com/uc?export=download&id=${r[0]}`}
-                    className="flex-1 rounded border border-accent/40 px-2 py-1 text-center font-mono text-[10px] text-accent transition-colors hover:bg-accent/10"
-                  >
-                    download
-                  </a>
-                </div>
-              </div>
+              </button>
             ))}
           </div>
         </section>
+      )}
+
+      {openRow && (
+        <Lightbox
+          row={openRow}
+          pos={openIdx ?? 0}
+          total={all.length}
+          onClose={() => setOpenIdx(null)}
+          onPrev={() => step(-1)}
+          onNext={() => step(1)}
+        />
       )}
     </div>
   );
