@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetTitle } from "@/components/ui/sheet";
 import { VirtualGallery } from "@/components/VirtualGallery";
 import { ThumbImage } from "../components/ThumbImage";
 import { useData } from "../lib/dataContext";
-import { cityName, countryOf } from "../lib/data";
+import { branchOf, cityName, countryOf } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 import { loadSettings } from "../lib/ai/settings";
 import { questionsApi, normQ, parseTags, type QRow } from "../lib/questions";
@@ -267,6 +267,25 @@ function ContributeQuestions() {
                   <span className="rounded border border-[#262626] px-2 py-0.5 font-mono text-[10px] tabular-nums text-[#a1a1a1]">
                     {selectedCount}/5 questions
                   </span>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    {[branchOf(selected), countryOf(selected), cityName(selected)].filter(Boolean).slice(0, 3).map((t) => (
+                      <button
+                        key={t}
+                        onClick={() => setTags((prev) => {
+                          if (parseTags(prev).includes(t.toLowerCase())) return prev;
+                          return prev ? `${prev}, ${t}` : t;
+                        })}
+                        title={`add "${t}" tag`}
+                        className={`shrink-0 rounded-full border px-2 py-0.5 font-mono text-[9px] transition-colors ${
+                          parseTags(tags).includes(t.toLowerCase())
+                            ? "border-accent/50 text-accent"
+                            : "border-[#262626] text-[#666] hover:border-accent hover:text-accent"
+                        }`}
+                      >
+                        + {t}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex min-w-0 items-center gap-2">
                     <input
                       value={markReason}

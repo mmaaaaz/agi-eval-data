@@ -42,8 +42,14 @@ function Catalog() {
     <div>
       <Eyebrow n="02">catalog</Eyebrow>
 
-      {/* branch toggle */}
-      <div className="mb-6 flex gap-1">
+      {/* branch toggle + compare */}
+      <div className="mb-6 flex items-center gap-1">
+        <Link
+          to="/compare"
+          className="shrink-0 rounded-md border border-accent/40 px-3.5 py-1.5 font-mono text-[11px] text-accent transition-colors hover:bg-accent/10"
+        >
+          ours vs existing
+        </Link>
         {BRANCHES.map((b) => (
           <Link
             key={b.id}

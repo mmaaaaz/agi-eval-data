@@ -117,7 +117,7 @@ function Shell() {
                   </button>
                 </SheetTrigger>
                 <SheetContent side="left" className="w-72 border-[#262626] bg-black">
-                  <SheetTitle className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">navigation</SheetTitle>
+                  <SheetTitle className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#666]">agi-eval-data · menu</SheetTitle>
                   <nav className="mt-5 flex flex-col gap-1.5">
                     {NAV.map((n) => (
                       <MobileNavLink key={n.to} to={n.to} label={n.label} onNavigate={() => setMenuOpen(false)} />

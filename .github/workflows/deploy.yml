@@ -173,10 +173,19 @@ jobs:
       - name: Bake metro sync feed
         run: python scripts/metro_build_data.py
 
+      - name: Render metro OG cards
+        run: |
+          cd scripts/og
+          npm install --no-fund --no-audit
+          node render-metro-og.mjs
+
       - name: Build metro site
         run: bunx turbo run build --filter=@metro/web
         env:
           VITE_REPO_METRO: ${{ github.repository }}
+
+      - name: Stamp per-route OG tags
+        run: node scripts/og/gen-metro-route-html.mjs
 
       - name: Deploy metro pages
         run: bunx --bun wrangler@4.125.0 pages deploy dist --project-name=metro-eval --branch=main --commit-dirty=true

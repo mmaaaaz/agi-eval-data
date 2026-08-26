@@ -55,11 +55,21 @@ jobs:
           print(f"real change detected: {changed}")
           PY
 
+      - name: Render metro OG cards — only when data changed
+        if: steps.change.outputs.changed == 'true'
+        run: |
+          cd scripts/og
+          npm install --no-fund --no-audit
+          node render-metro-og.mjs
+
       - name: Commit artifact
         run: |
           git config user.name  "agi-eval-bot"
           git config user.email "bot@agi-eval-data.local"
           git add data/metro.json
+          if [ "${{ steps.change.outputs.changed }}" = "true" ]; then
+            git add og/metro/
+          fi
           if git diff --cached --quiet; then
             echo "No changes since last sync."
           else

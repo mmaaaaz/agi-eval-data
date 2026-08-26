@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as CatalogRouteImport } from './routes/catalog'
+import { Route as CompareRouteImport } from './routes/compare'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as ProjectRouteImport } from './routes/project'
@@ -30,6 +31,11 @@ const IndexRoute = IndexRouteImport.update({
 const CatalogRoute = CatalogRouteImport.update({
   id: '/catalog',
   path: '/catalog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CompareRoute = CompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContributeRoute = ContributeRouteImport.update({
@@ -86,6 +92,7 @@ const GalleryPdfsRoute = GalleryPdfsRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
+  '/compare': typeof CompareRoute
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
   '/project': typeof ProjectRoute
@@ -100,6 +107,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
+  '/compare': typeof CompareRoute
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/contribute/evaluate': typeof ContributeEvaluateRoute
@@ -113,6 +121,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/catalog': typeof CatalogRoute
+  '/compare': typeof CompareRoute
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
   '/project': typeof ProjectRoute
@@ -129,6 +138,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/catalog'
+    | '/compare'
     | '/contribute'
     | '/gallery'
     | '/project'
@@ -143,6 +153,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/catalog'
+    | '/compare'
     | '/project'
     | '/settings'
     | '/contribute/evaluate'
@@ -155,6 +166,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/catalog'
+    | '/compare'
     | '/contribute'
     | '/gallery'
     | '/project'
@@ -170,6 +182,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   CatalogRoute: typeof CatalogRoute
+  CompareRoute: typeof CompareRoute
   ContributeRoute: typeof ContributeRouteWithChildren
   GalleryRoute: typeof GalleryRouteWithChildren
   ProjectRoute: typeof ProjectRoute
@@ -190,6 +203,13 @@ declare module '@tanstack/react-router' {
       path: '/catalog'
       fullPath: '/catalog'
       preLoaderRoute: typeof CatalogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/compare': {
+      id: '/compare'
+      path: '/compare'
+      fullPath: '/compare'
+      preLoaderRoute: typeof CompareRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contribute': {
@@ -299,6 +319,7 @@ const GalleryRouteWithChildren =
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   CatalogRoute: CatalogRoute,
+  CompareRoute: CompareRoute,
   ContributeRoute: ContributeRouteWithChildren,
   GalleryRoute: GalleryRouteWithChildren,
   ProjectRoute: ProjectRoute,

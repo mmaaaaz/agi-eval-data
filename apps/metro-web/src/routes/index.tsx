@@ -1,7 +1,10 @@
+import { useEffect, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
-import { countriesOf, imageRows } from "../lib/data";
+import { countriesOf, imageRows, countryOf } from "../lib/data";
 import { fmtN } from "../lib/format";
+import { loadSettings } from "../lib/ai/settings";
+import { questionsApi } from "../lib/questions";
 import { ThumbImage } from "../components/ThumbImage";
 import { Eyebrow } from "../components/Section";
 
@@ -16,6 +19,19 @@ function fmtBytes(n: number): string {
 
 function Overview() {
   const { data } = useData();
+  const [counts, setCounts] = useState<Record<string, number> | null>(null);
+
+  useEffect(() => {
+    const s = loadSettings();
+    const relay = s.relay.replace(/\/+$/, "");
+    if (!relay) return;
+    let alive = true;
+    questionsApi.counts(relay, s.accessCode)
+      .then((r) => { if (alive) setCounts(r.counts); })
+      .catch(() => { /* relay unreachable — coverage hidden */ });
+    return () => { alive = false; };
+  }, []);
+
   if (!data) return null;
   const c = data.meta.counts;
   const imgs = imageRows(data);
@@ -23,6 +39,20 @@ function Overview() {
   const countries = countriesOf(data);
   const branchOurs = countries.filter((s) => s.branch === "ours").length;
   const branchReason = countries.length - branchOurs;
+
+  /* per-country coverage: avg questions per map (images only) */
+  const coverage = countries
+    .map((s) => {
+      const countryImgs = data.files.filter((r) => r[7] === "i" && countryOf(r) === s.name && r[8][0] === s.branch);
+      const total = countryImgs.reduce((acc, r) => acc + (counts?.[r[0]] ?? 0), 0);
+      const n = countryImgs.length;
+      return { name: s.name, branch: s.branch, n, total, avg: n ? total / n : 0 };
+    })
+    .filter((x) => x.n > 0)
+    .sort((a, b) => a.avg - b.avg);
+
+  const totalQuestions = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : null;
+  const target = counts ? Object.keys(counts).length * 5 : null;
 
   return (
     <div>
@@ -34,7 +64,7 @@ function Overview() {
           {fmtN(c.images)}
         </p>
         <p className="mt-3 font-mono text-[11px] text-[#666] sm:text-xs">
-          {fmtN(c.cities)} cities · {fmtN(c.countries)} countries · synced daily
+          {fmtN(c.cities)} cities · {fmtN(c.countries)} countries · synced hourly
         </p>
       </section>
 
@@ -53,6 +83,43 @@ function Overview() {
         <Jump to="/contribute" label="Contribute" hint="author questions" />
         <Jump to="/project" label="Project" hint="about the benchmark" />
       </section>
+
+      {totalQuestions != null && (
+        <section className="pt-8 sm:pt-10">
+          <div className="mb-4 flex items-baseline justify-between gap-3">
+            <h2 className="font-medium tracking-tight text-white">Question coverage</h2>
+            <span className="font-mono text-[10px] text-[#666]">
+              {fmtN(totalQuestions)} questions · {fmtN(target ?? 0)} target (5/map)
+            </span>
+          </div>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {coverage.map((x) => (
+              <Link
+                key={`${x.branch}/${x.name}`}
+                to="/catalog"
+                search={{ branch: x.branch, country: x.name }}
+                className="group rounded-lg border border-[#262626] px-3 py-2.5 transition-colors hover:border-[#404040]"
+              >
+                <div className="flex items-center justify-between gap-2">
+                  <span className="min-w-0 truncate font-mono text-[11px] text-[#ededed]">{x.name}</span>
+                  <span className={`shrink-0 font-mono text-[11px] tabular-nums ${x.avg >= 5 ? "text-[#0cce6b]" : x.avg >= 2 ? "text-[#eab308]" : "text-danger"}`}>
+                    {x.avg.toFixed(1)}
+                  </span>
+                </div>
+                <div className="mt-1.5 h-[5px] overflow-hidden rounded-full bg-[#161616]">
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-[#0a5c40] to-accent"
+                    style={{ width: `${Math.min(100, (x.avg / 5) * 100)}%` }}
+                  />
+                </div>
+                <p className="mt-1 font-mono text-[9px] text-muted-foreground">
+                  {x.total}/{x.n * 5} · {fmtN(x.n)} maps
+                </p>
+              </Link>
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="pt-8 sm:pt-10">
         <h2 className="mb-4 font-medium tracking-tight text-white">Latest additions</h2>
