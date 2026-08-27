@@ -14,6 +14,11 @@ export {
   dupCounts,
   ownerStats,
   byDay,
+  isImage,
+  dayOf,
+  ownerOf,
+  md5Of,
+  kindOf,
 } from "@site/data";
 export type {
   Row,

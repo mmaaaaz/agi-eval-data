@@ -17,21 +17,9 @@
  * `x-questions-code` with the matching value. Unset = open (local dev only —
  * set the secret before exposing this publicly).
  */
-interface PreparedStatement {
-  bind(...values: unknown[]): PreparedStatement;
-  first<T = unknown>(): Promise<T | null>;
-  all<T = unknown>(): Promise<D1Result<T>>;
-  run(): Promise<unknown>;
-}
+import type { D1Database, D1PreparedStatement, D1Result } from "@cloudflare/workers-types";
 
-interface D1Database {
-  prepare(query: string): PreparedStatement;
-  batch(statements: PreparedStatement[]): Promise<Array<{ meta?: { last_row_id?: number } }>>;
-}
-
-interface D1Result<T> {
-  results: T[];
-}
+type PreparedStatement = D1PreparedStatement;
 
 interface QuestionRow {
   id: number;
@@ -60,8 +48,8 @@ interface EvalRow {
 }
 
 export interface QuestionsApiDeps {
-  /** the D1 binding */
-  db: D1Database;
+  /** the D1 binding (optional — handle() 503s when missing) */
+  db?: D1Database;
   /** gate secret (unset = open) */
   questionsCode?: string;
   normQ: (q: string) => string;
@@ -93,7 +81,7 @@ async function readBody<T>(request: Request): Promise<T> {
 }
 
 /** Insert question + bump tag counts in one batch (atomic). */
-async function insertQuestion(deps: QuestionsApiDeps, payload: {
+async function insertQuestion(db: D1Database, deps: QuestionsApiDeps, payload: {
   file_id: string;
   contributor: string;
   question: string;
@@ -107,7 +95,7 @@ async function insertQuestion(deps: QuestionsApiDeps, payload: {
   const status = payload.answer.trim() === "" && payload.answer_type === "text" ? "draft" : "approved";
   const tagList = deps.normTags(payload.tags.join(","));
   const stmts: PreparedStatement[] = [
-    deps.db.prepare(
+    db.prepare(
       "INSERT INTO questions (file_id, contributor, question, qnorm, answer_type, answer, choices, difficulty, tags, status) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10)",
     ).bind(
       payload.file_id, payload.contributor, payload.question, qnorm,
@@ -117,18 +105,20 @@ async function insertQuestion(deps: QuestionsApiDeps, payload: {
   ];
   for (const tag of tagList) {
     stmts.push(
-      deps.db.prepare(
+      db.prepare(
         "INSERT INTO tags (tag, count) VALUES (?1, 1) ON CONFLICT(tag) DO UPDATE SET count = count + 1",
       ).bind(tag),
     );
   }
-  const res = await deps.db.batch(stmts);
+  const res = await db.batch(stmts);
   const meta = res[0]?.meta;
   return Number(meta?.last_row_id ?? 0);
 }
 
 interface RouteCtx {
   request: Request;
+  /** narrowed D1 binding — handle() 503s before dispatch when missing */
+  db: D1Database;
   deps: QuestionsApiDeps;
   url: URL;
 }
@@ -144,8 +134,8 @@ const ROUTES: Route[] = [
   {
     method: "GET",
     pattern: /^\/api\/questions\/counts$/,
-    handler: async ({ request, deps, url }) => {
-      const res = await deps.db.prepare(
+    handler: async ({ request, db, deps, url }) => {
+      const res = await db.prepare(
         "SELECT file_id, COUNT(*) AS n FROM questions WHERE status != 'draft' GROUP BY file_id",
       ).all<{ file_id: string; n: number }>();
       const counts: Record<string, number> = {};
@@ -156,12 +146,12 @@ const ROUTES: Route[] = [
   {
     method: "GET",
     pattern: /^\/api\/questions\/check$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const fileId = url.searchParams.get("file_id") ?? "";
       const q = url.searchParams.get("q") ?? "";
       if (!fileId || q.trim().length < 4) return jsonResponse({ matches: [] });
       const qn = deps.normQ(q);
-      const res = await deps.db.prepare(
+      const res = await db.prepare(
         "SELECT id, question FROM questions WHERE file_id = ?1 AND (qnorm = ?2 OR qnorm LIKE ?3) LIMIT 5",
       ).bind(fileId, qn, qn + "%").all<{ id: number; question: string }>();
       return jsonResponse({ matches: res.results });
@@ -170,18 +160,18 @@ const ROUTES: Route[] = [
   {
     method: "GET",
     pattern: /^\/api\/questions$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const fileId = url.searchParams.get("file_id");
       const search = url.searchParams.get("search");
       const limit = Math.min(200, Number(url.searchParams.get("limit") ?? 50));
       let stmt: PreparedStatement;
       if (fileId) {
-        stmt = deps.db.prepare("SELECT * FROM questions WHERE file_id = ?1 ORDER BY id DESC").bind(fileId);
+        stmt = db.prepare("SELECT * FROM questions WHERE file_id = ?1 ORDER BY id DESC").bind(fileId);
       } else if (search) {
-        stmt = deps.db.prepare("SELECT * FROM questions WHERE question LIKE ?1 ORDER BY id DESC LIMIT ?2")
+        stmt = db.prepare("SELECT * FROM questions WHERE question LIKE ?1 ORDER BY id DESC LIMIT ?2")
           .bind("%" + search + "%", limit);
       } else {
-        stmt = deps.db.prepare("SELECT * FROM questions ORDER BY id DESC LIMIT ?1").bind(limit);
+        stmt = db.prepare("SELECT * FROM questions ORDER BY id DESC LIMIT ?1").bind(limit);
       }
       const res = await stmt.all<QuestionRow>();
       return jsonResponse({ questions: res.results });
@@ -190,7 +180,7 @@ const ROUTES: Route[] = [
   {
     method: "POST",
     pattern: /^\/api\/questions$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const body = await readBody<{
         file_id?: string;
         contributor?: string;
@@ -221,7 +211,7 @@ const ROUTES: Route[] = [
       }
       const difficulty = ["easy", "medium", "hard"].includes(body.difficulty ?? "") ? (body.difficulty as string) : "medium";
       try {
-        const id = await insertQuestion(deps, {
+        const id = await insertQuestion(db, deps, {
           file_id: fileId,
           contributor: (body.contributor ?? "").trim(),
           question,
@@ -242,40 +232,40 @@ const ROUTES: Route[] = [
   {
     method: "DELETE",
     pattern: /^\/api\/questions$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const id = Number(url.searchParams.get("id"));
       if (!id) return jsonResponse({ error: "id required" }, 400);
-      const row = await deps.db.prepare("SELECT tags FROM questions WHERE id = ?1").bind(id).first<{ tags: string }>();
+      const row = await db.prepare("SELECT tags FROM questions WHERE id = ?1").bind(id).first<{ tags: string }>();
       if (!row) return jsonResponse({ error: "not found" }, 404);
       const tagList = deps.normTags(row.tags);
       const stmts: PreparedStatement[] = [
-        deps.db.prepare("DELETE FROM questions WHERE id = ?1").bind(id),
+        db.prepare("DELETE FROM questions WHERE id = ?1").bind(id),
         // evaluations reference the question — never leave orphans behind
-        deps.db.prepare("DELETE FROM evaluations WHERE question_id = ?1").bind(id),
+        db.prepare("DELETE FROM evaluations WHERE question_id = ?1").bind(id),
       ];
       for (const tag of tagList) {
-        stmts.push(deps.db.prepare("UPDATE tags SET count = MAX(0, count - 1) WHERE tag = ?1").bind(tag));
+        stmts.push(db.prepare("UPDATE tags SET count = MAX(0, count - 1) WHERE tag = ?1").bind(tag));
       }
-      await deps.db.batch(stmts);
+      await db.batch(stmts);
       return jsonResponse({ ok: true });
     },
   },
   {
     method: "GET",
     pattern: /^\/api\/questions\/tags$/,
-    handler: async ({ request, deps, url }) => {
-      const res = await deps.db.prepare("SELECT tag, count FROM tags ORDER BY count DESC LIMIT 200").all<{ tag: string; count: number }>();
+    handler: async ({ request, db, deps, url }) => {
+      const res = await db.prepare("SELECT tag, count FROM tags ORDER BY count DESC LIMIT 200").all<{ tag: string; count: number }>();
       return jsonResponse({ tags: res.results.map((r) => [r.tag, r.count]) });
     },
   },
   {
     method: "GET",
     pattern: /^\/api\/questions\/export\.jsonl$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       let last = 0;
       const parts: string[] = [];
       for (;;) {
-        const res = await deps.db.prepare(
+        const res = await db.prepare(
           "SELECT * FROM questions WHERE status = 'approved' AND answer IS NOT NULL AND answer != '' AND id > ?1 ORDER BY id LIMIT 500",
         ).bind(last).all<QuestionRow>();
         if (res.results.length === 0) break;
@@ -308,17 +298,17 @@ const ROUTES: Route[] = [
   {
     method: "GET",
     pattern: /^\/api\/evaluations$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const questionId = Number(url.searchParams.get("question_id") ?? 0);
       const model = url.searchParams.get("model");
       const limit = Math.min(200, Number(url.searchParams.get("limit") ?? 100));
       let res: D1Result<EvalRow>;
       if (questionId) {
-        res = await deps.db.prepare("SELECT * FROM evaluations WHERE question_id = ?1 ORDER BY id DESC").bind(questionId).all<EvalRow>();
+        res = await db.prepare("SELECT * FROM evaluations WHERE question_id = ?1 ORDER BY id DESC").bind(questionId).all<EvalRow>();
       } else if (model) {
-        res = await deps.db.prepare("SELECT * FROM evaluations WHERE model = ?1 ORDER BY id DESC LIMIT ?2").bind(model, limit).all<EvalRow>();
+        res = await db.prepare("SELECT * FROM evaluations WHERE model = ?1 ORDER BY id DESC LIMIT ?2").bind(model, limit).all<EvalRow>();
       } else {
-        res = await deps.db.prepare("SELECT * FROM evaluations ORDER BY id DESC LIMIT ?1").bind(limit).all<EvalRow>();
+        res = await db.prepare("SELECT * FROM evaluations ORDER BY id DESC LIMIT ?1").bind(limit).all<EvalRow>();
       }
       return jsonResponse({ evaluations: res.results });
     },
@@ -326,7 +316,7 @@ const ROUTES: Route[] = [
   {
     method: "POST",
     pattern: /^\/api\/evaluations$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const body = await readBody<{
         question_id?: number;
         model?: string;
@@ -338,11 +328,11 @@ const ROUTES: Route[] = [
       const questionId = Number(body.question_id ?? 0);
       const model = (body.model ?? "").trim();
       if (!questionId || !model) return jsonResponse({ error: "question_id and model are required" }, 400);
-      const questionExists = await deps.db.prepare("SELECT id FROM questions WHERE id = ?1").bind(questionId).first();
+      const questionExists = await db.prepare("SELECT id FROM questions WHERE id = ?1").bind(questionId).first();
       if (!questionExists) return jsonResponse({ error: "question not found" }, 404);
       const verdict = ["correct", "close", "wrong", "unanswered"].includes(body.verdict ?? "")
         ? (body.verdict as string) : null;
-      await deps.db.prepare(
+      await db.prepare(
         `INSERT INTO evaluations (question_id, model, response, verdict, source, graded_by)
          VALUES (?1, ?2, ?3, ?4, ?5, ?6)
          ON CONFLICT(question_id, model) DO UPDATE SET
@@ -357,19 +347,19 @@ const ROUTES: Route[] = [
   {
     method: "GET",
     pattern: /^\/api\/excluded$/,
-    handler: async ({ request, deps, url }) => {
-      const res = await deps.db.prepare("SELECT file_id, reason, marked_by, created_at FROM excluded ORDER BY created_at DESC").all<{ file_id: string; reason: string; marked_by: string; created_at: string }>();
+    handler: async ({ request, db, deps, url }) => {
+      const res = await db.prepare("SELECT file_id, reason, marked_by, created_at FROM excluded ORDER BY created_at DESC").all<{ file_id: string; reason: string; marked_by: string; created_at: string }>();
       return jsonResponse({ excluded: res.results });
     },
   },
   {
     method: "POST",
     pattern: /^\/api\/excluded$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const body = await readBody<{ file_id?: string; reason?: string; marked_by?: string }>(request);
       const fileId = (body.file_id ?? "").trim();
       if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
-      await deps.db.prepare(
+      await db.prepare(
         `INSERT INTO excluded (file_id, reason, marked_by) VALUES (?1, ?2, ?3)
          ON CONFLICT(file_id) DO UPDATE SET reason = ?2, marked_by = ?3`,
       ).bind(fileId, (body.reason ?? "").trim(), (body.marked_by ?? "").trim()).run();
@@ -379,18 +369,18 @@ const ROUTES: Route[] = [
   {
     method: "DELETE",
     pattern: /^\/api\/excluded$/,
-    handler: async ({ request, deps, url }) => {
+    handler: async ({ request, db, deps, url }) => {
       const fileId = url.searchParams.get("file_id") ?? "";
       if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
-      await deps.db.prepare("DELETE FROM excluded WHERE file_id = ?1").bind(fileId).run();
+      await db.prepare("DELETE FROM excluded WHERE file_id = ?1").bind(fileId).run();
       return jsonResponse({ ok: true });
     },
   },
   {
     method: "GET",
     pattern: /^\/api\/insights$/,
-    handler: async ({ request, deps, url }) => {
-      const board = await deps.db.prepare(
+    handler: async ({ request, db, deps, url }) => {
+      const board = await db.prepare(
         `SELECT model,
            COUNT(*) AS graded,
            SUM(CASE WHEN verdict = 'correct' THEN 1 ELSE 0 END) AS correct,
@@ -400,7 +390,7 @@ const ROUTES: Route[] = [
          GROUP BY model ORDER BY SUM(verdict = 'correct') * 1.0 / COUNT(*) DESC`,
       ).all<{ model: string; graded: number; correct: number; close: number; wrong: number }>();
 
-      const joined = await deps.db.prepare(
+      const joined = await db.prepare(
         `SELECT q.tags AS tags, e.model AS model, e.verdict AS verdict
          FROM evaluations e JOIN questions q ON q.id = e.question_id
          WHERE e.verdict IS NOT NULL`,
@@ -448,11 +438,12 @@ export function createQuestionsApi(deps: QuestionsApiDeps): QuestionsApi {
         return jsonResponse({ error: "questions API is locked — set the access code in settings" }, 401);
       }
 
+      const db = deps.db;
       for (const route of ROUTES) {
         if (request.method !== route.method) continue;
         if (!route.pattern.test(p)) continue;
         try {
-          return await route.handler({ request, deps, url });
+          return await route.handler({ request, db, deps, url });
         } catch (e) {
           const msg = e instanceof Error ? e.message : String(e);
           if (/UNIQUE/i.test(msg)) return jsonResponse({ error: "duplicate — an identical question already exists for this image" }, 409);

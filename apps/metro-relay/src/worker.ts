@@ -14,7 +14,7 @@ import { CORS_HEADERS, jsonResponse as json } from "./http";
 
 /** Worker env — D1 binding + optional questions gate. */
 interface Env {
-  DB?: unknown;
+  DB?: D1Database;
   QUESTIONS_CODE?: string;
 }
 

@@ -32,6 +32,13 @@ jobs:
       - name: Install deps
         run: pip install google-api-python-client google-auth-oauthlib
 
+      - name: Share-sync new images + PDFs (delta)
+        env:
+          DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
+          DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
+          DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
+        run: python scripts/share_sync.py --max ${{ github.event.inputs.bootstrap == 'true' && '100000' || '400' }}
+
       - name: Alert on failure
         if: failure()
         uses: actions/github-script@v7

@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { useMemo } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
-import { countriesOf, imageRows } from "../lib/data";
+import { countriesOf, imageRows, foldersOf } from "../lib/data";
 import { fmtN } from "../lib/format";
 import { loadSettings } from "../lib/ai/settings";
 import { questionsApi } from "../lib/questions";
@@ -47,7 +47,7 @@ function Overview() {
     const byCountry = new Map<string, typeof data.files>();
     for (const r of data.files) {
       if (r[7] !== "i") continue;
-      const key = `${r[8]?.[0] ?? ""}::${r[8]?.[1] ?? ""}`;
+      const key = `${foldersOf(r)?.[0] ?? ""}::${foldersOf(r)?.[1] ?? ""}`;
       if (!key.endsWith("::")) {
         const arr = byCountry.get(key);
         if (arr) arr.push(r);

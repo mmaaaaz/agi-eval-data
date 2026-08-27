@@ -5,7 +5,7 @@ import { questionsApi, familyOf } from "../lib/questions";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { useData } from "../lib/dataContext";
-import { byDay, exifOf, megapixels, ownerName } from "../lib/data";
+import { byDay, exifOf, isImage, dayOf, ownerOf, ownerName, megapixels } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 import { ThumbImage } from "@site/thumb";
 import { Eyebrow } from "@site/section";
@@ -50,11 +50,11 @@ function Overview() {
 
   if (!data) return null;
   const c = data.meta.counts;
-  const imgs = data.files.filter((r) => r[7] === "i");
+  const imgs = data.files.filter(isImage);
   const recent = [...imgs]
     .sort((a, b) => b[4].localeCompare(a[4]) || b[1].localeCompare(a[1]))
     .slice(0, 16);
-  const activeDays = new Set(imgs.map((r) => r[4]).filter((d) => d !== "?"));
+  const activeDays = new Set(imgs.map(dayOf).filter((d) => d !== "?"));
   const sortedDays = [...activeDays].sort();
   const wasted = data.dupGroups.reduce((s, g) => s + (g.count - 1) * g.size, 0);
   const exifKnown = imgs.filter((r) => exifOf(data, r[0]) !== null).length;
@@ -121,7 +121,7 @@ function Overview() {
           {recent.map((r) => (
             <div key={r[0]} className="w-[118px] shrink-0 snap-start">
               <ThumbImage fileId={r[0]} alt={r[1]} eager className="h-[84px] w-full rounded-md border border-[#262626]" />
-              <p className="mt-1 truncate font-mono text-[9px] text-[#666]" title={`${r[1]} — ${ownerName(data, r[5])}`}>
+              <p className="mt-1 truncate font-mono text-[9px] text-[#666]" title={`${r[1]} — ${ownerName(data, ownerOf(r))}`}>
                 {r[1]}
               </p>
             </div>

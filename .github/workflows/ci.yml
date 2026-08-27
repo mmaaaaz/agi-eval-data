@@ -35,16 +35,13 @@ jobs:
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
 
-      - name: Typecheck
-        run: bunx turbo run typecheck --filter=@agi-eval/web
+      - name: Typecheck (all packages incl. relays + factories)
+        run: bunx turbo run typecheck
 
       - name: Build
         run: bunx turbo run build --filter=@agi-eval/web
         env:
           VITE_REPO: ${{ github.repository }}
-
-      - name: Typecheck metro
-        run: bunx turbo run typecheck --filter=@metro/web
 
       - name: Build metro
         run: bunx turbo run build --filter=@metro/web

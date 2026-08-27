@@ -5,7 +5,7 @@
  * The metro row tuple carries a 9th element (`folders`); the shared Row type
  * is an 8-tuple, so the folder accessors narrow through a small type alias.
  */
-import type { Latest, Row as SiteRow } from "@site/data";
+import type { Latest, Row as SiteRow, MetroRow } from "@site/data";
 
 export {
   ownerName,
@@ -30,9 +30,9 @@ export type {
   OwnerStat,
 } from "@site/data";
 
-/** metro rows carry the folder path at index 8 (optional in the shared tuple). */
-function foldersOf(row: SiteRow): readonly string[] | undefined {
-  return row[8];
+/** metro rows carry the folder path at index 8 — required on MetroRow. */
+export function foldersOf(row: SiteRow): readonly string[] {
+  return (row as MetroRow)[8];
 }
 
 /* ---------- folder taxonomy helpers (metro-only) ---------- */

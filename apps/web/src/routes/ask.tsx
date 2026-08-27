@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
+import { Link, createFileRoute, useLocation, useNavigate } from "@tanstack/react-router";
 import { useChat } from "@ai-sdk/react";
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai";
 import type { UIMessage } from "ai";
@@ -91,7 +91,6 @@ function Ask() {
   const search = Route.useSearch();
 
   const [settings] = useState<AskSettingsData>(loadSettings);
-  const [showSettings, setShowSettings] = useState(false);
   const [pooledModel, setPooledModel] = useState<string | null>(null);
 
   const [chats, setChats] = useState<StoredChat[]>([]);
@@ -499,12 +498,12 @@ function Ask() {
             <span className="rounded border border-[#262626] px-2 py-1 font-mono text-[10px] text-[#666]" title="fixed model, set on the relay">
               {pooledModel ?? "pooled"}
             </span>
-            <button
-              onClick={() => setShowSettings((v) => !v)}
+            <Link
+              to="/settings"
               className="rounded-md border border-[#262626] px-2.5 py-1 font-mono text-[11px] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white"
             >
-              {showSettings ? "hide settings ▴" : "settings ▾"}
-            </button>
+              settings →
+            </Link>
           </div>
         </div>
 

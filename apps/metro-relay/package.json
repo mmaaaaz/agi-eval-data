@@ -4,7 +4,8 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy"
+    "deploy": "wrangler deploy",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "zod": "^3.25.0",
@@ -12,6 +13,8 @@
     "@agi-eval/shared": "workspace:*"
   },
   "devDependencies": {
-    "wrangler": "^4.125.0"
+    "wrangler": "^4.125.0",
+    "@cloudflare/workers-types": "^4.20250620.0",
+    "typescript": "~5.7.3"
   }
 }

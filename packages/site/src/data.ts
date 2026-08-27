@@ -13,13 +13,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 
 export type Kind = "i" | "v" | "o";
 
-/**
- * Row tuple shared by both datasets. The metro dataset appends a 9th `folders`
- * element (folder path from the dataset root); the real-world dataset doesn't.
- * The optional element lets both apps' rows satisfy this type while metro can
- * narrow through it.
- */
-export type Row = readonly [
+/** Real-world dataset row: exactly 8 elements. */
+export type WebRow = readonly [
   id: string,
   name: string,
   ext: string,
@@ -28,7 +23,18 @@ export type Row = readonly [
   who: string,
   md5: string,
   kind: Kind,
-  folders?: readonly string[],
+];
+
+/**
+ * Row tuple shared by both datasets. The metro dataset appends a required 9th
+ * `folders` element (folder path from the dataset root); the real-world
+ * dataset doesn't. `WebRow` is the 8-element base; `MetroRow` extends it.
+ */
+export type Row = WebRow | MetroRow;
+
+export type MetroRow = readonly [
+  ...web: WebRow,
+  folders: readonly string[],
 ];
 
 export interface DupGroup {
@@ -249,7 +255,32 @@ export interface OwnerStat {
 }
 
 export function imageRows(latest: Latest): Row[] {
-  return latest.files.filter((r) => r[7] === "i");
+  return latest.files.filter(isImage);
+}
+
+/** True when the row is an image (kind "i"). */
+export function isImage(row: Row): boolean {
+  return row[7] === "i";
+}
+
+/** Upload day (VARCHAR 'YYYY-MM-DD'), index 4. */
+export function dayOf(row: Row): string {
+  return row[4];
+}
+
+/** Owner email, index 5. */
+export function ownerOf(row: Row): string {
+  return row[5];
+}
+
+/** md5 checksum, index 6. */
+export function md5Of(row: Row): string {
+  return row[6];
+}
+
+/** Kind byte, index 7. */
+export function kindOf(row: Row): Kind {
+  return row[7];
 }
 
 export function dupCounts(images: Row[]): Map<string, number> {

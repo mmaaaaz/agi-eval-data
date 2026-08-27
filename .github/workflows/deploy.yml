@@ -41,6 +41,7 @@ jobs:
             web:
               - "apps/web/**"
               - "packages/shared/**"
+              - "packages/site/**"
               - "scripts/og/**"
               - "package.json"
               - "bun.lock"
@@ -48,11 +49,13 @@ jobs:
               - ".github/workflows/deploy.yml"
             metro_web:
               - "apps/metro-web/**"
-              - "packages/metro-shared/**"
+              - "packages/site/**"
+              - "packages/shared/**"
               - ".github/workflows/deploy.yml"
             metro_app:
               - "apps/metro-relay/**"
-              - "packages/metro-shared/**"
+              - "packages/shared/**"
+              - "packages/questions-api/**"
               - ".github/workflows/deploy.yml"
 
       - id: secrets
@@ -82,7 +85,7 @@ jobs:
         run: bun install --frozen-lockfile
 
       - name: Typecheck
-        run: bunx turbo run typecheck --filter=@agi-eval/web
+        run: bunx turbo run typecheck
 
       - name: Deploy relay
         run: bunx --bun wrangler@4.125.0 deploy

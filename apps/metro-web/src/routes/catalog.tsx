@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
-import { countriesOf, cityName } from "../lib/data";
+import { countriesOf, cityName, foldersOf } from "../lib/data";
 import { fmtN } from "../lib/format";
 import { ThumbImage } from "@site/thumb";
 import { Lightbox } from "@site/lightbox";
@@ -35,7 +35,7 @@ function Catalog() {
     ? branchCountries.find((s) => s.name === country)
     : undefined;
   const rows = activeCountry
-    ? data.files.filter((r) => r[8]?.[0] === branch && r[8]?.[1] === activeCountry.name)
+    ? data.files.filter((r) => foldersOf(r)?.[0] === branch && foldersOf(r)?.[1] === activeCountry.name)
     : [];
 
   return (
@@ -117,7 +117,7 @@ function CountryView({ country, rows }: { country: string; rows: Row[] }) {
       <div className="mb-4 flex items-center gap-3">
         <Link
           to="/catalog"
-          search={{ branch: rows[0]?.[8]?.[0] ?? "ours", country: "" }}
+          search={{ branch: rows[0] ? foldersOf(rows[0])?.[0] ?? "ours" : "ours", country: "" }}
           className="font-mono text-xs text-accent hover:underline"
         >
           ← all countries

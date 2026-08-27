@@ -15,7 +15,7 @@ import { z } from "zod";
 
 /** Worker env — D1 binding + AI gateway secrets (kept here; the factory takes db+code). */
 interface Env {
-  DB?: unknown;
+  DB?: D1Database;
   QUESTIONS_CODE?: string;
   GATEWAY_KEY?: string;
   GATEWAY_MODEL?: string;

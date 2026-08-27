@@ -20,16 +20,18 @@ function withMeta(html, r) {
   const url = `${SITE}${r.url}`;
   const img = `${RAW}/${r.image}`;
   const safe = (s) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  // matches `<meta` + any whitespace (incl. newlines) + the attribute + rest of tag
+  const metaRe = (attr) => new RegExp(`<meta\\s+${attr}[\\s\\S]*?>`);
   return html
     .replace(/<title>[^<]*<\/title>/, `<title>${safe(r.title)}</title>`)
-    .replace(/<meta name="description"[^>]*>/, `<meta name="description" content="${safe(r.desc)}" />`)
-    .replace(/<meta property="og:title"[^>]*>/, `<meta property="og:title" content="${safe(r.title)}" />`)
-    .replace(/<meta property="og:description"[^>]*>/, `<meta property="og:description" content="${safe(r.desc)}" />`)
-    .replace(/<meta property="og:url"[^>]*>/, `<meta property="og:url" content="${url}" />`)
-    .replace(/<meta property="og:image"[^>]*>/, `<meta property="og:image" content="${img}" />`)
-    .replace(/<meta name="twitter:title"[^>]*>/, `<meta name="twitter:title" content="${safe(r.title)}" />`)
-    .replace(/<meta name="twitter:description"[^>]*>/, `<meta name="twitter:description" content="${safe(r.desc)}" />`)
-    .replace(/<meta name="twitter:image"[^>]*>/, `<meta name="twitter:image" content="${img}" />`);
+    .replace(metaRe(`name="description"`), `<meta name="description" content="${safe(r.desc)}" />`)
+    .replace(metaRe(`property="og:title"`), `<meta property="og:title" content="${safe(r.title)}" />`)
+    .replace(metaRe(`property="og:description"`), `<meta property="og:description" content="${safe(r.desc)}" />`)
+    .replace(metaRe(`property="og:url"`), `<meta property="og:url" content="${url}" />`)
+    .replace(metaRe(`property="og:image"`), `<meta property="og:image" content="${img}" />`)
+    .replace(metaRe(`name="twitter:title"`), `<meta name="twitter:title" content="${safe(r.title)}" />`)
+    .replace(metaRe(`name="twitter:description"`), `<meta name="twitter:description" content="${safe(r.desc)}" />`)
+    .replace(metaRe(`name="twitter:image"`), `<meta name="twitter:image" content="${img}" />`);
 }
 
 let n = 0;

@@ -67,13 +67,6 @@ jobs:
           npm install --no-fund --no-audit
           node render-og.mjs
 
-      - name: Share-sync new images (delta)
-        env:
-          DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
-          DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
-          DRIVE_REFRESH_TOKEN: ${{ secrets.DRIVE_REFRESH_TOKEN }}
-        run: python scripts/share_sync.py --max ${{ github.event.inputs.bootstrap == 'true' && '100000' || '400' }}
-
       - name: Commit artifact
         run: |
           git config user.name  "agi-eval-bot"

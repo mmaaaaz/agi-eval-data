@@ -143,10 +143,7 @@ def build_payload(files, folders, root_id):
                      (f.get("createdTime") or "")[:10], email,
                      f.get("md5Checksum") or "", kind, fp])
         if kind == "i":
-            try:
-                im = f.get("imageMediaMetadata") or {}
-            except Exception:
-                im = {}
+            im = f.get("imageMediaMetadata") or {}
             w, h = im.get("width"), im.get("height")
             if w and h:
                 entry = [int(w), int(h)]
@@ -214,7 +211,8 @@ def main():
                 "mimeType": f.get("mime") or f.get("mimeType") or "",
                 "size": f.get("size") or "0",
                 "md5Checksum": f.get("md5") or "",
-                "createdTime": (f.get("time") or f.get("createdTime") or "") + "Z",
+                "createdTime": ((f.get("time") or f.get("createdTime") or "")
+                                + ("Z" if not (f.get("time") or f.get("createdTime") or "").endswith("Z") else "")),
                 "owners": ([{"emailAddress": f["owner"], "displayName": f.get("ownerName") or ""}]
                            if f.get("owner") else []),
                 "parents": f.get("parents", []),

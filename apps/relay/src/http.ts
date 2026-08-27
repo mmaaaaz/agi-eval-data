@@ -7,9 +7,9 @@ export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Max-Age": "86400",
 };
 
-export function jsonResponse(obj: unknown, status = 200): Response {
+export function jsonResponse(obj: unknown, status = 200, extra: Record<string, string> = {}): Response {
   return new Response(JSON.stringify(obj), {
     status,
-    headers: { "Content-Type": "application/json", ...CORS_HEADERS },
+    headers: { "Content-Type": "application/json", ...CORS_HEADERS, ...extra },
   });
 }
