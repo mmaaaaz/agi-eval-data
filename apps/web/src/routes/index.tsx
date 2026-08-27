@@ -73,7 +73,7 @@ function Overview() {
           {fmtN(c.imagesUnique)}
         </p>
         <p className="mt-3 font-mono text-[11px] text-[#666] sm:text-xs">
-          unique pictures · {sortedDays[0] ?? "?"} → {sortedDays.at(-1) ?? "?"} · synced hourly
+          unique pictures · {sortedDays[0] ?? "?"} → {sortedDays.at(-1) ?? "?"} · synced daily
         </p>
       </section>
 

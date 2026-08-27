@@ -3,12 +3,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 /**
  * Shared dataset client for the agi-eval sites.
  *
- * The row shape differs per dataset (apps/web uses 8-tuples from
- * `./lib/types.ts`, apps/metro-web uses 9-tuples incl. a folders column from
- * `@metro/shared/types`). To keep this package free of app-specific types,
- * rows are treated structurally — the selectors here only read positions
+ * The row shape differs per dataset (apps/web uses 8-tuples, apps/metro-web uses
+ * 9-tuples incl. a folders column). To keep this package free of app-specific
+ * types, rows are treated structurally — the selectors here only read positions
  * that are identical across both datasets (day = [4], owner = [5], md5 = [6],
- * kind = [7]) and the `Latest`/`Row` types are declared locally.
+ * kind = [7]) and the `Latest`/`Row` types are declared locally (the shared
+ * `Row` carries an optional 9th `folders` element for metro).
  */
 
 export type Kind = "i" | "v" | "o";

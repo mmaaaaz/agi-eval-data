@@ -9,7 +9,7 @@
  * metro-eval-questions binding (wrangler.toml) — separate from agi-eval-questions.
  */
 import { createQuestionsApi } from "@questions-api";
-import { normQ, normTags } from "@metro/shared";
+import { normQ, normTags } from "@agi-eval/shared";
 import { CORS_HEADERS, jsonResponse as json } from "./http";
 
 /** Worker env — D1 binding + optional questions gate. */

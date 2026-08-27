@@ -210,19 +210,5 @@ export const questionsApi = {
   },
 };
 
-/** Canonical question identity — mirrors packages/shared + packages/metro-shared.
- *  Kept here so the authoring UI can run live near-match checks without the
- *  apps importing the app-specific shared package. */
-export function normQ(q: string): string {
-  return q.toLowerCase().replace(/[?!.,'"():;`]/g, " ").replace(/\s+/g, " ").trim();
-}
-
-/** Parse a comma-separated tag string into clean unique tags. */
-export function normTags(raw: string): string[] {
-  const seen = new Set<string>();
-  for (const t of raw.split(",")) {
-    const tag = t.trim().toLowerCase().replace(/\s+/g, " ");
-    if (tag) seen.add(tag);
-  }
-  return [...seen];
-}
+/** Canonical question identity — single source: @agi-eval/shared. */
+export { normQ, normTags } from "@agi-eval/shared";

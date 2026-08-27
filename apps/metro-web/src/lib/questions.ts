@@ -1,6 +1,6 @@
 /**
  * Re-export of the shared questions/evaluations API client, plus the
- * app-specific text normalization from @metro/shared (the relay's dedupe
+ * app-specific text normalization from @agi-eval/shared (the relay's dedupe
  * enforcement MUST stay identical to the metro app's live checks).
  */
 export {
@@ -20,5 +20,5 @@ export type {
   SiteMeta,
 } from "@site/questions";
 
-import { normQ, normTags as parseTags } from "@metro/shared";
+import { normQ, normTags as parseTags } from "@agi-eval/shared";
 export { normQ, parseTags };

@@ -1,1 +1,0 @@
-{"name":"@metro/shared","version":"0.0.0","private":true,"exports":{".":"./src/text.ts","./types":"./src/types.ts"}}

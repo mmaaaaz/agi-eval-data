@@ -11,9 +11,9 @@ const LS_KEY = "ask.settings.v4";
 export const DEFAULT_RELAY = "https://agi-eval-relay.devmaaaaz.workers.dev";
 
 export function loadSettings(): AskSettings {
-  return _load({ lsKey: LS_KEY, defaultRelay: DEFAULT_RELAY, migrateFrom: "ask.settings.v3" });
+  return _load({ lsKey: LS_KEY, defaultRelay: DEFAULT_RELAY });
 }
 
 export function saveSettings(s: AskSettings): void {
-  _save({ lsKey: LS_KEY, defaultRelay: DEFAULT_RELAY, migrateFrom: "ask.settings.v3" }, s);
+  _save({ lsKey: LS_KEY, defaultRelay: DEFAULT_RELAY }, s);
 }

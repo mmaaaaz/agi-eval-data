@@ -87,7 +87,7 @@ Pages:Edit), `CLOUDFLARE_ACCOUNT_ID`. The data syncs use `DRIVE_CLIENT_ID` /
 **In Production**).
 
 `main` is protected: PR-only merges, `ci` must pass. The data-sync bot
-(`github-actions[bot]`) is bypass-allowed so hourly dataset commits keep flowing.
+(`github-actions[bot]`) is bypass-allowed so scheduled dataset commits keep flowing.
 Branch-protection ruleset is exported at `.github/rulesets/main-protection.json`.
 
 ## Contributing

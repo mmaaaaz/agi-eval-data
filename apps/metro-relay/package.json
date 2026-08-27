@@ -1,1 +1,17 @@
-{"name":"@metro/relay","private":true,"type":"module","scripts":{"dev":"wrangler dev","deploy":"wrangler deploy"},"dependencies":{"zod":"^3.25.0","@metro/shared":"workspace:*","@questions-api":"workspace:*"},"devDependencies":{"wrangler":"^4.125.0"}}
+{
+  "name": "@metro/relay",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy"
+  },
+  "dependencies": {
+    "zod": "^3.25.0",
+    "@questions-api": "workspace:*",
+    "@agi-eval/shared": "workspace:*"
+  },
+  "devDependencies": {
+    "wrangler": "^4.125.0"
+  }
+}

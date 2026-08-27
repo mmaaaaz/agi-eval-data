@@ -11,7 +11,7 @@
     "apps/metro-relay": {
       "name": "@metro/relay",
       "dependencies": {
-        "@metro/shared": "workspace:*",
+        "@agi-eval/shared": "workspace:*",
         "@questions-api": "workspace:*",
         "zod": "^3.25.0",
       },
@@ -22,7 +22,7 @@
     "apps/metro-web": {
       "name": "@metro/web",
       "dependencies": {
-        "@metro/shared": "workspace:*",
+        "@agi-eval/shared": "workspace:*",
         "@site": "workspace:*",
         "@tanstack/react-router": "^1.114.0",
         "@tanstack/react-virtual": "^3.13.0",
@@ -100,10 +100,6 @@
         "vite": "^6.3.2",
       },
     },
-    "packages/metro-shared": {
-      "name": "@metro/shared",
-      "version": "0.0.0",
-    },
     "packages/questions-api": {
       "name": "@questions-api",
       "version": "0.0.0",
@@ -116,6 +112,7 @@
       "name": "@site",
       "version": "0.0.0",
       "dependencies": {
+        "@agi-eval/shared": "workspace:*",
         "@tanstack/react-router": "^1.114.0",
         "@tanstack/react-virtual": "^3.13.0",
         "class-variance-authority": "^0.7.1",
@@ -335,8 +332,6 @@
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.9", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.0.3", "@jridgewell/sourcemap-codec": "^1.4.10" } }, "sha512-3Belt6tdc8bPgAtbcmdtNJlirVoTmEb5e2gC94PnkwEW9jI6CAHUeoG85tjWP5WquqfavoMtMwiG4P926ZKKuQ=="],
 
     "@metro/relay": ["@metro/relay@workspace:apps/metro-relay"],
-
-    "@metro/shared": ["@metro/shared@workspace:packages/metro-shared"],
 
     "@metro/web": ["@metro/web@workspace:apps/metro-web"],
 

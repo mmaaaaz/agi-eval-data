@@ -12,8 +12,6 @@ export interface SettingsConfig {
   lsKey: string;
   /** default relay URL for this site */
   defaultRelay: string;
-  /** legacy key to migrate from, e.g. "ask.settings.v3" (web only) */
-  migrateFrom?: string;
 }
 
 export function loadSettings(cfg: SettingsConfig): AskSettings {
@@ -21,13 +19,6 @@ export function loadSettings(cfg: SettingsConfig): AskSettings {
   try {
     const raw = localStorage.getItem(cfg.lsKey);
     if (raw) return { ...defaults, ...(JSON.parse(raw) as Partial<AskSettings>) };
-    if (cfg.migrateFrom) {
-      const legacy = localStorage.getItem(cfg.migrateFrom);
-      if (legacy) {
-        const v = JSON.parse(legacy) as Partial<AskSettings>;
-        return { ...defaults, ...(v.relay ? { relay: v.relay } : {}), ...(v.accessCode ? { accessCode: v.accessCode } : {}) };
-      }
-    }
   } catch { /* fresh */ }
   return defaults;
 }
