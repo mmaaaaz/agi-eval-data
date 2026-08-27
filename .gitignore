@@ -53,3 +53,5 @@ relay/dev.log
 metro-relay/tmp/
 apps/metro-web/public/data/
 relay/tmp/
+metro-relay/tmp/
+relay/dry-v*/
