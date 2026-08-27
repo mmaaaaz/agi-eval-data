@@ -37,6 +37,13 @@ from drive_common import (
     ext_of, get_service, headless_credentials, list_with_retry,
 )
 
+FIELDS = ("nextPageToken, files(id,name,mimeType,size,md5Checksum,createdTime,trashed,"
+          "shared,owners(displayName,emailAddress),parents,"
+          "imageMediaMetadata(width,height,cameraMake,cameraModel))")
+DEFAULT_ROOT = "1FJCnmtmeSsWfznhL0PHjYWn_btoOTRq2"
+ROOT_NAME = "metro/transit_dataset"
+OUT = Path(__file__).parent.parent / "data" / "metro.json"
+
 
 
 def list_children(service, folder_id):
@@ -69,7 +76,7 @@ def walk_tree(service, root_id):
     def visit(fid, parent_id):
         for f in list_children(service, fid):
             if f["mimeType"] == "application/vnd.google-apps.folder":
-                folders[f["id"]] = (f["name"], parent_id)
+                folders[f["id"]] = (f["name"].strip(), parent_id)
                 visit(f["id"], f["id"])
             else:
                 files.append(f)
@@ -85,7 +92,10 @@ def folder_path(f, folders, root_id):
     folders: id -> (name, parent_id) for every folder in the tree.
     """
     segs = []
-    parent = (f.get("parents") or [None])[0]
+    parents = f.get("parents") or []
+    if len(parents) > 1:
+        print(f"  warn: file {f.get('id')} has {len(parents)} parents, using first", file=sys.stderr)
+    parent = (parents or [None])[0]
     guard = 0
     while parent and parent != root_id and guard < 32:
         rec = folders.get(parent)
@@ -139,7 +149,8 @@ def build_payload(files, folders, root_id):
         owners.setdefault(email, o.get("displayName") or
                           (email.split("@")[0].replace(".", " ").replace("_", " ").title()))
         fp = folder_path(f, folders, root_id)
-        rows.append([f["id"], f["name"], ext_of(f["name"], mime), int(f.get("size") or 0),
+        fp = [s.strip() for s in fp]
+        rows.append([f["id"], f["name"].strip(), ext_of(f["name"], mime), int(f.get("size") or 0),
                      (f.get("createdTime") or "")[:10], email,
                      f.get("md5Checksum") or "", kind, fp])
         if kind == "i":
@@ -157,11 +168,12 @@ def build_payload(files, folders, root_id):
         # taxonomy from the folder path: ["<branch>", "<country>", ...]
         # every image file IS one city's network map, so cities == image count;
         # countries == distinct second-level folder names across both branches
+        if len(fp) >= 3 and kind == "i":
+            print(f"  warn: unexpected folders len 3 for image {f['id']} {f['name']!r} {fp}", file=sys.stderr)
         if len(fp) >= 2:
-            countries.add(fp[1])
+            countries.add(fp[1].strip())
         if kind == "i":
             cities.add(f["id"])
-
     img_report = analyze(files)
     n_img = sum(1 for f in files if f.get("mimeType", "").startswith("image/"))
     n_pdf = sum(1 for f in files if f.get("mimeType") == "application/pdf")

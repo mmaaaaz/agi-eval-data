@@ -60,11 +60,11 @@
       "@site/lightbox": [
         "../../packages/site/src/Lightbox.tsx"
       ],
-      "@site/settings": [
-        "../../packages/site/src/settings.ts"
-      ],
       "@site/ui": [
         "../../packages/site/src/ui.tsx"
+      ],
+      "@site/metroGraph": [
+        "../../packages/site/src/metroGraph/index.ts"
       ],
       "@site/dataContext": [
         "../../packages/site/src/dataContext.tsx"

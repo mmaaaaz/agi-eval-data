@@ -1,0 +1,29 @@
+name: graph-check
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "data/metro-graph.json"
+      - "data/metro-graph.schema.json"
+      - "scripts/metro_graph_validate.py"
+      - "scripts/metro_graph_seed.py"
+      - "scripts/metro_graph_build.py"
+  pull_request:
+    paths:
+      - "data/metro-graph.json"
+      - "data/metro-graph.schema.json"
+      - "scripts/metro_graph_validate.py"
+      - "scripts/metro_graph_seed.py"
+      - "scripts/metro_graph_build.py"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Validate graph sidecar
+        run: python scripts/metro_graph_validate.py

@@ -1,7 +1,7 @@
 /**
  * Questions + evaluations API factory (D1-backed).
  *
- * Routes (all under /api/questions and /api/evaluations):
+ * Routes (all under /api/questions, /api/evaluations, /api/graphs):
  *   GET  /api/questions/counts              → { counts: {fileId: n}, images: n }
  *   GET  /api/questions/check?file_id&q     → { matches: [{id, question}] }
  *   GET  /api/questions?file_id=|search=&limit= → { questions: [...] }
@@ -78,6 +78,99 @@ function gated(request: Request, deps: QuestionsApiDeps): boolean {
 
 async function readBody<T>(request: Request): Promise<T> {
   return await request.json() as T;
+}
+
+function validateRawGraph(graph: unknown): { errors: string[]; warnings: string[] } {
+  const errors: string[] = [];
+  const warnings: string[] = [];
+  if (!graph || typeof graph !== "object") { errors.push("graph must be an object"); return { errors, warnings }; }
+  const g = graph as Record<string, unknown>;
+  const requireStr = (k: string) => {
+    const v = g[k];
+    if (typeof v !== "string" || (v as string).trim() === "") errors.push(k + " is required");
+  };
+  requireStr("fileId"); requireStr("city"); requireStr("country"); requireStr("branch");
+  const stations = g.stations;
+  const edges = g.edges;
+  const lines = g.lines;
+  const provenance = g.provenance;
+  if (!Array.isArray(stations)) errors.push("stations must be an array");
+  if (!Array.isArray(edges)) errors.push("edges must be an array");
+  if (!lines || typeof lines !== "object" || Array.isArray(lines)) errors.push("lines must be an object");
+  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) errors.push("provenance is required");
+  else {
+    const pr = provenance as Record<string, unknown>;
+    if (typeof pr.annotatedBy !== "string" || pr.annotatedBy.trim() === "") errors.push("provenance.annotatedBy is required");
+    if (typeof pr.annotatedAt !== "string" || pr.annotatedAt.trim() === "") errors.push("provenance.annotatedAt is required");
+    if (typeof pr.tool !== "string" || pr.tool.trim() === "") errors.push("provenance.tool is required");
+  }
+  if (errors.length) return { errors, warnings };
+  const sArr = stations as Array<Record<string, unknown>>;
+  const eArr = edges as Array<Record<string, unknown>>;
+  const lObj = lines as Record<string, Record<string, unknown>>;
+  const ids = sArr.map((x) => String(x.id ?? ""));
+  const seenIds: Record<string, true> = {};
+  for (const id of ids) {
+    if (!id) errors.push("station.id is required");
+    else if (seenIds[id]) errors.push("duplicate station.id '" + id + "'");
+    else seenIds[id] = true;
+  }
+  const idSet: Record<string, true> = {};
+  for (const id of ids) if (id) idSet[id] = true;
+  for (let i = 0; i < sArr.length; i++) {
+    const st = sArr[i];
+    if (typeof st.id !== "string" || st.id.trim() === "") errors.push("stations[" + i + "].id is required");
+    if (typeof st.label !== "string" || st.label.trim() === "") warnings.push("station '" + String(st.id) + "' has empty label");
+    if (!Array.isArray(st.lines)) errors.push("stations[" + i + "].lines must be an array");
+    if (typeof st.interchange !== "boolean") errors.push("stations[" + i + "].interchange must be boolean");
+    if (st.x !== null && st.x !== undefined) {
+      const xv = st.x as number;
+      if (typeof xv !== "number" || xv < 0 || xv > 1) errors.push("stations[" + i + "].x must be null or number in [0,1]");
+    }
+    if (st.y !== null && st.y !== undefined) {
+      const yv = st.y as number;
+      if (typeof yv !== "number" || yv < 0 || yv > 1) errors.push("stations[" + i + "].y must be null or number in [0,1]");
+    }
+  }
+  const hexRe = /^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$/;
+  for (const lineId of Object.keys(lObj)) {
+    const line = lObj[lineId];
+    if (!/^[A-Za-z0-9_-]+$/.test(lineId)) errors.push("line id '" + lineId + "' invalid");
+    if (!line || typeof line !== "object") { errors.push("lines." + lineId + " must be an object"); continue; }
+    const ll = line as Record<string, unknown>;
+    if (typeof ll.color !== "string" || !hexRe.test(ll.color as string)) errors.push("lines." + lineId + ".color must be hex like #ff0000");
+    if (typeof ll.label !== "string") errors.push("lines." + lineId + ".label must be string");
+    const ls = ll.stations;
+    if (!Array.isArray(ls)) errors.push("lines." + lineId + ".stations must be an array");
+    else for (const sid of ls as unknown[]) {
+      if (typeof sid !== "string" || !idSet[sid as string]) errors.push("lines." + lineId + " references unknown station '" + String(sid) + "'");
+    }
+  }
+  for (let i = 0; i < eArr.length; i++) {
+    const e = eArr[i];
+    const fr = e.from; const to = e.to;
+    if (typeof fr !== "string" || (fr as string).trim() === "") errors.push("edges[" + i + "].from is required");
+    if (typeof to !== "string" || (to as string).trim() === "") errors.push("edges[" + i + "].to is required");
+    if (typeof e.line !== "string" || (e.line as string).trim() === "") errors.push("edges[" + i + "].line is required");
+    if (typeof e.bidirectional !== "boolean") errors.push("edges[" + i + "].bidirectional must be boolean");
+    const w = e.weight as number;
+    if (typeof w !== "number" || !(w > 0)) errors.push("edges[" + i + "].weight must be >0");
+    if (typeof fr === "string" && (fr as string).trim() !== "" && !idSet[fr as string]) errors.push("edges[" + i + "].from '" + String(fr) + "' not in stations");
+    if (typeof to === "string" && (to as string).trim() !== "" && !idSet[to as string]) errors.push("edges[" + i + "].to '" + String(to) + "' not in stations");
+  }
+  if (sArr.length > 0 && eArr.length > 0) {
+    const degree: Record<string, number> = {};
+    for (const e of eArr) {
+      const fr = String((e as Record<string, unknown>).from ?? "");
+      const to = String((e as Record<string, unknown>).to ?? "");
+      if (idSet[fr]) degree[fr] = (degree[fr] ?? 0) + 1;
+      if (idSet[to] && to !== fr) degree[to] = (degree[to] ?? 0) + 1;
+    }
+    for (const sid of Object.keys(idSet)) if ((degree[sid] ?? 0) === 0) warnings.push("isolated station '" + sid + "' degree 0");
+  } else if (sArr.length > 0 && eArr.length === 0) {
+    for (const sid of Object.keys(idSet)) warnings.push("isolated station '" + sid + "' degree 0");
+  }
+  return { errors, warnings };
 }
 
 /** Insert question + bump tag counts in one batch (atomic). */
@@ -411,6 +504,54 @@ const ROUTES: Route[] = [
       return jsonResponse({ leaderboard: board.results, byTag });
     },
   },
+  {
+    method: "GET",
+    pattern: /^\/api\/graphs$/,
+    handler: async ({ db }) => {
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS graph_drafts (file_id TEXT PRIMARY KEY, graph TEXT NOT NULL, updated_by TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT (datetime('now')))").run(); } catch {}
+      const res = await db.prepare("SELECT file_id, updated_by, updated_at, graph FROM graph_drafts ORDER BY updated_at DESC").all<{ file_id: string; updated_by: string; updated_at: string; graph: string }>();
+      const drafts = res.results.map((r) => {
+        let stationCount = 0; let edgeCount = 0;
+        try { const g = JSON.parse(r.graph) as { stations?: unknown[]; edges?: unknown[] }; stationCount = Array.isArray(g.stations) ? g.stations.length : 0; edgeCount = Array.isArray(g.edges) ? g.edges.length : 0; } catch {}
+        return { file_id: r.file_id, updated_by: r.updated_by, updated_at: r.updated_at, stationCount, edgeCount };
+      });
+      return jsonResponse({ drafts });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/graphs\/[^/]+$/,
+    handler: async ({ db, url }) => {
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS graph_drafts (file_id TEXT PRIMARY KEY, graph TEXT NOT NULL, updated_by TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT (datetime('now')))").run(); } catch {}
+      const fileId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+      if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
+      const row = await db.prepare("SELECT file_id, graph, updated_by, updated_at FROM graph_drafts WHERE file_id = ?1").bind(fileId).first<{ file_id: string; graph: string; updated_by: string; updated_at: string }>();
+      if (!row) return jsonResponse({ error: "not found", graph: null }, 404);
+      let graph: unknown = null;
+      try { graph = JSON.parse(row.graph); } catch { return jsonResponse({ error: "corrupt draft" }, 500); }
+      return jsonResponse({ graph, file_id: row.file_id, updated_by: row.updated_by, updated_at: row.updated_at });
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/graphs\/[^/]+$/,
+    handler: async ({ request, db, url }) => {
+      try { await db.prepare("CREATE TABLE IF NOT EXISTS graph_drafts (file_id TEXT PRIMARY KEY, graph TEXT NOT NULL, updated_by TEXT NOT NULL DEFAULT '', updated_at TEXT NOT NULL DEFAULT (datetime('now')))").run(); } catch {}
+      const fileId = decodeURIComponent(url.pathname.split("/").pop() ?? "");
+      if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
+      let body: unknown;
+      try { body = await readBody<unknown>(request); } catch { return jsonResponse({ error: "invalid JSON body" }, 400); }
+      const raw = (body as Record<string, unknown>)?.graph ?? body;
+      const checked = validateRawGraph(raw);
+      if (checked.errors.length) return jsonResponse({ error: "validation failed", errors: checked.errors, warnings: checked.warnings }, 400);
+      const graphObj = raw as Record<string, unknown>;
+      if (typeof graphObj.fileId === "string" && (graphObj.fileId as string) !== fileId) (graphObj as Record<string, unknown>).fileId = fileId;
+      const updatedBy = (request.headers.get("x-questions-code") ?? "").slice(0, 32) || "api";
+      const graphJson = JSON.stringify(graphObj);
+      await db.prepare("INSERT INTO graph_drafts (file_id, graph, updated_by, updated_at) VALUES (?1, ?2, ?3, datetime('now')) ON CONFLICT(file_id) DO UPDATE SET graph = ?2, updated_by = ?3, updated_at = datetime('now')").bind(fileId, graphJson, updatedBy).run();
+      return jsonResponse({ ok: true, fileId, warnings: checked.warnings });
+    },
+  },
 ];
 
 export interface QuestionsApi {
@@ -422,7 +563,7 @@ export interface QuestionsApi {
 }
 
 export function createQuestionsApi(deps: QuestionsApiDeps): QuestionsApi {
-  const prefixRe = /^\/api\/(questions|evaluations|insights|excluded)/;
+  const prefixRe = /^\/api\/(questions|evaluations|insights|excluded|graphs)/;
   return {
     prefixRe,
     async handle(request: Request, url: URL): Promise<Response | null> {

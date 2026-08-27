@@ -23,7 +23,8 @@ apps/relay         Cloudflare Worker — AI chat relay (Vercel AI Gateway + Work
 apps/metro-web     metro/transit site — same stack, NO chat — catalog (branch toggle, PDF preview), questions workspace
 apps/metro-relay   Cloudflare Worker — questions API only (D1 metro-eval-questions)
 packages/shared    text normalization (normQ / normTags / normSql) — web + relay
-packages/metro-shared  v4 types + normalization — metro-web + metro-relay
+packages/site       shared UI/data/questions + metroGraph (MarkLayer, AssistPanel, types, routing)
+packages/questions-api  shared D1 API factory (source filtering + tags GC)
 scripts/           Drive scanners (drive_scan.py, metro_scan.py), build tooling, OG renderers
 data/latest.json   THE real-world artifact — overwritten by the sync bot (change-gated)
 data/metro.json    THE metro artifact (v4: folders/country/city taxonomy)

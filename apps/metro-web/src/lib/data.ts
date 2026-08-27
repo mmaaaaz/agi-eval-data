@@ -36,14 +36,23 @@ export function foldersOf(row: SiteRow): readonly string[] {
 }
 
 /* ---------- folder taxonomy helpers (metro-only) ---------- */
+export function normalizeBranch(b: string): string {
+  const t = b.trim().toLowerCase();
+  return t.startsWith("reason_map") ? "reason_map" : "ours";
+}
 
 export function branchOf(row: SiteRow): string {
-  return foldersOf(row)?.[0] ?? "ours";
+  const folders = foldersOf(row);
+  if (!folders?.[0]) {
+    if (import.meta.env.DEV) console.warn("[branchOf] missing folders[0] for row", row[0], "— defaulting to ours");
+    return "ours";
+  }
+  return normalizeBranch(String(folders[0]));
 }
 
 export function countryOf(row: SiteRow): string {
-  // ["ours", "Brazil"] → Brazil ; ["reason_map(...)", "china"] → china
-  return foldersOf(row)?.[1] ?? "";
+  // ["ours", "Brazil"] → Brazil ; ["reason_map(...)", "china"] → china — trimmed defensively
+  return String(foldersOf(row)?.[1] ?? "").trim();
 }
 
 export function isPdf(row: SiteRow): boolean {

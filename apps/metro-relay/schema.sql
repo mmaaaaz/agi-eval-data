@@ -14,11 +14,15 @@ CREATE TABLE IF NOT EXISTS questions (
   difficulty  TEXT NOT NULL DEFAULT 'medium',
   tags        TEXT NOT NULL DEFAULT '',
   status      TEXT NOT NULL DEFAULT 'approved',
+  source      TEXT NOT NULL DEFAULT 'human',
+  graph_file_id TEXT,
+  graph_path  TEXT,
   created_at  TEXT NOT NULL DEFAULT (datetime('now')),
   UNIQUE(file_id, qnorm)
 );
 CREATE INDEX IF NOT EXISTS idx_q_file ON questions(file_id);
 CREATE INDEX IF NOT EXISTS idx_q_contrib ON questions(contributor);
+CREATE INDEX IF NOT EXISTS idx_q_source ON questions(source);
 
 CREATE TABLE IF NOT EXISTS evaluations (
   id          INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -45,3 +49,17 @@ CREATE TABLE IF NOT EXISTS excluded (
   marked_by  TEXT NOT NULL DEFAULT '',
   created_at TEXT NOT NULL DEFAULT (datetime('now'))
 );
+
+CREATE TABLE IF NOT EXISTS graph_drafts (
+  file_id    TEXT PRIMARY KEY,
+  graph      TEXT NOT NULL,
+  updated_by TEXT NOT NULL DEFAULT '',
+  updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_graph_drafts_updated ON graph_drafts(updated_at);
+
+-- migration for already-provisioned D1s (fresh DBs already have the columns above)
+-- npx wrangler d1 execute metro-eval-questions --remote --command "ALTER TABLE questions ADD COLUMN source TEXT NOT NULL DEFAULT 'human'"
+-- npx wrangler d1 execute metro-eval-questions --remote --command "ALTER TABLE questions ADD COLUMN graph_file_id TEXT"
+-- npx wrangler d1 execute metro-eval-questions --remote --command "ALTER TABLE questions ADD COLUMN graph_path TEXT"
+-- npx wrangler d1 execute metro-eval-questions --remote --command "CREATE INDEX IF NOT EXISTS idx_q_source ON questions(source)"

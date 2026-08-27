@@ -28,6 +28,8 @@ export const Route = createRootRoute({
         artifact: "metro.json",
         cacheKey: "metro-eval-data-v1",
       }}
+      syncSchedule="hourly at :00 UTC"
+      syncCron="0 * * * *"
       brand={{
         name: "metro-eval",
         logo: (

@@ -11,7 +11,6 @@ import { questionsApi, normQ, normTags as parseTags, type QRow } from "./questio
 import type { Row, Latest } from "./data";
 
 export type Sort = "needs" | "recent" | "name";
-
 export interface AuthorSite {
   /** grid count label, e.g. "images" or "maps" */
   imageLabel: string;
@@ -33,10 +32,13 @@ export interface AuthorSite {
   loadSettings: () => AskSettings;
   	/** owner display name for the sheet subtitle (resolved from the dataset) */
 	ownerName?: (latest: Latest, email: string) => string;
+  /** per-row graph badge (stations/edges) rendered beside the question count in the grid/sheet */
+  graphBadgeFor?: (row: Row) => import("react").ReactNode;
   /** title for the sheet header (e.g. cityName(row) || row[1]) */
   titleFor?: (row: Row) => string;
+  /** optional overlay for the selected sheet's image (Lightbox relative container, disabled for PDFs) */
+  overlayFor?: (row: Row) => React.ReactNode;
 }
-
 /** The /contribute authoring queue: images → per-image question authoring. */
 export function AuthorQuestions({ site }: { site: AuthorSite }) {
   const { data } = useData();
@@ -127,6 +129,20 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
     return () => window.clearTimeout(t);
   }, [question, selectedId, relay, code]);
 
+  // fill from graph assist without auto-submit
+  useEffect(() => {
+    const h = (e: Event) => {
+      const ce = e as CustomEvent<{ question: string; answer: string; tags: string }>;
+      const d = ce.detail;
+      if (!d) return;
+      if (d.question) setQuestion(d.question);
+      if (typeof d.answer === "string") setAnswer(d.answer);
+      if (d.tags) setTags(d.tags);
+    };
+    window.addEventListener("metro:use-template", h as EventListener);
+    return () => window.removeEventListener("metro:use-template", h as EventListener);
+  }, []);
+
   const tagSuggestions = useMemo(() => {
     const segs = tags.split(",");
     const last = (segs[segs.length - 1] ?? "").trim().toLowerCase();
@@ -199,12 +215,17 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
 
   const badgeFor = (row: (typeof rows)[0]) => {
     const n = counts[row[0]] ?? 0;
-    if (n === 0) return null;
-    return (
-      <span className={`rounded px-1.5 py-0.5 font-mono text-[9px] tabular-nums ${
-        n >= 5 ? "border border-[#0cce6b]/40 text-[#0cce6b]" : "border border-[#262626] text-[#a1a1a1]"
-      }`}>
+    const qBadge = n === 0 ? null : (
+      <span className={`rounded px-1.5 py-0.5 font-mono text-[9px] tabular-nums ${n >= 5 ? "border border-[#0cce6b]/40 text-[#0cce6b]" : "border border-[#262626] text-[#a1a1a1]"}`}>
         {n}/5
+      </span>
+    );
+    const gBadge = site.graphBadgeFor?.(row) ?? null;
+    if (!qBadge && !gBadge) return null;
+    return (
+      <span className="inline-flex items-center gap-1">
+        {qBadge}
+        {gBadge}
       </span>
     );
   };
@@ -280,19 +301,29 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
                   {selected[4]} · {fmtB(selected[3])}
                 </p>
               </div>
-
               <div className="min-h-0 flex-1 overflow-y-auto p-4">
-                <ThumbImage
-                  fileId={selected[0]}
-                  alt={selected[1]}
-                  w={1600}
-                  className="mb-4 h-56 w-full rounded-lg border border-[#262626]"
-                />
-
+                {(() => {
+                  const overlay = site.overlayFor?.(selected);
+                  const isPdf = selected[7] === "o";
+                  return (
+                    <div className="relative mb-4 overflow-hidden rounded-lg border border-[#262626]">
+                      <ThumbImage
+                        fileId={selected[0]}
+                        alt={selected[1]}
+                        w={1600}
+                        className="h-56 w-full"
+                      />
+                      {overlay && !isPdf && (
+                        <div className="pointer-events-auto absolute inset-0 rounded-lg">{overlay}</div>
+                      )}
+                    </div>
+                  );
+                })()}
                 <div className="mb-4 flex items-center justify-between gap-2">
                   <span className="rounded border border-[#262626] px-2 py-0.5 font-mono text-[10px] tabular-nums text-[#a1a1a1]">
                     {selectedCount}/5 questions
                   </span>
+                  {site.graphBadgeFor && selected && (() => { const g = site.graphBadgeFor!(selected); return g ? <span className="rounded border border-[#262626] px-2 py-0.5 font-mono text-[10px] tabular-nums text-[#a1a1a1]">{g}</span> : null; })()}
                   {chips.length > 0 && (
                     <div className="flex min-w-0 items-center gap-1.5">
                       {chips.slice(0, 3).map((t) => (
@@ -330,7 +361,6 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
                     </button>
                   </div>
                 </div>
-
                 {existing.length > 0 && (
                   <div className="mb-4 rounded-lg border border-[#262626] p-3">
                     <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground">{site.existingWording}</p>

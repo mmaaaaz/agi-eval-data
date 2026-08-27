@@ -34,6 +34,8 @@ export interface ShellProps {
   mobileHints?: Record<string, string>;
   /** sync pill schedule label (tooltip) */
   syncSchedule?: string;
+  /** cron for next-slot countdown before version.json loads (default daily 06:00) */
+  syncCron?: string;
   /** app shell content rendered inside <Outlet /> (usually null) */
   children?: ReactNode;
 }
@@ -184,7 +186,7 @@ function Shell({
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <SyncChip scheduleLabel={props.syncSchedule} />
+                <SyncChip scheduleLabel={props.syncSchedule} defaultCron={props.syncCron} />
                 <Link
                   to="/settings"
                   aria-label="Settings"

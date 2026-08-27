@@ -20,7 +20,8 @@
     "./lightbox": "./src/Lightbox.tsx",
     "./settings": "./src/settings.ts",
     "./ui": "./src/ui.tsx",
-    "./dataContext": "./src/dataContext.tsx"
+    "./dataContext": "./src/dataContext.tsx",
+    "./metroGraph": "./src/metroGraph/index.ts"
   },
   "dependencies": {
     "@tanstack/react-router": "^1.114.0",

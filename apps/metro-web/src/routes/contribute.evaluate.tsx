@@ -12,8 +12,7 @@ function Evaluate() {
         onThisWording: () => "map",
         loadSettings,
         orMeta: {
-          referer: "https://metro-eval.pages.dev",
-          title: "metro-eval evaluator",
+          name: "metro-eval evaluator",
           subject: "metro network map",
         },
         tagBarFrom: "from-[#0a5c40]",

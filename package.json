@@ -1,1 +1,25 @@
-{"name":"agi-eval-data","private":true,"packageManager":"bun@1.3.14","workspaces":["apps/*","packages/*"],"scripts":{"build":"turbo run build","typecheck":"turbo run typecheck","dev:web":"turbo run dev --filter=@agi-eval/web","dev:relay":"turbo run dev --filter=@agi-eval/relay","dev:metro-web":"turbo run dev --filter=@metro/web","dev:metro-relay":"turbo run dev --filter=@metro/relay","deploy:web":"bun run build --filter=@agi-eval/web && npx wrangler pages deploy apps/web/dist --project-name agi-eval-data --branch main --commit-dirty=true","deploy:relay":"cd apps/relay && npx wrangler deploy","deploy:metro-web":"bun run build --filter=@metro/web && npx wrangler pages deploy apps/metro-web/dist --project-name metro-eval --branch main --commit-dirty=true","deploy:metro-relay":"cd apps/metro-relay && npx wrangler deploy","data:build":"python scripts/build_data.py","data:metro":"python scripts/metro_scan.py --ci"},"devDependencies":{"turbo":"^2.10.11"}}
+{
+  "name": "agi-eval-data",
+  "private": true,
+  "packageManager": "bun@1.3.14",
+  "workspaces": ["apps/*", "packages/*"],
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "check:metro-graph": "python scripts/metro_graph_validate.py",
+    "dev:web": "turbo run dev --filter=@agi-eval/web",
+    "dev:relay": "turbo run dev --filter=@agi-eval/relay",
+    "dev:metro-web": "turbo run dev --filter=@metro/web",
+    "dev:metro-relay": "turbo run dev --filter=@metro/relay",
+    "deploy:web": "bun run build --filter=@agi-eval/web && npx wrangler pages deploy apps/web/dist --project-name agi-eval-data --branch main --commit-dirty=true",
+    "deploy:relay": "cd apps/relay && npx wrangler deploy",
+    "deploy:metro-web": "bun run build --filter=@metro/web && npx wrangler pages deploy apps/metro-web/dist --project-name metro-eval --branch main --commit-dirty=true",
+    "deploy:metro-relay": "cd apps/metro-relay && npx wrangler deploy",
+    "data:build": "python scripts/build_data.py",
+    "data:metro": "python scripts/metro_scan.py --ci"
+  },
+  "devDependencies": {
+    "turbo": "^2.10.11",
+    "vitest": "^4.1.11"
+  }
+}

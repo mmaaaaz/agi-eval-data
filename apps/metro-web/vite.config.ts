@@ -23,6 +23,7 @@ export default defineConfig({
       "@site/settings": path.resolve(__dirname, "../../packages/site/src/settings.ts"),
       "@site/ui": path.resolve(__dirname, "../../packages/site/src/ui.tsx"),
       "@site/dataContext": path.resolve(__dirname, "../../packages/site/src/dataContext.tsx"),
+      "@site/metroGraph": path.resolve(__dirname, "../../packages/site/src/metroGraph/index.ts"),
     },
   },
 });

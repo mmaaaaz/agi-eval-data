@@ -1,25 +1,26 @@
 import { useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
-import { countriesOf, cityName, foldersOf } from "../lib/data";
+import { branchOf, countriesOf, cityName, foldersOf } from "../lib/data";
 import { fmtN } from "../lib/format";
 import { ThumbImage } from "@site/thumb";
 import { Lightbox } from "@site/lightbox";
 import { Eyebrow } from "@site/section";
 import type { Row } from "@site/data";
 
+// Display labels keep "Existing" separate; both existing spellings map to reason_map
+const BRANCHES: { id: string; label: string; hint: string }[] = [
+  { id: "ours", label: "Ours", hint: "curated maps" },
+  { id: "reason_map", label: "Existing", hint: "reason_map dataset (incl. exisiting typo)" },
+];
+
 export const Route = createFileRoute("/catalog")({
   component: Catalog,
   validateSearch: (s: Record<string, unknown>) => ({
-    branch: typeof s.branch === "string" ? s.branch : "ours",
+    branch: typeof s.branch === "string" ? s.branch.trim().toLowerCase().startsWith("reason_map") ? "reason_map" : s.branch.trim() ? "ours" : "ours" : "ours",
     country: typeof s.country === "string" ? s.country : "",
   }),
 });
-
-const BRANCHES = [
-  { id: "ours", label: "Ours", hint: "curated maps" },
-  { id: "reason_map(exisiting_dataset)", label: "Existing", hint: "reason_map dataset" },
-];
 
 function Catalog() {
   const { data } = useData();
@@ -35,7 +36,7 @@ function Catalog() {
     ? branchCountries.find((s) => s.name === country)
     : undefined;
   const rows = activeCountry
-    ? data.files.filter((r) => foldersOf(r)?.[0] === branch && foldersOf(r)?.[1] === activeCountry.name)
+    ? data.files.filter((r) => branchOf(r) === branch && String(foldersOf(r)?.[1] ?? "").trim() === activeCountry.name)
     : [];
 
   return (
@@ -117,7 +118,7 @@ function CountryView({ country, rows }: { country: string; rows: Row[] }) {
       <div className="mb-4 flex items-center gap-3">
         <Link
           to="/catalog"
-          search={{ branch: rows[0] ? foldersOf(rows[0])?.[0] ?? "ours" : "ours", country: "" }}
+          search={{ branch: rows[0] ? branchOf(rows[0]) : "ours", country: "" }}
           className="font-mono text-xs text-accent hover:underline"
         >
           ← all countries

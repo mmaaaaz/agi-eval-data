@@ -1,0 +1,1202 @@
+{
+  "version": 1,
+  "generatedAt": "2026-08-27T12:22:24.198Z",
+  "source": "data/metro.json#v4",
+  "counts": {
+    "graphs": 85,
+    "stations": 0,
+    "edges": 0
+  },
+  "graphs": {
+    "1-UHpQwyNjY64d1vsI4pFHQdT5veU_55k": {
+      "fileId": "1-UHpQwyNjY64d1vsI4pFHQdT5veU_55k",
+      "city": "Hamburg",
+      "country": "Germany",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1-rruGfmI7--fr8QP3Mdr2REsDNpSpVCE": {
+      "fileId": "1-rruGfmI7--fr8QP3Mdr2REsDNpSpVCE",
+      "city": "Pretoria (Tshwane)",
+      "country": "South Africa",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1-vx5m4qhz1CYQ48907Z3FFu4YLedgh4A": {
+      "fileId": "1-vx5m4qhz1CYQ48907Z3FFu4YLedgh4A",
+      "city": "kolkota",
+      "country": "India",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "10eaL0XPPhGKKFRodyfcHcgGyzPBRwUFE": {
+      "fileId": "10eaL0XPPhGKKFRodyfcHcgGyzPBRwUFE",
+      "city": "Glassgow",
+      "country": "Scotland",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "11cD41SlGrZPIBlY-P64JmWOXwr9oQ6_s": {
+      "fileId": "11cD41SlGrZPIBlY-P64JmWOXwr9oQ6_s",
+      "city": "Volgograd",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "11dkDlZKvYBCztkOeVzS9rekndJRTiGn1": {
+      "fileId": "11dkDlZKvYBCztkOeVzS9rekndJRTiGn1",
+      "city": "beijing image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "11iJ51FdwDcXXpQdVKwbB0aNwoUWfn-B3": {
+      "fileId": "11iJ51FdwDcXXpQdVKwbB0aNwoUWfn-B3",
+      "city": "Moscow",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "12QTFOIGxqneJYul7Oay-eqI93xbxliYz": {
+      "fileId": "12QTFOIGxqneJYul7Oay-eqI93xbxliYz",
+      "city": "rome image",
+      "country": "italy",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "12R0iKyk94p0pem0z_1E294kYWCibXZBg": {
+      "fileId": "12R0iKyk94p0pem0z_1E294kYWCibXZBg",
+      "city": "Saint Petersburg",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "135IcfsV9vUEEUDdkPq71nrKYMXTsyx5Z": {
+      "fileId": "135IcfsV9vUEEUDdkPq71nrKYMXTsyx5Z",
+      "city": "Tehran",
+      "country": "Iran",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "13Id1evOARrve7R0nEm5S8oBaBtnhEFx1": {
+      "fileId": "13Id1evOARrve7R0nEm5S8oBaBtnhEFx1",
+      "city": "Siliguri",
+      "country": "India",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "13n8SdSkKX3lXFWOcI1QRHaI9D6NgjF-I": {
+      "fileId": "13n8SdSkKX3lXFWOcI1QRHaI9D6NgjF-I",
+      "city": "geneva image",
+      "country": "switzerland",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "14jq7WX8L8_940ELFT27RdGg4SJYI9yEp": {
+      "fileId": "14jq7WX8L8_940ELFT27RdGg4SJYI9yEp",
+      "city": "Recife",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "154zX465TY8b98PBdGakemIhjVKN_YPn3": {
+      "fileId": "154zX465TY8b98PBdGakemIhjVKN_YPn3",
+      "city": "Graz",
+      "country": "Austria",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "15_KO4rJ2HUAuLqUdsRTaqggVUiETJw4W": {
+      "fileId": "15_KO4rJ2HUAuLqUdsRTaqggVUiETJw4W",
+      "city": "guiyang image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "16T-X2QTqpFh6Whb-ohtwSHL29BKiAc23": {
+      "fileId": "16T-X2QTqpFh6Whb-ohtwSHL29BKiAc23",
+      "city": "pune",
+      "country": "India",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "16lMGtPMQ0_tNExDH8heaTk3j8mJaLRq4": {
+      "fileId": "16lMGtPMQ0_tNExDH8heaTk3j8mJaLRq4",
+      "city": "Shiraz",
+      "country": "Iran",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "16qQHbrivIuBlc0TuVKTO4L5buJVs9vCA": {
+      "fileId": "16qQHbrivIuBlc0TuVKTO4L5buJVs9vCA",
+      "city": "Brasília",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "180aZHuEJCJLaDsjRjfVcqp_2TNyqmVlO": {
+      "fileId": "180aZHuEJCJLaDsjRjfVcqp_2TNyqmVlO",
+      "city": "Lahore",
+      "country": "Pakistan",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "19BnGDZhe4zTIRFIYczqGeZEv_3jwya7Y": {
+      "fileId": "19BnGDZhe4zTIRFIYczqGeZEv_3jwya7Y",
+      "city": "mumbai",
+      "country": "India",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "19NmCczuCt9VkmThAs2L2RgnFjfmkRIaR": {
+      "fileId": "19NmCczuCt9VkmThAs2L2RgnFjfmkRIaR",
+      "city": "xian image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "19SkURIUV3N4LU0hbqfo1yyIpXGGhnHq4": {
+      "fileId": "19SkURIUV3N4LU0hbqfo1yyIpXGGhnHq4",
+      "city": "new york image",
+      "country": "america",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "19hpn9PAvaGB7L35MdsKN9Qa6D-IHcE_Q": {
+      "fileId": "19hpn9PAvaGB7L35MdsKN9Qa6D-IHcE_Q",
+      "city": "bengaluru",
+      "country": "India",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "19s46zTSRc8mCe66mngW7nSAa4erbDRZq": {
+      "fileId": "19s46zTSRc8mCe66mngW7nSAa4erbDRZq",
+      "city": "Metrorail ooskaap",
+      "country": "South Africa",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1AI8FREj0Om39roiDd_sXIRRO_n_l2Se_": {
+      "fileId": "1AI8FREj0Om39roiDd_sXIRRO_n_l2Se_",
+      "city": "Incheon",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1AcKJRMqT38DTZMdThbnc96hylLIeEXRb": {
+      "fileId": "1AcKJRMqT38DTZMdThbnc96hylLIeEXRb",
+      "city": "Munich",
+      "country": "Germany",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1BONaPbTy24GW_cnV0LfnINue-oniV9gT": {
+      "fileId": "1BONaPbTy24GW_cnV0LfnINue-oniV9gT",
+      "city": "Seoul",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1DWHoMNwYkQX4a1q5SI7M-omJfZzuju3c": {
+      "fileId": "1DWHoMNwYkQX4a1q5SI7M-omJfZzuju3c",
+      "city": "dubai image",
+      "country": "united_arab_emirates",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1EJvZgdqmO47aXlrN36a8z_RuzCUW941d": {
+      "fileId": "1EJvZgdqmO47aXlrN36a8z_RuzCUW941d",
+      "city": "Yekaterinburg",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1ELnlm-NiooGDcLBONgFlKWCsCD1wQp8N": {
+      "fileId": "1ELnlm-NiooGDcLBONgFlKWCsCD1wQp8N",
+      "city": "CapeTown",
+      "country": "South Africa",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Gg4GM6vm0CpYrciU9goQeoQME53HXdJ0": {
+      "fileId": "1Gg4GM6vm0CpYrciU9goQeoQME53HXdJ0",
+      "city": "Cairo",
+      "country": "Egypt",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Hs5lP4XvUFPgkAW5Pi-Gur4srlkP_1YR": {
+      "fileId": "1Hs5lP4XvUFPgkAW5Pi-Gur4srlkP_1YR",
+      "city": "peshwar",
+      "country": "Pakistan",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Hz0Io81iyxK3ZDkbzXmVlW3mdJrErNbf": {
+      "fileId": "1Hz0Io81iyxK3ZDkbzXmVlW3mdJrErNbf",
+      "city": "sydney image",
+      "country": "australia",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1IVrEmn8qlNFzbvEDHhqJj35Iz__HjQkv": {
+      "fileId": "1IVrEmn8qlNFzbvEDHhqJj35Iz__HjQkv",
+      "city": "Samara",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1J8Xb88fhbYh_h4b_fTpHTS6cejPKpvBl": {
+      "fileId": "1J8Xb88fhbYh_h4b_fTpHTS6cejPKpvBl",
+      "city": "kunming image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1JdICBzHQARWyRrQw93AOL9CsDN57d8F7": {
+      "fileId": "1JdICBzHQARWyRrQw93AOL9CsDN57d8F7",
+      "city": "nanchang image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1KuKeBOFtjNIirw9E0nKsg8q__GCcI8vW": {
+      "fileId": "1KuKeBOFtjNIirw9E0nKsg8q__GCcI8vW",
+      "city": "Salvador",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1MqdAivswdl2xiw5gqAs1oUIlj7l37FKH": {
+      "fileId": "1MqdAivswdl2xiw5gqAs1oUIlj7l37FKH",
+      "city": "Dhaka",
+      "country": "Bangladesh",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1NpWHeoQfBGCQ0FNNANUHV0NorMscag9q": {
+      "fileId": "1NpWHeoQfBGCQ0FNNANUHV0NorMscag9q",
+      "city": "jinan image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1OMW10nuWsHo2wI6Sm1oE5zJ20JjKQVgg": {
+      "fileId": "1OMW10nuWsHo2wI6Sm1oE5zJ20JjKQVgg",
+      "city": "changzhou image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1OdRb5q-GOH9dMGcO7OK7R__3idwprYTD": {
+      "fileId": "1OdRb5q-GOH9dMGcO7OK7R__3idwprYTD",
+      "city": "Isfahan",
+      "country": "Iran",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1PBpU-HMgrFTwP7TMynejNLsE_NPaS-sm": {
+      "fileId": "1PBpU-HMgrFTwP7TMynejNLsE_NPaS-sm",
+      "city": "Lahore",
+      "country": "Pakistan",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1PZ0WEYqkQXvR3H4f3huDOCL_CCcBDBYl": {
+      "fileId": "1PZ0WEYqkQXvR3H4f3huDOCL_CCcBDBYl",
+      "city": "vj1hz0hnl7md1",
+      "country": "Bolivia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Pcrk99lJw31TzLrWUVuJnvw2gICt69lL": {
+      "fileId": "1Pcrk99lJw31TzLrWUVuJnvw2gICt69lL",
+      "city": "huhehaote image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Q8c1NEoMV6MDv57aBeOWvqYG2DO5RFJo": {
+      "fileId": "1Q8c1NEoMV6MDv57aBeOWvqYG2DO5RFJo",
+      "city": "Metrorail Durban",
+      "country": "South Africa",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1QWKi-IbbGHpWg7iJbz9McDskJcF1c4kX": {
+      "fileId": "1QWKi-IbbGHpWg7iJbz9McDskJcF1c4kX",
+      "city": "lisboa image",
+      "country": "portugal",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1RoP9aQKhivgx7TCjC6os66-UGiPLLbb4": {
+      "fileId": "1RoP9aQKhivgx7TCjC6os66-UGiPLLbb4",
+      "city": "Tokyo .1",
+      "country": "Japan",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1RsYdUwOtZxbcSR1pB0c_xgHvDzOlI4lU": {
+      "fileId": "1RsYdUwOtZxbcSR1pB0c_xgHvDzOlI4lU",
+      "city": "Kazan",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1SI6_OYaM69AZHcKFYi3GhEZ0WObSm-Ci": {
+      "fileId": "1SI6_OYaM69AZHcKFYi3GhEZ0WObSm-Ci",
+      "city": "Tabriz",
+      "country": "Iran",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1SSUz_3j9AoApCrXFLsIsxtmeVQGb0NBG": {
+      "fileId": "1SSUz_3j9AoApCrXFLsIsxtmeVQGb0NBG",
+      "city": "shenzhen image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1UMrK8Eq67wqA9mT9SeiWy-zascdBckEs": {
+      "fileId": "1UMrK8Eq67wqA9mT9SeiWy-zascdBckEs",
+      "city": "hefei image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1XDBcQ7hzecZikwjg06dyxLE5_h380NGc": {
+      "fileId": "1XDBcQ7hzecZikwjg06dyxLE5_h380NGc",
+      "city": "Estonia",
+      "country": "Estonia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1XfNgGhdMcbtc791_F_saOcqlRcIbuUmM": {
+      "fileId": "1XfNgGhdMcbtc791_F_saOcqlRcIbuUmM",
+      "city": "budapest image",
+      "country": "hungary",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Xth7EbKizHZJaDCOcISP15lSoT8Yx3Ie": {
+      "fileId": "1Xth7EbKizHZJaDCOcISP15lSoT8Yx3Ie",
+      "city": "Daegu",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Y05Fwy8STLjOJJ3CtIHr-D0wYI7a7gyV": {
+      "fileId": "1Y05Fwy8STLjOJJ3CtIHr-D0wYI7a7gyV",
+      "city": "Busan",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1Y3PUb6xe86UsJ_TVfTISmiy8WTX_p1rj": {
+      "fileId": "1Y3PUb6xe86UsJ_TVfTISmiy8WTX_p1rj",
+      "city": "Barcelona",
+      "country": "Spain",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1ZuhG0xVshzAsU8SdNURba7XEMnZCwUy3": {
+      "fileId": "1ZuhG0xVshzAsU8SdNURba7XEMnZCwUy3",
+      "city": "miami image",
+      "country": "america",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1_Nci8EyEhrMSoNnciLxCRIRoxp99ifIp": {
+      "fileId": "1_Nci8EyEhrMSoNnciLxCRIRoxp99ifIp",
+      "city": "shanghai image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1_OnWiELfBOBy_KqiisOvwa3BwgVyfU0p": {
+      "fileId": "1_OnWiELfBOBy_KqiisOvwa3BwgVyfU0p",
+      "city": "Gwanju",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1bX91A9NPDa6NxtdmNWmSNVQ25kvQzmfX": {
+      "fileId": "1bX91A9NPDa6NxtdmNWmSNVQ25kvQzmfX",
+      "city": "Belo Horizonte",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1cIZP4VBOsi4PrsWfC2u0fTsq_vWWAZhr": {
+      "fileId": "1cIZP4VBOsi4PrsWfC2u0fTsq_vWWAZhr",
+      "city": "dalian image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1cUodMtLby1wtw6UNn0jKxvVKEjK678lr": {
+      "fileId": "1cUodMtLby1wtw6UNn0jKxvVKEjK678lr",
+      "city": "Gimhae",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1cukGMsCG50SEy0ZCwLQ8b9GLFbQ1b7KC": {
+      "fileId": "1cukGMsCG50SEy0ZCwLQ8b9GLFbQ1b7KC",
+      "city": "hangzhou image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1ep-JCKUxMZIU0fv6copofmmLLkuExGqY": {
+      "fileId": "1ep-JCKUxMZIU0fv6copofmmLLkuExGqY",
+      "city": "Catalunya",
+      "country": "Spain",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1gtPXKY5XGj9qI1rfpMkpcP2quUzUfcrc": {
+      "fileId": "1gtPXKY5XGj9qI1rfpMkpcP2quUzUfcrc",
+      "city": "auckland image",
+      "country": "new_zealand",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1iYlEUKvb-Vt8F0V2KXO8YvFz05OzTirQ": {
+      "fileId": "1iYlEUKvb-Vt8F0V2KXO8YvFz05OzTirQ",
+      "city": "São Paulo",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1igbNM9P4oEMxN1sBjSYGUC3VxeJn-W5u": {
+      "fileId": "1igbNM9P4oEMxN1sBjSYGUC3VxeJn-W5u",
+      "city": "singapore image",
+      "country": "singapore",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1kXiLv3nSFtnnKOyNl-mtwvOaFKM8alu-": {
+      "fileId": "1kXiLv3nSFtnnKOyNl-mtwvOaFKM8alu-",
+      "city": "Daejeon",
+      "country": "South Korea",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1kxL-drFdMjuxDEsPZ00_LdMgqDCAIJs6": {
+      "fileId": "1kxL-drFdMjuxDEsPZ00_LdMgqDCAIJs6",
+      "city": "Red Bus",
+      "country": "Pakistan",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1lEGfldgRHDMiy83cFq_e-h_M30ftTP95": {
+      "fileId": "1lEGfldgRHDMiy83cFq_e-h_M30ftTP95",
+      "city": "Rio de Janeiro",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1menuTMxy5TJkQ1iksvYKQg7QhbVYmqHf": {
+      "fileId": "1menuTMxy5TJkQ1iksvYKQg7QhbVYmqHf",
+      "city": "Gibraltar",
+      "country": "United Kingdom",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1mvHXRqsyic-ICq5AazjJ3OcOGXF2wSA0": {
+      "fileId": "1mvHXRqsyic-ICq5AazjJ3OcOGXF2wSA0",
+      "city": "washington image",
+      "country": "america",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1nA7lyJ8iLruN_-0aX0FjKuNVjndwVwoE": {
+      "fileId": "1nA7lyJ8iLruN_-0aX0FjKuNVjndwVwoE",
+      "city": "Stuttgart",
+      "country": "Germany",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1nrVoYPGM5pwFCrq6VOKaRGYeg8LjeleK": {
+      "fileId": "1nrVoYPGM5pwFCrq6VOKaRGYeg8LjeleK",
+      "city": "Islamabad",
+      "country": "Pakistan",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1qWNDieYQbNTG9QVSCTLCh9XSgEbV-cj7": {
+      "fileId": "1qWNDieYQbNTG9QVSCTLCh9XSgEbV-cj7",
+      "city": "Metrorail Cape Town",
+      "country": "South Africa",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1sVhH_bp2t2nD7VmNtg1467AEvZyDDylz": {
+      "fileId": "1sVhH_bp2t2nD7VmNtg1467AEvZyDDylz",
+      "city": "kl image",
+      "country": "malaysia",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1sgjdfzDyLkkn6zSy_I0egb5vy1Oso8EO": {
+      "fileId": "1sgjdfzDyLkkn6zSy_I0egb5vy1Oso8EO",
+      "city": "Fortaleza",
+      "country": "Brazil",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1tGn3RrTgexL95vgiXxBaDkV33mpcnVNE": {
+      "fileId": "1tGn3RrTgexL95vgiXxBaDkV33mpcnVNE",
+      "city": "Metrorail Gauteng",
+      "country": "South Africa",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1tWVzu1oCoNy2WQUKJJ37mjQPmuWD46J5": {
+      "fileId": "1tWVzu1oCoNy2WQUKJJ37mjQPmuWD46J5",
+      "city": "nanning image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1uP0ABFouBvR2Iou9cDQqsnpoRze8d1Hg": {
+      "fileId": "1uP0ABFouBvR2Iou9cDQqsnpoRze8d1Hg",
+      "city": "Mashad",
+      "country": "Iran",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1v285FV_ZN3Bja5tm93QD5NKIrkN4hfrb": {
+      "fileId": "1v285FV_ZN3Bja5tm93QD5NKIrkN4hfrb",
+      "city": "los angeles image",
+      "country": "america",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1v79ruJhJjJPTkE5elCQhuKP5o_03Wh6g": {
+      "fileId": "1v79ruJhJjJPTkE5elCQhuKP5o_03Wh6g",
+      "city": "toronto image",
+      "country": "canada",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1wbyFtU2IecJPAWMul5qe3n5oJcsiPHLV": {
+      "fileId": "1wbyFtU2IecJPAWMul5qe3n5oJcsiPHLV",
+      "city": "oslo image",
+      "country": "norway",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1xzNPcH0pWUx1qjaZ-aREtJ4cn4dsJESW": {
+      "fileId": "1xzNPcH0pWUx1qjaZ-aREtJ4cn4dsJESW",
+      "city": "Novosibirsk",
+      "country": "Russia",
+      "branch": "ours",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    },
+    "1zkdzLAUqkSgANYzq3QikQ_ZK6KXmlTus": {
+      "fileId": "1zkdzLAUqkSgANYzq3QikQ_ZK6KXmlTus",
+      "city": "changsha image",
+      "country": "china",
+      "branch": "reason_map(exisiting_dataset)",
+      "stations": [],
+      "edges": [],
+      "lines": {},
+      "provenance": {
+        "annotatedBy": "seed",
+        "annotatedAt": "2026-08-27",
+        "tool": "metro_graph_seed.py v1"
+      }
+    }
+  }
+}

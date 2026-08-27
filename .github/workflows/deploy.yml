@@ -51,6 +51,9 @@ jobs:
               - "apps/metro-web/**"
               - "packages/site/**"
               - "packages/shared/**"
+              - "data/metro.json"
+              - "scripts/metro_build_data.py"
+              - "scripts/og/**"
               - ".github/workflows/deploy.yml"
             metro_app:
               - "apps/metro-relay/**"

@@ -15,6 +15,9 @@ export interface QRow {
   difficulty: string;
   tags: string;
   status: string;
+  source?: string;
+  graph_file_id?: string | null;
+  graph_path?: string | null;
   created_at: string;
 }
 
@@ -53,10 +56,11 @@ export function familyOf(model: string): string {
 /** The fixed evaluation prompt sent to models — crafted for gradeable, comparable answers. */
 export function craftedPrompt(question: string, subject: string): string {
   return [
-    `You are answering a visual reasoning benchmark question. Look at the ${subject} carefully.`,
-    "Answer with ONLY the answer — no explanation, no preamble, no full sentence unless the question explicitly asks for one.",
-    "",
+    `You are answering a visual question about ${subject}.`,
     `Question: ${question}`,
+    `Answer directly and concisely. If the question asks for a number, reply with just the number.`,
+    `If it is a yes/no question, reply with exactly "yes" or "no".`,
+    `If multiple-choice, reply with the exact option text or its letter.`,
   ].join("\n");
 }
 
@@ -65,32 +69,23 @@ export const OR_CHAT_URL = "https://openrouter.ai/api/v1/chat/completions";
 
 export interface ORModel {
   id: string;
-  name?: string;
-  vision: boolean;
+  name: string;
+  context_length?: number;
+  pricing?: { prompt: string; completion: string; request: string; image: string };
+  vision?: boolean;
+  // OpenRouter may expose architecture or modalities; keep permissive
+  architecture?: { modality?: string; input_modalities?: string[] };
 }
 
 export async function fetchOpenRouterModels(): Promise<ORModel[]> {
   const res = await fetch(OR_MODELS_URL);
-  if (!res.ok) throw new Error(`OpenRouter models ${res.status}`);
-  const j = (await res.json()) as {
-    data: { id: string; name?: string; architecture?: { input_modalities?: string[]; modality?: string } }[];
-  };
-  return j.data
-    .map((m) => ({
-      id: m.id,
-      name: m.name,
-      vision: (m.architecture?.input_modalities ?? []).includes("image")
-        || (m.architecture?.modality ?? "").includes("image"),
-    }))
-    .sort((a, b) => a.id.localeCompare(b.id));
+  if (!res.ok) throw new Error(`models fetch failed: ${res.status}`);
+  const j = (await res.json()) as { data: ORModel[] };
+  return j.data ?? [];
 }
 
 export interface SiteMeta {
-  /** HTTP-Referer sent to OpenRouter (site URL) */
-  referer: string;
-  /** X-Title sent to OpenRouter */
-  title: string;
-  /** noun used in the crafted prompt, e.g. "image" or "metro network map" */
+  name: string;
   subject: string;
 }
 
@@ -103,49 +98,57 @@ export async function runOpenRouter(
   meta: SiteMeta,
   signal?: AbortSignal,
 ): Promise<string> {
+  const imgUrl = `https://lh3.googleusercontent.com/d/${fileId}=w1600`;
+  const prompt = craftedPrompt(question, meta.subject);
+  const body = {
+    model,
+    messages: [
+      {
+        role: "user" as const,
+        content: [
+          { type: "text" as const, text: prompt },
+          { type: "image_url" as const, image_url: { url: imgUrl } },
+        ],
+      },
+    ],
+    max_tokens: 512,
+  };
   const res = await fetch(OR_CHAT_URL, {
     method: "POST",
-    signal,
     headers: {
-      Authorization: `Bearer ${key}`,
       "Content-Type": "application/json",
-      "HTTP-Referer": meta.referer,
-      "X-Title": meta.title,
+      Authorization: `Bearer ${key}`,
+      "HTTP-Referer": typeof location !== "undefined" ? location.origin : "",
+      "X-Title": meta.name,
     },
-    body: JSON.stringify({
-      model,
-      max_tokens: 300,
-      messages: [
-        {
-          role: "user",
-          content: [
-            { type: "image_url", image_url: { url: `https://lh3.googleusercontent.com/d/${fileId}=w1600` } },
-            { type: "text", text: craftedPrompt(question, meta.subject) },
-          ],
-        },
-      ],
-    }),
+    body: JSON.stringify(body),
+    signal,
   });
   if (!res.ok) {
-    const text = await res.text();
-    throw new Error(`OpenRouter ${res.status}: ${text.slice(0, 220)}`);
+    const t = await res.text().catch(() => "");
+    throw new Error(`OpenRouter ${res.status}: ${t.slice(0, 400)}`);
   }
   const j = (await res.json()) as { choices?: { message?: { content?: string } }[] };
-  return (j.choices?.[0]?.message?.content ?? "").trim();
+  const content = j.choices?.[0]?.message?.content;
+  if (typeof content === "string") return content;
+  if (Array.isArray(content)) return (content as unknown[]).map((p) => {
+    if (p && typeof p === "object" && "text" in (p as Record<string, unknown>)) return String((p as Record<string, unknown>).text);
+    return "";
+  }).join("");
+  return String(content ?? "");
 }
 
 class ApiError extends Error {}
 
 async function call<T>(relay: string, code: string, path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(`${relay.replace(/\/+$/, "")}${path}`, {
-    ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(code ? { "x-questions-code": code } : {}),
-      ...(init?.headers ?? {}),
-    },
-  });
-  const body = (await res.json().catch(() => ({}))) as T & { error?: string };
+  const url = `${relay.replace(/\/+$/, "")}${path}`;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    ...(code ? { "x-questions-code": code } : {}),
+    ...(init?.headers as Record<string, string> | undefined),
+  };
+  const res = await fetch(url, { ...init, headers });
+  const body = (await res.json().catch(() => ({}))) as { error?: string } & T;
   if (!res.ok) throw new ApiError(body.error ?? `HTTP ${res.status}`);
   return body;
 }
@@ -157,18 +160,19 @@ export const questionsApi = {
   check(relay: string, code: string, fileId: string, q: string): Promise<{ matches: { id: number; question: string }[] }> {
     return call(relay, code, `/api/questions/check?file_id=${encodeURIComponent(fileId)}&q=${encodeURIComponent(q)}`);
   },
-  list(relay: string, code: string, opts: { file_id?: string; search?: string; limit?: number }): Promise<{ questions: QRow[] }> {
+  list(relay: string, code: string, opts: { file_id?: string; search?: string; limit?: number; source?: string }): Promise<{ questions: QRow[] }> {
     const p = new URLSearchParams();
     if (opts.file_id) p.set("file_id", opts.file_id);
     if (opts.search) p.set("search", opts.search);
     if (opts.limit) p.set("limit", String(opts.limit));
+    if (opts.source) p.set("source", opts.source);
     const qs = p.toString();
     return call(relay, code, `/api/questions${qs ? `?${qs}` : ""}`);
   },
   add(
     relay: string,
     code: string,
-    payload: { file_id: string; contributor: string; question: string; answer_type: string; answer: string; choices: string; difficulty: string; tags: string },
+    payload: { file_id: string; contributor: string; question: string; answer_type: string; answer: string; choices: string; difficulty: string; tags: string; source?: string; graph_file_id?: string; graph_path?: string },
   ): Promise<{ id: number }> {
     return call(relay, code, "/api/questions", { method: "POST", body: JSON.stringify(payload) });
   },

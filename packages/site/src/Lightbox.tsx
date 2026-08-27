@@ -11,6 +11,7 @@ interface Props {
   onClose: () => void;
   onPrev: () => void;
   onNext: () => void;
+  overlay?: React.ReactNode;
 }
 
 const EXIT_MS = 300;
@@ -25,7 +26,7 @@ type Phase = "entering" | "open" | "closing";
  * Keyboard: ← → navigate, Esc close. Click backdrop to close.
  * Optional `latest` shows the exif metadata panel (web datasets).
  */
-export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: Props) {
+export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext, overlay }: Props) {
   const [id, name, , size] = row;
   const [phase, setPhase] = useState<Phase>("entering");
 
@@ -118,14 +119,17 @@ export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: P
           {/* stage */}
           <div className="relative flex min-h-0 flex-1 items-center justify-center overflow-hidden p-3 sm:p-6">
             {isImage ? (
-              <img
-                key={id}
-                src={previewUrl}
-                alt={name}
-                draggable={false}
-                onError={(e) => ((e.target as HTMLImageElement).style.opacity = "0.15")}
-                className="max-h-[70vh] select-none rounded-lg border border-[#262626] bg-[#0a0a0a] object-contain @2xl/lb:max-h-full"
-              />
+              <div className="relative">
+                <img
+                  key={id}
+                  src={previewUrl}
+                  alt={name}
+                  draggable={false}
+                  onError={(e) => ((e.target as HTMLImageElement).style.opacity = "0.15")}
+                  className="max-h-[70vh] select-none rounded-lg border border-[#262626] bg-[#0a0a0a] object-contain @2xl/lb:max-h-full"
+                />
+                {overlay && !isPdf && <div className="pointer-events-auto absolute inset-0 rounded-lg">{overlay}</div>}
+              </div>
             ) : (
               <iframe
                 key={id}

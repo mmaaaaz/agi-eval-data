@@ -22,6 +22,7 @@ import { Route as GalleryIndexRouteImport } from './routes/gallery.index'
 import { Route as GalleryContributorsRouteImport } from './routes/gallery.contributors'
 import { Route as GalleryDuplicatesRouteImport } from './routes/gallery.duplicates'
 import { Route as GalleryPdfsRouteImport } from './routes/gallery.pdfs'
+import { Route as GraphFileIdRouteImport } from './routes/graph.$fileId'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -88,6 +89,11 @@ const GalleryPdfsRoute = GalleryPdfsRouteImport.update({
   path: '/pdfs',
   getParentRoute: () => GalleryRoute,
 } as any)
+const GraphFileIdRoute = GraphFileIdRouteImport.update({
+  id: '/graph/$fileId',
+  path: '/graph/$fileId',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,6 +107,7 @@ export interface FileRoutesByFullPath {
   '/gallery/contributors': typeof GalleryContributorsRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/pdfs': typeof GalleryPdfsRoute
+  '/graph/$fileId': typeof GraphFileIdRoute
   '/contribute/': typeof ContributeIndexRoute
   '/gallery/': typeof GalleryIndexRoute
 }
@@ -114,6 +121,7 @@ export interface FileRoutesByTo {
   '/gallery/contributors': typeof GalleryContributorsRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/pdfs': typeof GalleryPdfsRoute
+  '/graph/$fileId': typeof GraphFileIdRoute
   '/contribute': typeof ContributeIndexRoute
   '/gallery': typeof GalleryIndexRoute
 }
@@ -130,6 +138,7 @@ export interface FileRoutesById {
   '/gallery/contributors': typeof GalleryContributorsRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/pdfs': typeof GalleryPdfsRoute
+  '/graph/$fileId': typeof GraphFileIdRoute
   '/contribute/': typeof ContributeIndexRoute
   '/gallery/': typeof GalleryIndexRoute
 }
@@ -147,6 +156,7 @@ export interface FileRouteTypes {
     | '/gallery/contributors'
     | '/gallery/duplicates'
     | '/gallery/pdfs'
+    | '/graph/$fileId'
     | '/contribute/'
     | '/gallery/'
   fileRoutesByTo: FileRoutesByTo
@@ -160,6 +170,7 @@ export interface FileRouteTypes {
     | '/gallery/contributors'
     | '/gallery/duplicates'
     | '/gallery/pdfs'
+    | '/graph/$fileId'
     | '/contribute'
     | '/gallery'
   id:
@@ -175,6 +186,7 @@ export interface FileRouteTypes {
     | '/gallery/contributors'
     | '/gallery/duplicates'
     | '/gallery/pdfs'
+    | '/graph/$fileId'
     | '/contribute/'
     | '/gallery/'
   fileRoutesById: FileRoutesById
@@ -187,6 +199,7 @@ export interface RootRouteChildren {
   GalleryRoute: typeof GalleryRouteWithChildren
   ProjectRoute: typeof ProjectRoute
   SettingsRoute: typeof SettingsRoute
+  GraphFileIdRoute: typeof GraphFileIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -282,6 +295,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GalleryPdfsRouteImport
       parentRoute: typeof GalleryRoute
     }
+    '/graph/$fileId': {
+      id: '/graph/$fileId'
+      path: '/graph/$fileId'
+      fullPath: '/graph/$fileId'
+      preLoaderRoute: typeof GraphFileIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -324,6 +344,7 @@ const rootRouteChildren: RootRouteChildren = {
   GalleryRoute: GalleryRouteWithChildren,
   ProjectRoute: ProjectRoute,
   SettingsRoute: SettingsRoute,
+  GraphFileIdRoute: GraphFileIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

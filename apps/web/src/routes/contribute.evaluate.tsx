@@ -12,8 +12,7 @@ function Evaluate() {
         onThisWording: () => "image",
         loadSettings,
         orMeta: {
-          referer: "https://agi-eval-data.pages.dev",
-          title: "agi-eval-data evaluator",
+          name: "agi-eval-data evaluator",
           subject: "image",
         },
         tagBarFrom: "from-[#155a9d]",

@@ -1,0 +1,131 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://metro-eval.pages.dev/data/metro-graph.schema.json",
+  "title": "Metro Graph Sidecar v1",
+  "description": "Graph-native sidecar for data/metro.json v4 — committed artifact for free, unlimited, diagram-faithful routing. Sidecar only; never inline into data/metro.json.",
+  "type": "object",
+  "required": ["version", "generatedAt", "source", "counts", "graphs"],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "integer",
+      "const": 1,
+      "description": "Schema version — bump on breaking change; client asserts version===1."
+    },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "description": "ISO-8601 generation timestamp."
+    },
+    "source": {
+      "type": "string",
+      "const": "data/metro.json#v4",
+      "description": "Provenance pointer to dataset version."
+    },
+    "counts": {
+      "type": "object",
+      "required": ["graphs", "stations", "edges"],
+      "additionalProperties": false,
+      "properties": {
+        "graphs": { "type": "integer", "minimum": 0 },
+        "stations": { "type": "integer", "minimum": 0 },
+        "edges": { "type": "integer", "minimum": 0 }
+      }
+    },
+    "graphs": {
+      "type": "object",
+      "description": "Keyed by file_id (Drive id) of each image row in data/metro.json.",
+      "patternProperties": {
+        "^[A-Za-z0-9_-]+$": { "$ref": "#/$defs/Graph" }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "Graph": {
+      "type": "object",
+      "required": ["fileId", "city", "country", "branch", "stations", "edges", "lines", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "fileId": { "type": "string", "minLength": 1 },
+        "city": { "type": "string", "minLength": 1 },
+        "country": { "type": "string", "minLength": 1 },
+        "branch": { "type": "string", "minLength": 1 },
+        "stations": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Station" }
+        },
+        "edges": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Edge" }
+        },
+        "lines": {
+          "type": "object",
+          "description": "Line id → visual identity and ordered station list.",
+          "patternProperties": {
+            "^[A-Za-z0-9_-]+$": { "$ref": "#/$defs/Line" }
+          },
+          "additionalProperties": false
+        },
+        "provenance": { "$ref": "#/$defs/Provenance" }
+      }
+    },
+    "Station": {
+      "type": "object",
+      "required": ["id", "label", "lines", "interchange"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "label": { "type": "string" },
+        "lines": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        },
+        "x": {
+          "anyOf": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "null" }],
+          "description": "Normalized x in [0,1] image space; null if not yet placed."
+        },
+        "y": {
+          "anyOf": [{ "type": "number", "minimum": 0, "maximum": 1 }, { "type": "null" }],
+          "description": "Normalized y in [0,1] image space; null if not yet placed."
+        },
+        "interchange": { "type": "boolean" }
+      }
+    },
+    "Edge": {
+      "type": "object",
+      "required": ["from", "to", "line", "bidirectional", "weight"],
+      "additionalProperties": false,
+      "properties": {
+        "from": { "type": "string", "minLength": 1 },
+        "to": { "type": "string", "minLength": 1 },
+        "line": { "type": "string", "minLength": 1 },
+        "bidirectional": { "type": "boolean" },
+        "weight": { "type": "number", "exclusiveMinimum": 0 }
+      }
+    },
+    "Line": {
+      "type": "object",
+      "required": ["color", "label", "stations"],
+      "additionalProperties": false,
+      "properties": {
+        "color": { "type": "string", "pattern": "^#([0-9a-fA-F]{3}|[0-9a-fA-F]{6})$" },
+        "label": { "type": "string" },
+        "stations": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "Provenance": {
+      "type": "object",
+      "required": ["annotatedBy", "annotatedAt", "tool"],
+      "additionalProperties": false,
+      "properties": {
+        "annotatedBy": { "type": "string" },
+        "annotatedAt": { "type": "string" },
+        "tool": { "type": "string" }
+      }
+    }
+  }
+}
