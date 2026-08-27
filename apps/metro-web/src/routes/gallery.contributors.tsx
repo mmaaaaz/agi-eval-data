@@ -2,8 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { ownerStats, ownerName } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
-import { ThumbImage } from "../components/ThumbImage";
-import { Eyebrow } from "../components/Section";
+import { ThumbImage } from "@site/thumb";
+import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/gallery/contributors")({ component: Contributors });
 
@@ -21,7 +21,9 @@ function Contributors() {
       </p>
 
       <div className="mt-6 space-y-3">
-        {stats.map((s) => (
+        {stats.map((s) => {
+        const pdfCount = data.files.filter((r) => r[5] === s.email && r[7] === "o").length;
+        return (
           <div key={s.email} className="flex items-center gap-4 rounded-lg border border-[#262626] bg-[#0a0a0a]/40 p-4">
             <div className="h-12 w-12 shrink-0 overflow-hidden rounded-full border border-[#262626]">
               {s.lastId ? (
@@ -38,12 +40,13 @@ function Contributors() {
             </div>
             <div className="grid shrink-0 grid-cols-2 gap-x-6 gap-y-1 text-right sm:grid-cols-4">
               <Stat label="maps" value={fmtN(s.unique)} />
-              <Stat label="pdfs" value={fmtN(s.pdfs)} />
+              <Stat label="pdfs" value={fmtN(pdfCount)} />
               <Stat label="stored" value={fmtB(s.bytes)} />
               <Stat label="dupes" value={fmtN(s.dupes)} danger={s.dupes > 0} />
             </div>
           </div>
-        ))}
+        );
+      })}
       </div>
     </div>
   );

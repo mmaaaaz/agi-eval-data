@@ -5,8 +5,8 @@ import { useData } from "../lib/dataContext";
 import { dupCounts, exifOf, megapixels, orientationOf, ownerStats, type Orientation } from "../lib/data";
 import { fmtN } from "../lib/format";
 import type { Latest, Row } from "../lib/types";
-import { VirtualGallery } from "../components/VirtualGallery";
-import { Lightbox } from "../components/Lightbox";
+import { VirtualGallery } from "@site/virtual";
+import { Lightbox } from "@site/lightbox";
 
 function doExport(rows: Row[], data: Latest, fmt: "csv" | "jsonl") {
   const stamp = new Date().toISOString().slice(0, 10).replace(/-/g, "");

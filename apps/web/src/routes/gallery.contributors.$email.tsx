@@ -5,9 +5,9 @@ import { byDay, dupCounts, imageRows, ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 import { DayBreakdown } from "../components/DayBreakdown";
 import { Heatmap } from "../components/Heatmap";
-import { ThumbImage } from "../components/ThumbImage";
-import { VirtualGallery } from "../components/VirtualGallery";
-import { Lightbox } from "../components/Lightbox";
+import { ThumbImage } from "@site/thumb";
+import { VirtualGallery } from "@site/virtual";
+import { Lightbox } from "@site/lightbox";
 
 export const Route = createFileRoute("/gallery/contributors/$email")({ component: Contributor });
 
@@ -82,7 +82,7 @@ function Contributor() {
       </section>
 
       {/* gallery */}
-      <section className="flex min-h-[480px] flex-col pt-10 md:h-[calc(100dvh-22rem)]">
+      <section className="flex h-[60dvh] min-h-[420px] flex-col pt-10 md:h-[calc(100dvh-22rem)]">
         <div className="mb-3 flex items-baseline justify-between gap-3">
           <h2 className="font-medium tracking-tight text-white">Their gallery</h2>
           <span className="font-mono text-xs tabular-nums text-[#666]">{fmtN(theirImages.length)} images</span>

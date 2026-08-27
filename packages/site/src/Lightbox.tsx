@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from "react";
-import type { Row } from "@metro/shared/types";
-import { cityName, countryOf } from "../lib/data";
-import { fmtB } from "../lib/format";
+import type { Latest, Row } from "./data";
+import { exifOf, megapixels, orientationOf, ownerName } from "./data";
+import { fmtB } from "./format";
 
 interface Props {
   row: Row;
+  latest?: Latest;
   pos: number;
   total: number;
   onClose: () => void;
@@ -17,16 +18,18 @@ const EXIT_MS = 300;
 type Phase = "entering" | "open" | "closing";
 
 /**
- * Full-screen viewer for EVERY file type in the metro dataset:
+ * Full-screen viewer for EVERY file type in the dataset:
  *  - images (kind "i")  → Google CDN full-size (`lh3 ... =w1600`)
  *  - PDFs (kind "o")    → Google Drive preview iframe + download link
  *  - any other file     → Drive preview iframe (falls back gracefully)
  * Keyboard: ← → navigate, Esc close. Click backdrop to close.
+ * Optional `latest` shows the exif metadata panel (web datasets).
  */
-export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
+export function Lightbox({ row, latest, pos, total, onClose, onPrev, onNext }: Props) {
   const [id, name, , size] = row;
   const [phase, setPhase] = useState<Phase>("entering");
 
+  // enter → open (rAF so the transition actually runs), close plays exit then reports
   useEffect(() => {
     const raf = requestAnimationFrame(() => setPhase("open"));
     return () => cancelAnimationFrame(raf);
@@ -40,6 +43,7 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
     });
   }, [onClose]);
 
+  // body scroll lock
   useEffect(() => {
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
@@ -48,6 +52,7 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
     };
   }, []);
 
+  // keyboard: ← → navigate, Esc close
   useEffect(() => {
     const h = (e: KeyboardEvent) => {
       if (e.key === "Escape") requestClose();
@@ -65,9 +70,8 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
   const previewUrl = isImage
     ? `https://lh3.googleusercontent.com/d/${id}=w1600`
     : `https://drive.google.com/file/d/${id}/preview`;
-  const downloadUrl = isImage
-    ? `https://drive.google.com/uc?export=download&id=${id}`
-    : `https://drive.google.com/uc?export=download&id=${id}`;
+  const downloadUrl = `https://drive.google.com/uc?export=download&id=${id}`;
+  const exif = latest ? exifOf(latest, id) : null;
 
   return (
     <div
@@ -88,8 +92,7 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
           <div className="min-w-0">
             <p className="truncate font-mono text-xs text-[#ededed]">{name}</p>
             <p className="font-mono text-[10px] text-[#666]">
-              {pos + 1} / {total} · {cityName(row) || countryOf(row) || "—"} · {fmtB(size)}
-              {isPdf ? " · pdf" : isImage ? ` · .${row[2]}` : ""}
+              {pos + 1} / {total} · .{row[2]} · {fmtB(size)}
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -132,9 +135,35 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
               />
             )}
           </div>
+
+          {/* metadata panel — only when the dataset supplies `latest` */}
+          {exif && (
+            <aside className="max-h-[42vh] overflow-y-auto border-t border-[#262626] bg-[#0a0a0a]/60 p-4 @2xl/lb:max-h-none @2xl/lb:w-[19rem] @2xl/lb:border-l @2xl/lb:border-t-0 sm:p-5">
+              <MetaBlock label="dimensions">
+                <p className="font-mono text-xs tabular-nums text-[#ededed]">
+                  {exif.w.toLocaleString()} × {exif.h.toLocaleString()}
+                  <span className="ml-2 text-[#666]">{megapixels(exif.w, exif.h).toFixed(1)} MP</span>
+                </p>
+                <Chip>{orientationOf(exif.w, exif.h)}</Chip>
+              </MetaBlock>
+              {exif.camera && (
+                <MetaBlock label="camera">
+                  <p className="text-xs text-[#ededed]">{exif.camera}</p>
+                </MetaBlock>
+              )}
+              <MetaBlock label="uploader">
+                <p className="text-xs text-accent">{ownerName(latest!, row[5])}</p>
+              </MetaBlock>
+              <MetaBlock label="checksum">
+                <p className="break-all font-mono text-[10px] leading-4 text-[#666]" title={row[6]}>
+                  {row[6] || "—"}
+                </p>
+              </MetaBlock>
+            </aside>
+          )}
         </div>
 
-        {/* footer nav hint */}
+        {/* footer nav */}
         <footer className="flex items-center justify-between border-t border-[#262626] px-4 py-2 font-mono text-[10px] text-[#666]">
           <button onClick={onPrev} disabled={pos <= 0} className="disabled:opacity-30 hover:text-white">
             ← prev
@@ -148,5 +177,22 @@ export function Lightbox({ row, pos, total, onClose, onPrev, onNext }: Props) {
         </footer>
       </div>
     </div>
+  );
+}
+
+function MetaBlock({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-4">
+      <dt className="mb-1 font-mono text-[9px] uppercase tracking-[0.18em] text-[#666]">{label}</dt>
+      <dd>{children}</dd>
+    </div>
+  );
+}
+
+function Chip({ children }: { children: React.ReactNode }) {
+  return (
+    <span className="ml-0 mt-1 inline-block rounded border border-[#262626] px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wider text-[#a1a1a1]">
+      {children}
+    </span>
   );
 }

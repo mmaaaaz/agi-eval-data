@@ -8,8 +8,8 @@ import {
   UI_MESSAGE_STREAM_HEADERS,
   type UIMessage,
 } from "ai";
-import { z } from "zod";
-import { handleQuestionsApi, type Env } from "./questions";
+import { createQuestionsApi } from "@questions-api";
+import { normQ, normTags } from "@agi-eval/shared";
 import { CORS_HEADERS, jsonResponse as json } from "./http";
 
 /** Workers AI model used when the gateway rate-limits (free 10k neurons/day). */
@@ -235,11 +235,10 @@ export default {
       });
     }
 
-    if ((url.pathname.startsWith("/api/questions") || url.pathname.startsWith("/api/evaluations") || url.pathname.startsWith("/api/insights") || url.pathname.startsWith("/api/excluded"))) {
-      if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS_HEADERS });
-      const questionsResponse = await handleQuestionsApi(request, env, url);
-      if (questionsResponse) return questionsResponse;
-    }
+    if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS_HEADERS });
+    const qapi = createQuestionsApi({ db: env.DB, questionsCode: env.QUESTIONS_CODE, normQ, normTags });
+    const questionsResponse = await qapi.handle(request, url);
+    if (questionsResponse) return questionsResponse;
 
     return json({ error: "not found" }, 404, { ...CORS_HEADERS });
   },

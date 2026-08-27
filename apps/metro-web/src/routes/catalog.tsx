@@ -3,10 +3,10 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { countriesOf, cityName } from "../lib/data";
 import { fmtN } from "../lib/format";
-import { ThumbImage } from "../components/ThumbImage";
-import { Lightbox } from "../components/Lightbox";
-import { Eyebrow } from "../components/Section";
-import type { Row } from "@metro/shared/types";
+import { ThumbImage } from "@site/thumb";
+import { Lightbox } from "@site/lightbox";
+import { Eyebrow } from "@site/section";
+import type { Row } from "@site/data";
 
 export const Route = createFileRoute("/catalog")({
   component: Catalog,
@@ -35,7 +35,7 @@ function Catalog() {
     ? branchCountries.find((s) => s.name === country)
     : undefined;
   const rows = activeCountry
-    ? data.files.filter((r) => r[8][0] === branch && r[8][1] === activeCountry.name)
+    ? data.files.filter((r) => r[8]?.[0] === branch && r[8]?.[1] === activeCountry.name)
     : [];
 
   return (
@@ -117,7 +117,7 @@ function CountryView({ country, rows }: { country: string; rows: Row[] }) {
       <div className="mb-4 flex items-center gap-3">
         <Link
           to="/catalog"
-          search={{ branch: rows[0]?.[8][0] ?? "ours", country: "" }}
+          search={{ branch: rows[0]?.[8]?.[0] ?? "ours", country: "" }}
           className="font-mono text-xs text-accent hover:underline"
         >
           ← all countries

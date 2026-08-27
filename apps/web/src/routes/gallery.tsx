@@ -1,5 +1,5 @@
 import { Link, createFileRoute, Outlet } from "@tanstack/react-router";
-import { Eyebrow } from "../components/Section";
+import { Eyebrow } from "@site/section";
 
 const TABS = [
   { to: "/gallery", label: "Images", exact: true },

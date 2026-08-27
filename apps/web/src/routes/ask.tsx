@@ -13,7 +13,7 @@ import {
 import { loadSettings, saveSettings, type AskSettings as AskSettingsData } from "../lib/ai/settings";
 import { MsgView } from "../components/ask/AskMessages";
 import { normSql } from "@agi-eval/shared";
-import { Eyebrow } from "../components/Section";
+import { Eyebrow } from "@site/section";
 import { fmtN } from "../lib/format";
 
 const searchSchema = z.object({ c: z.string().optional() });

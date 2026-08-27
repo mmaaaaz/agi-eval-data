@@ -2,9 +2,9 @@ import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { ownerStats } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
-import { ThumbImage } from "../components/ThumbImage";
+import { ThumbImage } from "@site/thumb";
 
-export const Route = createFileRoute("/gallery/contributors")({ component: Contributors });
+export const Route = createFileRoute("/gallery/contributors/")({ component: Contributors });
 
 function Contributors() {
   const { data } = useData();

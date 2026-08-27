@@ -6,7 +6,7 @@ import { imageRows, ownerName } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
 import { loadSettings } from "../lib/ai/settings";
 import { questionsApi } from "../lib/questions";
-import { ThumbImage } from "../components/ThumbImage";
+import { ThumbImage } from "@site/thumb";
 import type { DupGroup, Row } from "../lib/types";
 
 const searchSchema = z.object({

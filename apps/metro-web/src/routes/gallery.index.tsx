@@ -2,9 +2,9 @@ import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { catalogRows, cityName, countryOf } from "../lib/data";
-import { ThumbImage } from "../components/ThumbImage";
-import { Lightbox } from "../components/Lightbox";
-import type { Row } from "@metro/shared/types";
+import { ThumbImage } from "@site/thumb";
+import { Lightbox } from "@site/lightbox";
+import type { Row } from "@site/data";
 
 export const Route = createFileRoute("/gallery/")({ component: GalleryImages });
 

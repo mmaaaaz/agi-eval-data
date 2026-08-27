@@ -3,7 +3,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { loadSettings, saveSettings, type AskSettings as AskSettingsData } from "../lib/ai/settings";
 import { questionsApi } from "../lib/questions";
-import { Eyebrow } from "../components/Section";
+import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/settings")({ component: Settings });
 

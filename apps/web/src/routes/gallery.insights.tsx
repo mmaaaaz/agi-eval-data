@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Bar, BarChart, CartesianGrid, LabelList, XAxis, YAxis } from "recharts";
 import { ChartContainer, ChartTooltip, ChartTooltipContent, type ChartConfig } from "@/components/ui/chart";
-import { ThumbImage } from "@/components/ThumbImage";
+import { ThumbImage } from "@site/thumb";
 import { fmtN } from "../lib/format";
 
 export const Route = createFileRoute("/gallery/insights")({ component: Composition });

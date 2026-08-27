@@ -185,7 +185,7 @@ jobs:
           VITE_REPO_METRO: ${{ github.repository }}
 
       - name: Stamp per-route OG tags
-        run: node scripts/og/gen-metro-route-html.mjs
+        run: node scripts/og/gen-route-html.mjs metro
 
       - name: Deploy metro pages
         run: bunx --bun wrangler@4.125.0 pages deploy dist --project-name=metro-eval --branch=main --commit-dirty=true

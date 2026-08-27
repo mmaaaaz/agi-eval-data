@@ -1,1 +1,77 @@
-{"compilerOptions":{"target":"ES2022","lib":["ES2024","DOM","DOM.Iterable"],"module":"ESNext","moduleResolution":"bundler","jsx":"react-jsx","strict":true,"noUnusedLocals":true,"skipLibCheck":true,"noEmit":true,"isolatedModules":true,"esModuleInterop":true,"forceConsistentCasingInFileNames":true,"types":["vite/client"],"baseUrl":".","paths":{"@/*":["./src/*"]}},"include":["src"]}
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": [
+      "ES2024",
+      "DOM",
+      "DOM.Iterable"
+    ],
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "noUnusedLocals": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "vite/client"
+    ],
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./src/*"
+      ],
+      "@site/*": [
+        "../../packages/site/src/*"
+      ],
+      "@site/shell": [
+        "../../packages/site/src/shell.tsx"
+      ],
+      "@site/data": [
+        "../../packages/site/src/data.ts"
+      ],
+      "@site/format": [
+        "../../packages/site/src/format.ts"
+      ],
+      "@site/questions": [
+        "../../packages/site/src/questions.ts"
+      ],
+      "@site/authoring": [
+        "../../packages/site/src/authoring.tsx"
+      ],
+      "@site/grading": [
+        "../../packages/site/src/grading.tsx"
+      ],
+      "@site/syncchip": [
+        "../../packages/site/src/SyncChip.tsx"
+      ],
+      "@site/thumb": [
+        "../../packages/site/src/ThumbImage.tsx"
+      ],
+      "@site/virtual": [
+        "../../packages/site/src/VirtualGallery.tsx"
+      ],
+      "@site/section": [
+        "../../packages/site/src/Section.tsx"
+      ],
+      "@site/lightbox": [
+        "../../packages/site/src/Lightbox.tsx"
+      ],
+      "@site/settings": [
+        "../../packages/site/src/settings.ts"
+      ],
+      "@site/ui": [
+        "../../packages/site/src/ui.tsx"
+      ],
+      "@site/dataContext": [
+        "../../packages/site/src/dataContext.tsx"
+      ]
+    }
+  },
+  "include": [
+    "src"
+  ]
+}

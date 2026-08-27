@@ -1,8 +1,8 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { countriesOf } from "../lib/data";
-import { ThumbImage } from "../components/ThumbImage";
-import { Eyebrow } from "../components/Section";
+import { ThumbImage } from "@site/thumb";
+import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/compare")({ component: Compare });
 

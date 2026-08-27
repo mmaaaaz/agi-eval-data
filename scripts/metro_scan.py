@@ -31,49 +31,12 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import InstalledAppFlow
 from googleapiclient.discovery import build
-from googleapiclient.errors import HttpError
 
-SCOPES = ["https://www.googleapis.com/auth/drive.metadata.readonly"]  # read-only!
-CLIENT_SECRET = "client_secret.json"
-TOKEN_FILE = "token.json"
+from drive_common import (
+    SCOPES, CLIENT_SECRET, TOKEN_FILE, MIME_EXT_FALLBACK,
+    ext_of, get_service, headless_credentials, list_with_retry,
+)
 
-# metro/transit_dataset — the only folder this scanner ever walks
-DEFAULT_ROOT = "1FJCnmtmeSsWfznhL0PHjYWn_btoOTRq2"
-ROOT_NAME = "metro/transit_dataset"
-OUT = Path("data/metro.json")
-
-FIELDS = ("nextPageToken, files(id,name,mimeType,size,md5Checksum,createdTime,trashed,"
-          "shared,parents,owners(displayName,emailAddress),imageMediaMetadata(width,height,cameraMake,cameraModel))")
-
-MIME_EXT_FALLBACK = {
-    "image/jpeg": "jpg", "image/png": "png", "image/webp": "webp",
-    "image/heic": "heic", "image/heif": "heif", "image/gif": "gif",
-    "image/bmp": "bmp", "image/tiff": "tiff", "image/avif": "avif",
-    "application/pdf": "pdf",
-}
-
-
-def ext_of(name: str, mime: str) -> str:
-    if "." in name:
-        e = name.rsplit(".", 1)[1].lower()
-        if 1 <= len(e) <= 5 and e.isalnum():
-            return e
-    return MIME_EXT_FALLBACK.get(mime, (mime.split("/")[-1] if "/" in mime else "bin"))[:8]
-
-
-def get_service():
-    """Authorize once; token is cached in token.json for future runs."""
-    creds = None
-    if Path(TOKEN_FILE).exists():
-        creds = Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    if not creds or not creds.valid:
-        if creds and creds.expired and creds.refresh_token:
-            creds.refresh(Request())
-        else:
-            flow = InstalledAppFlow.from_client_secrets_file(CLIENT_SECRET, SCOPES)
-            creds = flow.run_local_server(port=0)
-        Path(TOKEN_FILE).write_text(creds.to_json())
-    return build("drive", "v3", credentials=creds)
 
 
 def list_children(service, folder_id):
@@ -81,28 +44,15 @@ def list_children(service, folder_id):
     out = []
     token = None
     while True:
-        for attempt in range(6):
-            try:
-                resp = (
-                    service.files()
-                    .list(
-                        q=f"'{folder_id}' in parents and trashed = false",
-                        pageSize=1000,
-                        fields=FIELDS,
-                        pageToken=token,
-                        supportsAllDrives=True,
-                        includeItemsFromAllDrives=True,
-                    )
-                    .execute()
-                )
-                break
-            except HttpError as e:
-                if e.resp.status in (429, 500, 503) and attempt < 5:
-                    wait = 2 ** attempt * 2
-                    print(f"  rate limited, retrying in {wait}s...", flush=True)
-                    time.sleep(wait)
-                else:
-                    raise
+        resp = list_with_retry(
+            service,
+            q=f"'{folder_id}' in parents and trashed = false",
+            pageSize=1000,
+            fields=FIELDS,
+            pageToken=token,
+            supportsAllDrives=True,
+            includeItemsFromAllDrives=True,
+        )
         out.extend(resp.get("files", []))
         token = resp.get("nextPageToken")
         if not token:
@@ -235,18 +185,6 @@ def build_payload(files, folders, root_id):
         "files": rows, "owners": owners,
         "exif": exif, "cams": cams, "dupGroups": img_report["groups"],
     }
-
-
-def headless_credentials():
-    cid, sec, rt = (os.environ.get(k, "") for k in
-                    ("DRIVE_CLIENT_ID", "DRIVE_CLIENT_SECRET", "DRIVE_REFRESH_TOKEN"))
-    if not (cid and sec and rt):
-        sys.exit("--ci requires DRIVE_CLIENT_ID, DRIVE_CLIENT_SECRET, DRIVE_REFRESH_TOKEN env vars")
-    return Credentials(
-        token=None, refresh_token=rt,
-        token_uri="https://oauth2.googleapis.com/token", client_id=cid, client_secret=sec,
-        scopes=["https://www.googleapis.com/auth/drive.metadata.readonly"],
-    )
 
 
 def write_artifact(payload):

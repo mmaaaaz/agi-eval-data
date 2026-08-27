@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { fmtN } from "../lib/format";
-import { Eyebrow } from "../components/Section";
+import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/project")({ component: Project });
 

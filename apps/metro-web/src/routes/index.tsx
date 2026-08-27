@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
+import { useMemo } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
-import { countriesOf, imageRows, countryOf } from "../lib/data";
+import { countriesOf, imageRows } from "../lib/data";
 import { fmtN } from "../lib/format";
 import { loadSettings } from "../lib/ai/settings";
 import { questionsApi } from "../lib/questions";
-import { ThumbImage } from "../components/ThumbImage";
-import { Eyebrow } from "../components/Section";
+import { ThumbImage } from "@site/thumb";
+import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/")({ component: Overview });
 
@@ -40,16 +41,29 @@ function Overview() {
   const branchOurs = countries.filter((s) => s.branch === "ours").length;
   const branchReason = countries.length - branchOurs;
 
-  /* per-country coverage: avg questions per map (images only) */
-  const coverage = countries
-    .map((s) => {
-      const countryImgs = data.files.filter((r) => r[7] === "i" && countryOf(r) === s.name && r[8][0] === s.branch);
-      const total = countryImgs.reduce((acc, r) => acc + (counts?.[r[0]] ?? 0), 0);
-      const n = countryImgs.length;
-      return { name: s.name, branch: s.branch, n, total, avg: n ? total / n : 0 };
-    })
-    .filter((x) => x.n > 0)
-    .sort((a, b) => a.avg - b.avg);
+  /* per-country coverage: avg questions per map (images only).
+     Built once per data/counts change — a per-country filter per render is O(N×C). */
+  const coverage = useMemo(() => {
+    const byCountry = new Map<string, typeof data.files>();
+    for (const r of data.files) {
+      if (r[7] !== "i") continue;
+      const key = `${r[8]?.[0] ?? ""}::${r[8]?.[1] ?? ""}`;
+      if (!key.endsWith("::")) {
+        const arr = byCountry.get(key);
+        if (arr) arr.push(r);
+        else byCountry.set(key, [r]);
+      }
+    }
+    return countries
+      .map((s) => {
+        const countryImgs = byCountry.get(`${s.branch}::${s.name}`) ?? [];
+        const total = countryImgs.reduce((acc, r) => acc + (counts?.[r[0]] ?? 0), 0);
+        const n = countryImgs.length;
+        return { name: s.name, branch: s.branch, n, total, avg: n ? total / n : 0 };
+      })
+      .filter((x) => x.n > 0)
+      .sort((a, b) => a.avg - b.avg);
+  }, [data, countries, counts]);
 
   const totalQuestions = counts ? Object.values(counts).reduce((a, b) => a + b, 0) : null;
   const target = counts ? Object.keys(counts).length * 5 : null;

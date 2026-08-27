@@ -1,24 +1,19 @@
-/** /settings — questions relay + access code. localStorage only. */
+/**
+ * /settings — questions relay + access code. localStorage only.
+ * Re-exported from @site with the metro-specific key + default relay.
+ */
+import { loadSettings as _load, saveSettings as _save } from "@site/settings";
+import type { AskSettings } from "@site/settings";
 
-export interface AskSettings {
-  /** relay base URL (questions Worker) */
-  relay: string;
-  /** optional shared gate for the questions API */
-  accessCode: string;
-}
+export type { AskSettings };
 
 const LS_KEY = "metro.settings.v1";
 export const DEFAULT_RELAY = "https://metro-eval-relay.devmaaaaz.workers.dev";
 
 export function loadSettings(): AskSettings {
-  const defaults: AskSettings = { relay: DEFAULT_RELAY, accessCode: "" };
-  try {
-    const raw = localStorage.getItem(LS_KEY);
-    if (raw) return { ...defaults, ...(JSON.parse(raw) as Partial<AskSettings>) };
-  } catch { /* fresh */ }
-  return defaults;
+  return _load({ lsKey: LS_KEY, defaultRelay: DEFAULT_RELAY });
 }
 
 export function saveSettings(s: AskSettings): void {
-  localStorage.setItem(LS_KEY, JSON.stringify(s));
+  _save({ lsKey: LS_KEY, defaultRelay: DEFAULT_RELAY }, s);
 }

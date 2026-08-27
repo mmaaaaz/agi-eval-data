@@ -1,14 +1,14 @@
 import { useEffect, useState } from "react";
 import { Link, createFileRoute } from "@tanstack/react-router";
 import { loadSettings } from "../lib/ai/settings";
-import { questionsApi } from "../lib/questions";
+import { questionsApi, familyOf } from "../lib/questions";
 import { Bar, BarChart, CartesianGrid, XAxis } from "recharts";
 import { ChartContainer, ChartTooltip, type ChartConfig } from "@/components/ui/chart";
 import { useData } from "../lib/dataContext";
 import { byDay, exifOf, megapixels, ownerName } from "../lib/data";
 import { fmtB, fmtN } from "../lib/format";
-import { ThumbImage } from "../components/ThumbImage";
-import { Eyebrow } from "../components/Section";
+import { ThumbImage } from "@site/thumb";
+import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/")({ component: Overview });
 
@@ -93,7 +93,7 @@ function Overview() {
           <Tile label="questions authored" value={progress.questions.toLocaleString("en-US")} />
           <Tile label="images covered" value={progress.images.toLocaleString("en-US")} />
           <Tile label="model responses graded" value={progress.graded.toLocaleString("en-US")} />
-          <Tile label="leading model" value={progress.bestModel ? familyLabel(progress.bestModel) : "—"} />
+          <Tile label="leading model" value={progress.bestModel ? familyOf(progress.bestModel) : "—"} />
         </section>
       )}
 
@@ -240,18 +240,6 @@ function UploadsChart({ imgs, owners }: { imgs: import("../lib/types").Row[]; ow
   );
 }
 
-function familyLabel(model: string): string {
-  const provider = model.split("/")[0] ?? "";
-  const map: Record<string, string> = {
-    openai: "GPT",
-    anthropic: "Claude",
-    google: "Gemini",
-    "meta-llama": "Llama",
-    qwen: "Qwen",
-    "x-ai": "Grok",
-  };
-  return map[provider] ?? provider;
-}
 
 function Jump({ to, label, hint }: { to: string; label: string; hint: string }) {
   return (

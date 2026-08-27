@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import type { Row } from "@metro/shared/types";
+import type { Row } from "./data";
 import { ThumbImage } from "./ThumbImage";
 
 interface Props {
