@@ -1,15 +1,6 @@
-import { createContext, useContext, type ReactNode } from "react";
-import { type LatestState } from "./data";
-
-const Ctx = createContext<LatestState & { refresh: () => void } | null>(null);
-
-export function DataProvider({ value, children }: { value: LatestState & { refresh: () => void }; children: ReactNode }) {
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
-}
-
-/** Throws if used outside the shell — all routes live inside it. */
-export function useData() {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error("useData must be used within DataProvider");
-  return ctx;
-}
+/**
+ * App data context — re-exported from the shared @site/dataContext so routes
+ * and the AppShell share ONE React context object. Keeping this thin file lets
+ * existing `../lib/dataContext` imports keep working.
+ */
+export { DataProvider, useData } from "@site/dataContext";
