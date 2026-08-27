@@ -1,10 +1,11 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
+import { DataProvider } from "./dataContext";
 import { useLatest, type DataConfig } from "./data";
+import type { LatestState, Latest } from "./data";
 import { SyncChip } from "./SyncChip";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, Toaster, TooltipProvider } from "./ui";
 import { Menu } from "lucide-react";
-import type { LatestState, Latest } from "./data";
 
 export interface NavItem {
   to: string;
@@ -248,14 +249,16 @@ export function AppShell(props: ShellProps) {
 
   return (
     <TooltipProvider delayDuration={200}>
-      <Shell
-        props={props}
-        data={data}
-        refresh={refresh}
-        loadingFirst={loadingFirst}
-        error={error}
-        progress={progress}
-      />
+      <DataProvider value={{ data, refresh, loadingFirst, progress, error }}>
+        <Shell
+          props={props}
+          data={data}
+          refresh={refresh}
+          loadingFirst={loadingFirst}
+          error={error}
+          progress={progress}
+        />
+      </DataProvider>
     </TooltipProvider>
   );
 }

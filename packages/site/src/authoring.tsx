@@ -276,7 +276,8 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
                   {site.titleFor ? site.titleFor(selected) : selected[1]}
                 </SheetTitle>
                 <p className="mt-1 font-mono text-[10px] text-muted-foreground">
-                  {site.ownerName ? `${site.ownerName(data, selected[5])} · ` : ""}{selected[4]} · {fmtB(selected[3])}
+                  {site.ownerName ? `${site.ownerName(data, selected[5])} · ` : site.searchText ? `${site.searchText(selected)} · ` : ""}
+                  {selected[4]} · {fmtB(selected[3])}
                 </p>
               </div>
 

@@ -440,6 +440,10 @@ export function createQuestionsApi(deps: QuestionsApiDeps): QuestionsApi {
       if (!prefixRe.test(p)) return null;
       if (request.method === "OPTIONS") return null; // handled by CORS preflight in worker
 
+      if (!deps.db) {
+        return jsonResponse({ error: "questions API is not configured (missing D1 binding)" }, 503);
+      }
+
       if (!gated(request, deps)) {
         return jsonResponse({ error: "questions API is locked — set the access code in settings" }, 401);
       }

@@ -8,9 +8,19 @@ import {
   UI_MESSAGE_STREAM_HEADERS,
   type UIMessage,
 } from "ai";
-import { createQuestionsApi } from "@questions-api";
-import { normQ, normTags } from "@agi-eval/shared";
-import { CORS_HEADERS, jsonResponse as json } from "./http";
+import { z } from "zod";
+
+/** Worker env — D1 binding + AI gateway secrets (kept here; the factory takes db+code). */
+interface Env {
+  DB?: unknown;
+  QUESTIONS_CODE?: string;
+  GATEWAY_KEY?: string;
+  GATEWAY_MODEL?: string;
+  ACCESS_CODE?: string;
+  RATE_LIMIT_PER_IP?: string;
+  FORCE_FALLBACK?: string;
+  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<{ response?: string }> };
+}
 
 /** Workers AI model used when the gateway rate-limits (free 10k neurons/day). */
 const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";

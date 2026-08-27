@@ -64,7 +64,6 @@ export function GradeModels({ site }: { site: GradeSite }) {
 
   /* response + grading */
   const [response, setResponse] = useState("");
-  const [source, setSource] = useState<"openrouter" | "manual">("manual");
   const [running, setRunning] = useState(false);
   const [busy, setBusy] = useState(false);
   const [insights, setInsights] = useState<Insights | null>(null);
@@ -117,7 +116,7 @@ export function GradeModels({ site }: { site: GradeSite }) {
       .catch(() => { setQuestions([]); setSelected(null); });
   }, [relay, code, loadEvals]);
 
-  const saveEvaluation = async (verdict?: string) => {
+  const saveEvaluation = async (verdict?: string, src: "openrouter" | "manual" = "manual") => {
     if (!selected || !model) return;
     setBusy(true);
     try {
@@ -126,7 +125,7 @@ export function GradeModels({ site }: { site: GradeSite }) {
         model,
         response,
         verdict,
-        source,
+        source: src,
         graded_by: "",
       });
       loadEvals(selected.id);
@@ -142,7 +141,6 @@ export function GradeModels({ site }: { site: GradeSite }) {
 
   const runModel = async () => {
     if (!selected || !model || !orKey) return;
-    setSource("openrouter");
     setRunning(true);
     setResponse("");
     try {

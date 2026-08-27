@@ -7,7 +7,7 @@ import { DayBreakdown } from "../components/DayBreakdown";
 import { Heatmap } from "../components/Heatmap";
 import { ThumbImage } from "@site/thumb";
 import { VirtualGallery } from "@site/virtual";
-import { Lightbox } from "@site/lightbox";
+import { Lightbox } from "../components/Lightbox";
 
 export const Route = createFileRoute("/gallery/contributors/$email")({ component: Contributor });
 
