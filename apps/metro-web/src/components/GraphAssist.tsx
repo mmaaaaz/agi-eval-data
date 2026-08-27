@@ -237,7 +237,7 @@ export default function GraphAssist({ site }: Props) {
   return (
     <div className="space-y-4">
       <div className="rounded-lg border border-[#262626] p-3">
-        <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[#666]">graph assist (flagged)</p>
+        <p className="mb-2 font-mono text-[11px] uppercase tracking-wider text-[#666]">graph assist</p>
         <div className="mb-2 flex flex-wrap items-center gap-2">
           <input
             value={manualId}

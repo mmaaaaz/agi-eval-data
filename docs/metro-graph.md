@@ -89,7 +89,7 @@ When edge weights are present (distance, time), `Dijkstra` replaces BFS. No exte
 
 1. Open `/contribute` (access-code gated) — the queue shows maps sorted by fewest questions (`n/5` badges).
 2. Pick a map; the sheet shows `branch/country/city` chips, existing questions, and the `n/5` count.
-3. Toggle the graph assist (when `VITE_ENABLE_MAPS_ASSIST=1`): load the city's sidecar via its slug/file id.
+3. The graph assist is on by default (disable with `VITE_ENABLE_MAPS_ASSIST=0`): it loads the city's sidecar via its slug/file id.
 4. Use **MarkLayer** inside the Lightbox image container — station dots + SVG lines, BFS path highlight between two selected stations; disabled for PDFs; `Esc` clears.
 5. Open **AssistPanel** — coverage, marks chips, computed hops/transfers/path, and preview of the templates below.
 6. Pick a template (verbatim copy — do not edit these strings):
@@ -134,10 +134,10 @@ When edge weights are present (distance, time), `Dijkstra` replaces BFS. No exte
 
 ## 6. Flag & regression guard
 
-`VITE_ENABLE_MAPS_ASSIST` (env: `"true"` or `"1"` to enable, absent/off = disabled).
+`VITE_ENABLE_MAPS_ASSIST` (env: set `0` or `false` to disable; absent/on by default).
 
-- `MarkLayer.tsx` + `AssistPanel.tsx` are behind `React.lazy` — when the flag is off no graph bundle is pulled and the contribute page renders the baseline `AuthorQuestions` unchanged.
-- `apps/metro-web/src/routes/contribute.index.tsx` wraps with the graph provider only when the flag is set.
+- `MarkLayer.tsx` + `AssistPanel.tsx` are behind `React.lazy` — the graph bundle is code-split and only pulled when the assist renders.
+- `apps/metro-web/src/routes/contribute.index.tsx` wraps with the graph provider unless the flag is explicitly disabled.
 
 ## 7. Limitations
 

@@ -27,7 +27,7 @@ apps/web            real-world site — Vite · React 19 · TanStack Router · T
                     routes: / (overview) /gallery(/insights,/duplicates,/contributors) /ask /contribute(/evaluate) /project /settings
 apps/relay          Cloudflare Worker — AI chat relay (Vercel AI Gateway + Workers AI fallback) + questions API (D1)
 apps/metro-web      metro site — same stack, NO chat. routes: / /catalog(/compare) /gallery(/pdfs,/contributors,/duplicates) /contribute(/evaluate) /project /settings
-                    components/GraphAssist.tsx (lazy, behind VITE_ENABLE_MAPS_ASSIST)
+                    components/GraphAssist.tsx (lazy, on by default — opt out VITE_ENABLE_MAPS_ASSIST=0)
 apps/metro-relay    Cloudflare Worker — questions API only (D1 metro-eval-questions), provenance columns source/graph_file_id/graph_path
 packages/shared     text normalization (normQ/normTags/normSql) — web + relay
 packages/site       shared UI/data/questions shell + metroGraph (MarkLayer, AssistPanel, types, routing) — @site/metroGraph is code-split
@@ -51,7 +51,7 @@ from the dataset root (`["ours","Brazil"]`, `["reason_map(exisiting_dataset)","c
 `kind`: `i` image, `o` PDF. `counts` adds `countries`/`cities` (cities == image count —
 each file is one city's map).
 
-**`data/metro-graph.json` (sidecar, NOT v4 inline)** — single file `graphs[file_id]` with `{fileId,city,country,branch,stations:[{id,label,lines,x,y,interchange}],edges:[{from,to,line,bidirectional,weight}],lines:{id:{color,label,stations}},provenance}`. Fetched at runtime from GitHub raw / jsDelivr fallback (free forever, `drive.metadata.readonly`, no hosted Maps keys, no sync coupling). Routing: local `BFS` (unweighted) + `Dijkstra` when weights present. Flag: `VITE_ENABLE_MAPS_ASSIST` (default off — no bundle impact). See `docs/metro-graph.md`.
+**`data/metro-graph.json` (sidecar, NOT v4 inline)** — single file `graphs[file_id]` with `{fileId,city,country,branch,stations:[{id,label,lines,x,y,interchange}],edges:[{from,to,line,bidirectional,weight}],lines:{id:{color,label,stations}},provenance}`. Fetched at runtime from GitHub raw / jsDelivr fallback (free forever, `drive.metadata.readonly`, no hosted Maps keys, no sync coupling). Routing: local `BFS` (unweighted) + `Dijkstra` when weights present. Flag: `VITE_ENABLE_MAPS_ASSIST` (on by default; `0`/`false` disables). See `docs/metro-graph.md`.
 
 ## Data flow
 
@@ -141,7 +141,7 @@ redeploy the foundation app (and vice versa). Each app pair (relay+pages) shares
 ```bash
 bun install                 # workspace install
 bun run dev:web             # real-world site :5173
-bun run dev:metro-web       # metro site :5183 (add VITE_ENABLE_MAPS_ASSIST=1 for graph assist)
+bun run dev:metro-web       # metro site :5183 (graph assist on; VITE_ENABLE_MAPS_ASSIST=0 to disable)
 bun run dev:relay           # foundation worker :8787
 bun run dev:metro-relay     # metro worker :8788
 bun run typecheck           # tsc across the workspace
@@ -175,5 +175,5 @@ bun run check:metro-graph  # or python scripts/metro_graph_validate.py
 - **Wrangler deploy uses `bunx --bun wrangler@4.125.0`** — bump the version pin deliberately.
 - **Sync bots push directly to `main`** — always `git pull --rebase` before local pushes.
 - **OAuth refresh token**: Google app must stay In Production (testing-mode tokens die weekly).
-- **Graph sidecar + flag** — `VITE_ENABLE_MAPS_ASSIST` is default-off. When off, `MarkLayer`/`AssistPanel` are not bundled (React.lazy) and `/contribute` renders the baseline `AuthorQuestions`. Sidecar is `data/metro-graph.json` (single file, `graphs[file_id]`; see `data/metro-graph.schema.json` v1) and is never merged into `data/metro.json` v4 (9-col MetroRow) — the Drive scope stays `drive.metadata.readonly` with no hosted Maps keys and no sync coupling ($0 forever).
+- **Graph sidecar + flag** — `VITE_ENABLE_MAPS_ASSIST` is on by default (opt out with `0`/`false`). When disabled, `MarkLayer`/`AssistPanel` are not rendered and `/contribute` renders the baseline `AuthorQuestions`. Sidecar is `data/metro-graph.json` (single file, `graphs[file_id]`; see `data/metro-graph.schema.json` v1) and is never merged into `data/metro.json` v4 (9-col MetroRow) — the Drive scope stays `drive.metadata.readonly` with no hosted Maps keys and no sync coupling ($0 forever).
 - **Branch normalization** — `normalizeBranch()` lives in `apps/metro-web/src/lib/data.ts` (not a separate package — `packages/metro-shared` drift is corrected by re-exporting or removing the duplicate normalization there). All `?branch=` reads go through it; `branchOf()` dev-warns (instead of silently returning `ours`) when `folders` is missing, per B9.

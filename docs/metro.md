@@ -45,7 +45,7 @@ The graph is **graph-native and sidecar-only** — never inline into `data/metro
 
 - **Artifact**: `data/metro-graph.json` single file (`graphs[file_id]` v1, see `data/metro-graph.schema.json`) with `stations[{id,label,lines,x,y,interchange}]/edges[{from,to,line,bidirectional,weight}]/lines{id:{color,label,stations}}/provenance`. Fetched at runtime from `raw.githubusercontent.com` (single file) with a jsDelivr fallback — same free path as `data/metro.json`. The dataset Drive (`drive.metadata.readonly`) is the only external dependency.
 - **Routing**: local `BFS` (unweighted shortest path) for hops/transfers/path highlight, plus `Dijkstra` when edge weights are present. No Maps/Network-distance billing — **$0 forever**.
-- **Flag**: `VITE_ENABLE_MAPS_ASSIST` (default off). `MarkLayer` + `AssistPanel` are code-split behind `React.lazy` so flag-off = zero bundle impact / zero regression. Enable with `VITE_ENABLE_MAPS_ASSIST=1 bun run dev:metro-web`.
+- **Flag**: `VITE_ENABLE_MAPS_ASSIST` (on by default; set `0`/`false` to disable). `MarkLayer` + `AssistPanel` are code-split behind `React.lazy`.
 - **Contributor assist**: `MarkLayer` overlays station dots + SVG lines inside the Lightbox image container (disabled for PDFs), highlights the BFS path between two selected stations; `AssistPanel` shows coverage, marks chips, computed hops/transfers/path, and short/long question templates (S1–S5/L1–L5) with a **Use as question** that fills the authoring fields without auto-submit. Search fallback when no `x`/`y`.
 - **Provenance**: `questions` rows carry `source` (`human`|`graph`, default `human`), `graph_file_id`, `graph_path`; `GET /api/questions?source=` filters; `QRow` exposes the three fields as optional.
 
@@ -62,7 +62,7 @@ See `docs/metro-graph.md` for the full spec, build/validate commands, coverage w
 - **Overview**: hero counts, coverage dashboard (avg questions per map per country,
   color-coded vs the 5-target, links into catalog).
 - **Contribute**: queue sorted by fewest questions (`n/5` badges), one-tap folder-derived
-  tag chips (branch/country/city), live near-dupe check, do-not-work flagging; when `VITE_ENABLE_MAPS_ASSIST=1`, the graph assist panel and in-image MarkLayer are available (code-split, off by default — `docs/metro-graph.md`).
+  tag chips (branch/country/city), live near-dupe check, do-not-work flagging; the graph assist panel and in-image MarkLayer are available by default (code-split — `docs/metro-graph.md`).
 - **Sync pill**: hourly countdown + refresh-on-new-data.
 - **OG cards**: `og/metro/*.png`, green branding.
 
