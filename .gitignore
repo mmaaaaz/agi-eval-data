@@ -40,6 +40,9 @@ setup-questions.cmd
 
 /web/
 /relay/
+/apps/grip-sync/.dev.vars
+/Geomatric-Reasoning-Benchmark-Dataset-main/
+/.grip-cache/
 /shared/
 relay/dev.log
 

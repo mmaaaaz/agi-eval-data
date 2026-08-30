@@ -1,0 +1,30 @@
+# grip-sync worker credentials — setup guide
+#
+# Copy this file to apps/grip-sync/.dev.vars (gitignored) for local dev, or set
+# the same names as Cloudflare Worker secrets for production:
+#
+#   npx wrangler secret put GRIP_GITHUB_PAT --name grip-sync
+#   npx wrangler secret put GRIP_ACCESS_CODE --name grip-sync
+#
+# ---------------------------------------------------------------------------
+# GRIP_GITHUB_PAT — REQUIRED
+#
+# MUST be a CLASSIC PAT (fine-grained tokens cannot reach another user's repo
+# even if you are a collaborator on it).
+#
+#   1. Go to:  https://github.com/settings/tokens/new?scopes=repo&description=grip-sync
+#   2. Account: mmaaaaz (collaborator w/ write on
+#      bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset)
+#   3. Scopes: check `repo` ONLY. Expiration: 1 year recommended.
+#   4. Generate, copy (ghp_...), paste below / into wrangler secret.
+#
+# Never commit the real token. Never expose it to the browser — the site talks
+# to this worker, and only the worker holds the token.
+GRIP_GITHUB_PAT=ghp_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+
+# Access code required on mutating endpoints (PUT/DELETE edits, POST sync).
+# Share it with trusted editors; the site's /settings page stores it locally.
+GRIP_ACCESS_CODE=choose-a-strong-string
+
+# Upstream dataset repo (owner/name). Override only if the suite moves.
+GRIP_UPSTREAM_REPO=bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset

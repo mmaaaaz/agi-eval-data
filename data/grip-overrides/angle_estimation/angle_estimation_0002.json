@@ -1,0 +1,9 @@
+{
+  "version": 1,
+  "author": "fixture",
+  "reason": "EXAMPLE fixture documenting the override shape — identity change (45 -> 45) verified correct; replace with a real correction",
+  "editedAt": "2026-08-30T15:40:00Z",
+  "changes": [
+    { "field": "q:angle_estimation_0002_q2.ground_truth", "from": "45", "to": "45" }
+  ]
+}
