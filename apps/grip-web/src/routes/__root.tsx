@@ -1,7 +1,7 @@
 import { createRootRoute } from "@tanstack/react-router";
 import { Home, LayoutGrid, Info, Search } from "lucide-react";
 import { GripShell } from "../components/GripShell";
-import { NotFound } from "./notFound";
+import { NotFound } from "./-notFound";
 
 const NAV = [
   { to: "/", label: "Overview", icon: <Home className="h-4 w-4" /> },
