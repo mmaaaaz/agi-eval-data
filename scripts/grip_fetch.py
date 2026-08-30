@@ -113,20 +113,27 @@ def _tree_by_sha(sha: str, label: str) -> dict:
 
 
 def discover_annotation_paths() -> tuple[list[str], dict]:
-    """Returns (repo-relative annotation paths, raw trees for debugging)."""
+    """Returns (Dataset-relative annotation paths, per-category index).
+
+    The index maps folder -> [relative annotation paths] so the scanner can
+    derive subsuites without touching image bytes (which stay LFS upstream).
+    """
     root = _tree_by_sha("main", "main")["tree"]
     ds = next((t for t in root if t["path"] == "Dataset" and t["type"] == "tree"), None)
     if ds is None:
         raise RuntimeError("upstream has no Dataset/ folder")
     dataset_tree = _tree_by_sha(ds["sha"], "Dataset")["tree"]
     out: list[str] = []
+    index: dict[str, list[str]] = {}
     for cat in dataset_tree:
         if cat.get("type") != "tree":
             continue
         # recursive listing per category (~6k entries) covers its subsuites
         cat_rec = _tree_by_sha(f"{cat['sha']}?recursive=1", cat["path"])["tree"]
-        out.extend(annotations_from_listing(cat_rec, cat["path"]))
-    return out, {"dataset_categories": len(dataset_tree)}
+        rels = annotations_from_listing(cat_rec, cat["path"])
+        out.extend(rels)
+        index[cat["path"]] = rels
+    return out, index
 
 
 def discover_override_paths() -> list[str]:
@@ -160,7 +167,7 @@ def main() -> int:
         return 0
     print(f"upstream {head[:12]} vs baked '{baked}' — fetching")
 
-    ann_paths, meta = discover_annotation_paths()
+    ann_paths, ann_index = discover_annotation_paths()
     ann_paths = [f"Dataset/{p}" for p in ann_paths]  # discovery returns Dataset-relative
     # safety: every category must be represented
     have = {p.split("/")[1] for p in ann_paths}
@@ -183,6 +190,8 @@ def main() -> int:
                     "override_count": len(ov_paths),
                     "files": ann_paths + ov_paths}, indent=1),
         encoding="utf-8")
+    (CACHE / "annotations_index.json").write_text(
+        json.dumps(ann_index, indent=1), encoding="utf-8")
     print(f"fetched {fetched} files @ {head[:12]} "
           f"({len(ann_paths)} annotations, {len(ov_paths)} overrides)")
     return 0

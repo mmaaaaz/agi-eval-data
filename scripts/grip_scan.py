@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
 """Enumerate the GRIP suite tree and bake website artifacts into data/grip/.
 
-Read-only over Geomatric-Reasoning-Benchmark-Dataset-main/. Writes only:
+Source: .grip-cache/ — populated by scripts/grip_fetch.py from the upstream
+repo (bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset), the single source
+of truth. Upstream annotations.jsonl are plain git blobs; images stay LFS and
+are hotlinked at runtime, never baked.
+
+Writes:
   data/grip/tree.json        — the always-loaded index (counts, per-category meta)
-  data/grip/{slug}.json      — per-category full records (scene + 5 questions each)
-Applies override patches from data/grip-overrides/** with from-assertions
-(mismatch = hard fail: the override is stale against the current suite).
+  data/grip/{slug}.json.gz   — per-category full records (scene + questions each)
+
+Applies override patches from .grip-cache/data/overrides/** (synced from the
+site via the grip-sync worker) with from-assertions — a mismatch is a hard
+fail: the override is stale against the current suite.
 """
 from __future__ import annotations
 
@@ -18,11 +25,10 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from grip_common import (
-    CATEGORIES, DATASET_DIR, LEVEL_NAMES, OVERRIDES_DIR, OUT_DIR,
-    SUITE_DATA_DIR, UPSTREAM_OVERRIDES_PREFIX, ensure_out_dir,
+    CATEGORIES, LEVEL_NAMES, OUT_DIR, UPSTREAM_REPO, ensure_out_dir,
 )
 
-SKIP_ANN_FILES = {"annotations.jsonl"}  # exact name only — legacy snapshots excluded
+CACHE = Path(".grip-cache")
 SCENE_RESERVED = {"id", "image_path", "questions", "seed"}
 
 
@@ -30,36 +36,65 @@ def gzip_bytes(text: str) -> bytes:
     return gzip.compress(text.encode("utf-8"), 9)
 
 
-# ---------- tree discovery ----------
+def load_manifest() -> dict:
+    m = CACHE / "manifest.json"
+    if not m.exists():
+        raise SystemExit("no .grip-cache/manifest.json — run scripts/grip_fetch.py first")
+    return json.loads(m.read_text(encoding="utf-8"))
 
-def find_subsuites(cat_dir: Path) -> tuple[list[dict], list[dict]]:
-    """(subsuites, galleries). main = annotations.jsonl at category root; any
-    sub-directory with its own annotations.jsonl = a subsuite (e.g. sample_test);
-    PNG-only sub-directories = gallery nodes (e.g. human_calibration)."""
-    subsuites, galleries = [], []
-    if (cat_dir / "annotations.jsonl").exists():
+
+# ---------- tree discovery (from the fetched cache) ----------
+
+def find_subsuites(cat_folder: str) -> tuple[list[dict], list[dict]]:
+    """(subsuites, galleries) from cached annotation paths.
+
+    main = annotations.jsonl at category root; any sub-directory with its own
+    annotations.jsonl = a subsuite (e.g. sample_test). Gallery nodes
+    (PNG-only dirs like human_calibration) can't be derived from the cache
+    (we never fetch images) — counts come from the last full scan (fallback 0).
+    """
+    ann = CACHE / "annotations_index.json"
+    if not ann.exists():
+        raise SystemExit("no .grip-cache/annotations_index.json — run scripts/grip_fetch.py first")
+    index = json.loads(ann.read_text(encoding="utf-8"))
+    rels = index.get(cat_folder, [])
+    subsuites: list[dict] = []
+    if f"{cat_folder}/annotations.jsonl" in rels:
         subsuites.append({"id": "main", "hasAnnotations": True})
-    for child in sorted(cat_dir.iterdir()):
-        if not child.is_dir():
-            continue
-        has_ann = (child / "annotations.jsonl").exists()
-        if has_ann:
-            subsuites.append({"id": child.name, "hasAnnotations": True})
-        else:
-            n_pngs = sum(1 for _ in child.rglob("*.png"))
-            if n_pngs:
-                galleries.append({"id": child.name, "images": n_pngs})
+    seen: set[str] = set()
+    for rel in rels:
+        parts = rel.split("/")
+        if len(parts) == 3:  # <folder>/<subdir>/annotations.jsonl
+            sub_id = parts[1]
+            if sub_id not in seen:
+                seen.add(sub_id)
+                subsuites.append({"id": sub_id, "hasAnnotations": True})
+    # gallery nodes: persisted from the last tree.json (PNG counts never change
+    # — they are derived from the suite, which is append-only upstream)
+    prev = _prev_category(cat_folder)
+    galleries = prev.get("galleries", []) if prev else []
     return subsuites, galleries
 
 
-def cat_docs(cat_dir: Path) -> list[str]:
-    """Repo-relative paths of the category's top-level non-PNG files (docs,
-    validators, reports — shown on the category page as upstream links)."""
-    return sorted(
-        f"Dataset/{cat_dir.name}/{p.name}"
-        for p in cat_dir.iterdir()
-        if p.is_file() and p.suffix != ".png"
-    )
+_prev_tree: dict | None = None
+
+
+def _prev_category(cat_folder: str) -> dict | None:
+    global _prev_tree
+    if _prev_tree is None:
+        p = OUT_DIR / "tree.json"
+        _prev_tree = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+    for c in _prev_tree.get("categories", []):
+        if c["folder"] == cat_folder:
+            return c
+    return None
+
+
+def cat_docs(cat_folder: str) -> list[str]:
+    """Repo-relative upstream paths of the category's top-level non-PNG files.
+    Persisted from the previous tree.json (the cache holds annotations only)."""
+    prev = _prev_category(cat_folder)
+    return prev.get("docs", []) if prev else []
 
 
 # ---------- record reading ----------
@@ -72,9 +107,9 @@ def read_records(sub: dict, folder: str) -> list[dict]:
     four-level era), unlike main's 5. They stay browsable but are flagged.
     """
     if sub["id"] == "main":
-        base = SUITE_DATA_DIR / folder
+        base = CACHE / "Dataset" / folder
     else:
-        base = SUITE_DATA_DIR / folder / sub["id"]
+        base = CACHE / "Dataset" / folder / sub["id"]
     ann = base / "annotations.jsonl"
     legacy = sub["id"] != "main"
     out: list[dict] = []
@@ -99,7 +134,9 @@ def read_records(sub: dict, folder: str) -> list[dict]:
 # ---------- overrides ----------
 
 def load_overrides(slug: str) -> dict[str, dict]:
-    d = OVERRIDES_DIR / slug
+    """From .grip-cache/data/overrides/{slug}/*.json — fetched from upstream,
+    where the grip-sync worker commits them (the ONE durable home)."""
+    d = CACHE / "data" / "overrides" / slug
     if not d.exists():
         return {}
     out = {}
@@ -109,7 +146,7 @@ def load_overrides(slug: str) -> dict[str, dict]:
 
 
 def apply_overrides(records: list[dict], slug: str) -> tuple[int, list[str]]:
-    """Apply data/grip-overrides/{slug}/*.json in place. Returns (applied, ids).
+    """Apply override patches in place. Returns (applied, ids).
 
     A `from` that does not match the CURRENT value is a hard error — the
     override is stale and a human must re-assert or drop it.
@@ -155,17 +192,17 @@ def apply_overrides(records: list[dict], slug: str) -> tuple[int, list[str]]:
 
 def main() -> int:
     ensure_out_dir()
+    manifest = load_manifest()
     built_at = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     total_img = total_q = 0
     level_counts: Counter[int] = Counter()
     cat_entries: list[dict] = []
 
     for slug, (folder, display, family, gclass) in CATEGORIES.items():
-        cat_dir = SUITE_DATA_DIR / folder
-        if not cat_dir.is_dir():
-            raise SystemExit(f"category folder missing: {cat_dir}")
-        subsuites, galleries = find_subsuites(cat_dir)
+        subsuites, galleries = find_subsuites(folder)
         records = [r for sub in subsuites for r in read_records(sub, folder)]
+        if not records:
+            raise SystemExit(f"{slug}: no records — fetch failed for {folder}?")
         n_applied, modified = apply_overrides(records, slug)
 
         qtypes: Counter[str] = Counter()
@@ -191,7 +228,7 @@ def main() -> int:
             "legacyImages": sum(1 for r in records if r.get("legacy")),
             "subsuites": subsuites,
             "galleries": galleries,
-            "docs": cat_docs(cat_dir),
+            "docs": cat_docs(folder),
             "questionTypes": sorted(qtypes),
             "score": {"min": min(scores), "mean": round(sum(scores) / len(scores), 4),
                       "max": max(scores)} if scores else None,
@@ -208,8 +245,8 @@ def main() -> int:
     tree = {
         "version": 1,
         "builtAt": built_at,
-        "bakedFromCommit": "local-download-2026-08-29",
-        "upstreamRepo": "bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset",
+        "bakedFromCommit": manifest["head"],
+        "upstreamRepo": UPSTREAM_REPO,
         "counts": {
             "categories": len(cat_entries),
             "images": total_img,
@@ -223,7 +260,8 @@ def main() -> int:
         "categories": cat_entries,
     }
     (OUT_DIR / "tree.json").write_text(json.dumps(tree, ensure_ascii=False), encoding="utf-8")
-    print(f"tree.json: {total_img} images / {total_q} questions across {len(cat_entries)} categories")
+    print(f"tree.json: {total_img} images / {total_q} questions across {len(cat_entries)} categories "
+          f"@ {manifest['head'][:12]}")
     return 0
 
 
