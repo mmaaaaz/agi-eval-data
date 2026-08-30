@@ -1,18 +1,17 @@
 # agi-eval-data
 
-Two live dataset platforms for an AGI benchmark on **visual & geometric reasoning** — real-world
-images and metro/transit network maps where vision-language models fail, plus complex geometric
-shape problems.
+Three live dataset platforms for an AGI benchmark on **visual & geometric reasoning** — real-world
+images, metro/transit network maps, and synthetic geometry where vision-language models fail.
 
 | Site | URL | Dataset | Sync |
 |---|---|---|---|
 | **Real-world images** | [agi-eval-data.pages.dev](https://agi-eval-data.pages.dev) | 54.5k+ photos where VLMs fail | daily Drive scan → `data/latest.json` |
 | **Metro / transit** | [metro-eval.pages.dev](https://metro-eval.pages.dev) | 85 metro network maps · 38 countries · 30 official PDFs | hourly Drive scan → `data/metro.json` |
-| **GRIP geometric reasoning** | grip-eval (pages, deploy pending) | 34 synthetic sub-benchmarks · 100k images · 500k ground-truthed QA | static bake from [upstream dataset repo](https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset) → `data/grip/` |
+| **GRIP geometric reasoning** | [grip-eval.pages.dev](https://grip-eval.pages.dev) | 34 synthetic sub-benchmarks · 100k images · 500k ground-truthed QA | hourly CI re-bake from [upstream dataset repo](https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset) → `data/grip/` |
 
 Questions are authored on the web/metro sites (access-gated) and frontier VLMs are graded
 against them. GRIP ships its own ground truth — that site browses samples and stages
-override edits, synced to the upstream dataset repo as one atomic commit.
+override edits (KV → one atomic commit on the upstream repo → auto re-bake → deploy).
 
 ---
 
@@ -57,6 +56,17 @@ VQA-style `questions.jsonl`.
 - **Sync pill** — counts down to the hourly data sync; becomes a refresh button
   when new data lands.
 
+## The grip site (apps/grip-web)
+
+- **Browse** — 34 sub-benchmarks · 100k synthetic geometry images · 500k questions, each
+  with its validator-recomputed ground truth (spoiler-hidden per question).
+- **Categories** — full folder tree incl. legacy snapshot subsuites (`sample_test`, …).
+- **Edits & sync** — stage an override on any question/scene value (KV + local mirror),
+  then sync: the grip-sync worker lands all staged edits on the upstream repo as ONE
+  atomic commit (`data/overrides/`) and dispatches `grip-rebake` → CI re-bakes from
+  upstream → Pages redeploys. Drift-checked at both ends (`baseCommitAtEdit` SHA anchor);
+  conflicts block the sync instead of overwriting.
+
 ## Local development
 
 ```bash
@@ -64,6 +74,7 @@ bun install                # workspace install (apps + packages)
 
 bun run dev:web             # real-world site on localhost:5173
 bun run dev:metro-web       # metro site on localhost:5174 (or 5183)
+bun run dev:grip-web        # grip site on localhost:5175
 bun run dev:relay           # foundation worker on localhost:8787
 bun run dev:metro-relay     # metro worker on localhost:8788
 bun run typecheck           # tsc across the workspace
@@ -72,6 +83,9 @@ bun run build               # turbo build (cached)
 # dataset tooling (python)
 python scripts/drive_scan.py            # full Drive scan → data/latest.json
 python scripts/metro_scan.py            # metro folder scan → data/metro.json
+python scripts/grip_fetch.py            # upstream annotations+overrides → .grip-cache/
+python scripts/grip_scan.py             # bake → data/grip/*.json.gz (+ public copy)
+python scripts/grip_validate.py         # dataset invariants + override conflict check
 python scripts/metro_build_data.py      # bake metro version.json (sync feed)
 ```
 

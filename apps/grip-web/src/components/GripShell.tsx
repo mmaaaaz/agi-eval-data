@@ -137,12 +137,20 @@ export function GripShell({ nav, titles }: { nav: NavItem[]; titles: Record<stri
         <footer className="border-t border-[#262626]">
           <div className="mx-auto flex max-w-[1400px] flex-col items-center gap-1.5 px-4 py-5 text-center font-mono text-[10px] text-[#666] sm:flex-row sm:justify-between sm:px-5 sm:py-4 sm:text-left">
             <span>
-              upstream{" "}
+              <a
+                href="https://github.com/mmaaaaz/agi-eval-data"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-accent transition-colors hover:underline"
+              >
+                mmaaaaz/agi-eval-data ↗
+              </a>
+              {" "}· upstream dataset:{" "}
               <a
                 href={`https://github.com/${tree.upstreamRepo}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-accent transition-colors hover:underline"
+                className="text-[#666] transition-colors hover:text-accent"
               >
                 {tree.upstreamRepo} ↗
               </a>
