@@ -8,6 +8,8 @@ enabled = true
 [vars]
 # upstream dataset repo (override only if the suite moves)
 GRIP_UPSTREAM_REPO = "bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset"
+# our repo — receives the grip-rebake dispatch after a successful sync
+GITHUB_REPOSITORY = "mmaaaaz/agi-eval-data"
 
 [[kv_namespaces]]
 binding = "GRIP_EDITS"

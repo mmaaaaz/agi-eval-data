@@ -17,6 +17,8 @@ export interface Env {
   GRIP_GITHUB_PAT: string;
   GRIP_ACCESS_CODE: string;
   GRIP_UPSTREAM_REPO: string;
+  /** our repo — receives the grip-rebake dispatch after a successful sync */
+  GITHUB_REPOSITORY?: string;
 }
 
 export interface StagedPatch {
@@ -204,7 +206,35 @@ async function runSync(request: Request, env: Env): Promise<Response> {
     for (const e of entries) await env.GRIP_EDITS.delete(`ov:${e.slug}:${e.sampleId}`);
     await env.GRIP_EDITS.put("site:artifactVersion", commit.data.sha);
 
-    return json({ status: "synced", commitSha: commit.data.sha });
+    // 6. ping our repo's grip-rebake workflow so the site reflects the sync
+    //    within minutes instead of waiting for the next hourly tick.
+    //    Non-fatal: the hourly cron is the backstop.
+    let dispatched = false;
+    if (env.GITHUB_REPOSITORY && env.GRIP_GITHUB_PAT) {
+      try {
+        const disp = await fetch(
+          `${GH}/repos/${env.GITHUB_REPOSITORY}/dispatches`,
+          {
+            method: "POST",
+            headers: {
+              authorization: `Bearer ${env.GRIP_GITHUB_PAT}`,
+              accept: "application/vnd.github+json",
+              "user-agent": "grip-sync-worker",
+              "content-type": "application/json",
+            },
+            body: JSON.stringify({
+              event_type: "grip-rebake",
+              client_payload: { via: "grip-sync", upstreamCommit: commit.data.sha },
+            }),
+          },
+        );
+        dispatched = disp.ok;
+      } catch {
+        /* hourly cron backstop */
+      }
+    }
+
+    return json({ status: "synced", commitSha: commit.data.sha, rebakeDispatched: dispatched });
   } catch (e) {
     return json({ status: "error", message: e instanceof Error ? e.message : "sync failed" });
   }

@@ -26,6 +26,7 @@ const env: Env = {
   GRIP_GITHUB_PAT: "test-token",
   GRIP_ACCESS_CODE: "test-code",
   GRIP_UPSTREAM_REPO: "bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset",
+  GITHUB_REPOSITORY: "mmaaaaz/agi-eval-data",
 };
 
 const HEAD_SHA = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4e5f6a1b2";
@@ -156,5 +157,19 @@ describe("grip-sync worker", () => {
     const res = await worker.fetch(req("/api/sync", "POST", undefined, "test-code"), env, ctx);
     const body = (await res.json()) as { status: string };
     expect(body.status).toBe("conflict");
+  });
+
+  it("sync: dispatches grip-rebake to our repo after a successful sync", async () => {
+    await worker.fetch(req("/api/edits/route/route_puzzle_0001", "PUT", patch, "test-code"), env, ctx);
+    const spy = mockGithubFetch();
+    vi.stubGlobal("fetch", spy);
+    const res = await worker.fetch(req("/api/sync", "POST", undefined, "test-code"), env, ctx);
+    const body = (await res.json()) as { status: string; rebakeDispatched: boolean };
+    expect(body.status).toBe("synced");
+    const dispatch = spy.mock.calls.find((c) => String(c[0]).endsWith("/dispatches"));
+    expect(dispatch).toBeTruthy();
+    expect(String(dispatch![1]?.body)).toContain('"event_type":"grip-rebake"');
+    expect(String(dispatch![0])).toContain("mmaaaaz/agi-eval-data");
+    expect(body.rebakeDispatched).toBe(true);
   });
 });
