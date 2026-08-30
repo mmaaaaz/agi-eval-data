@@ -17,18 +17,32 @@ interface Props {
 
 /** Windowed responsive sample grid — same math as @site VirtualGallery,
  *  typed against grip Sample rows instead of Drive 8-tuples.
- *  Handles 3,000 (per category) to 100,000 (global browse) rows smoothly. */
+ *  Handles 3,000 (per category) to 100,000 (global browse) rows smoothly.
+ *
+ *  Height strategy: virtualizers need a scroll viewport with a real height.
+ *  Rather than depending on flex ancestors, the container measures itself and
+ *  caps at the viewport, so it works wherever it's mounted. */
 export function GripGallery({ samples, onOpen, badge }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
+  const [height, setHeight] = useState(0);
 
   useEffect(() => {
     const el = parentRef.current;
     if (!el) return;
-    const ro = new ResizeObserver((entries) => setWidth(entries[0].contentRect.width));
+    const measure = () => {
+      setWidth(el.clientWidth);
+      const cap = Math.max(360, window.innerHeight - 260); // viewport minus chrome
+      setHeight(Math.min(cap, Math.max(360, el.clientHeight)));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
     ro.observe(el);
-    setWidth(el.clientWidth);
-    return () => ro.disconnect();
+    window.addEventListener("resize", measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", measure);
+    };
   }, []);
 
   const cols = Math.max(2, Math.floor((width - GAP) / (MIN_COL + GAP)) || 2);
@@ -46,8 +60,8 @@ export function GripGallery({ samples, onOpen, badge }: Props) {
   });
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col">
-      <div ref={parentRef} className="min-h-0 flex-1 overflow-y-auto px-1" style={{ contain: "strict" }}>
+    <div className="flex flex-col" style={{ height: height || 480 }}>
+      <div ref={parentRef} className="min-h-0 flex-1 overflow-y-auto px-1">
         <div style={{ height: virt.getTotalSize(), position: "relative" }}>
           {virt.getVirtualItems().map((vi) => (
             <div

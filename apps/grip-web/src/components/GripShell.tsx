@@ -128,7 +128,7 @@ export function GripShell({ nav, titles }: { nav: NavItem[]; titles: Record<stri
           </div>
         </header>
 
-        <main className="mx-auto w-full max-w-[1400px] flex-1 px-5 py-8">
+        <main className="mx-auto flex w-full max-w-[1400px] flex-1 flex-col px-5 py-8">
           <GripContext value={tree}>
             <Outlet />
           </GripContext>
