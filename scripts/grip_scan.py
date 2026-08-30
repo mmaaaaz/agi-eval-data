@@ -9,6 +9,7 @@ Applies override patches from data/grip-overrides/** with from-assertions
 """
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 from collections import Counter
@@ -23,6 +24,10 @@ from grip_common import (
 
 SKIP_ANN_FILES = {"annotations.jsonl"}  # exact name only — legacy snapshots excluded
 SCENE_RESERVED = {"id", "image_path", "questions", "seed"}
+
+
+def gzip_bytes(text: str) -> bytes:
+    return gzip.compress(text.encode("utf-8"), 9)
 
 
 # ---------- tree discovery ----------
@@ -193,9 +198,8 @@ def main() -> int:
             "overridesApplied": n_applied,
             "modifiedSampleIds": modified,
         })
-        (OUT_DIR / f"{slug}.json").write_text(
-            json.dumps({"slug": slug, "records": records}, ensure_ascii=False),
-            encoding="utf-8")
+        (OUT_DIR / f"{slug}.json.gz").write_bytes(gzip_bytes(
+            json.dumps({"slug": slug, "records": records}, ensure_ascii=False)))
         total_img += len(records)
         total_q += n_q
         print(f"  {slug}: {len(records)} imgs / {n_q} q / "

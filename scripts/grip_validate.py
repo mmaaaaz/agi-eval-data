@@ -14,6 +14,7 @@ Exit 0 prints "GRIP validation: PASS".
 """
 from __future__ import annotations
 
+import gzip
 import json
 import sys
 from collections import Counter
@@ -31,11 +32,11 @@ def check(cond: bool, msg: str) -> None:
 
 
 def load_detail(slug: str) -> dict | None:
-    p = OUT_DIR / f"{slug}.json"
+    p = OUT_DIR / f"{slug}.json.gz"
     if not p.exists():
         check(False, f"missing detail {p}")
         return None
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(gzip.decompress(p.read_bytes()).decode("utf-8"))
 
 
 def current_value(rec: dict, field: str):
