@@ -11,9 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BrowseRouteImport } from './routes/browse'
-import { Route as CategoriesRouteImport } from './routes/categories'
 import { Route as ProjectRouteImport } from './routes/project'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as CategoriesIndexRouteImport } from './routes/categories.index'
 import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
 import { Route as SampleSlugSplatRouteImport } from './routes/sample.$slug.$'
 
@@ -27,11 +27,6 @@ const BrowseRoute = BrowseRouteImport.update({
   path: '/browse',
   getParentRoute: () => rootRouteImport,
 } as any)
-const CategoriesRoute = CategoriesRouteImport.update({
-  id: '/categories',
-  path: '/categories',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ProjectRoute = ProjectRouteImport.update({
   id: '/project',
   path: '/project',
@@ -42,10 +37,15 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CategoriesIndexRoute = CategoriesIndexRouteImport.update({
+  id: '/categories/',
+  path: '/categories/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const CategoriesSlugRoute = CategoriesSlugRouteImport.update({
-  id: '/$slug',
-  path: '/$slug',
-  getParentRoute: () => CategoriesRoute,
+  id: '/categories/$slug',
+  path: '/categories/$slug',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const SampleSlugSplatRoute = SampleSlugSplatRouteImport.update({
   id: '/sample/$slug/$',
@@ -56,29 +56,29 @@ const SampleSlugSplatRoute = SampleSlugSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
-  '/categories': typeof CategoriesRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/categories/': typeof CategoriesIndexRoute
   '/sample/$slug/$': typeof SampleSlugSplatRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
-  '/categories': typeof CategoriesRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/categories': typeof CategoriesIndexRoute
   '/sample/$slug/$': typeof SampleSlugSplatRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
-  '/categories': typeof CategoriesRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/categories/': typeof CategoriesIndexRoute
   '/sample/$slug/$': typeof SampleSlugSplatRoute
 }
 export interface FileRouteTypes {
@@ -86,37 +86,38 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/browse'
-    | '/categories'
     | '/project'
     | '/settings'
     | '/categories/$slug'
+    | '/categories/'
     | '/sample/$slug/$'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/browse'
-    | '/categories'
     | '/project'
     | '/settings'
     | '/categories/$slug'
+    | '/categories'
     | '/sample/$slug/$'
   id:
     | '__root__'
     | '/'
     | '/browse'
-    | '/categories'
     | '/project'
     | '/settings'
     | '/categories/$slug'
+    | '/categories/'
     | '/sample/$slug/$'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BrowseRoute: typeof BrowseRoute
-  CategoriesRoute: typeof CategoriesRouteWithChildren
   ProjectRoute: typeof ProjectRoute
   SettingsRoute: typeof SettingsRoute
+  CategoriesSlugRoute: typeof CategoriesSlugRoute
+  CategoriesIndexRoute: typeof CategoriesIndexRoute
   SampleSlugSplatRoute: typeof SampleSlugSplatRoute
 }
 
@@ -136,13 +137,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BrowseRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/categories': {
-      id: '/categories'
-      path: '/categories'
-      fullPath: '/categories'
-      preLoaderRoute: typeof CategoriesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/project': {
       id: '/project'
       path: '/project'
@@ -157,12 +151,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/categories/': {
+      id: '/categories/'
+      path: '/categories'
+      fullPath: '/categories/'
+      preLoaderRoute: typeof CategoriesIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/categories/$slug': {
       id: '/categories/$slug'
-      path: '/$slug'
+      path: '/categories/$slug'
       fullPath: '/categories/$slug'
       preLoaderRoute: typeof CategoriesSlugRouteImport
-      parentRoute: typeof CategoriesRoute
+      parentRoute: typeof rootRouteImport
     }
     '/sample/$slug/$': {
       id: '/sample/$slug/$'
@@ -174,24 +175,13 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface CategoriesRouteChildren {
-  CategoriesSlugRoute: typeof CategoriesSlugRoute
-}
-
-const CategoriesRouteChildren: CategoriesRouteChildren = {
-  CategoriesSlugRoute: CategoriesSlugRoute,
-}
-
-const CategoriesRouteWithChildren = CategoriesRoute._addFileChildren(
-  CategoriesRouteChildren,
-)
-
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BrowseRoute: BrowseRoute,
-  CategoriesRoute: CategoriesRouteWithChildren,
   ProjectRoute: ProjectRoute,
   SettingsRoute: SettingsRoute,
+  CategoriesSlugRoute: CategoriesSlugRoute,
+  CategoriesIndexRoute: CategoriesIndexRoute,
   SampleSlugSplatRoute: SampleSlugSplatRoute,
 }
 export const routeTree = rootRouteImport

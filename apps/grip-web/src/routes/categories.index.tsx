@@ -5,7 +5,7 @@ import { fmtN } from "@site/format";
 import { useTree } from "../components/GripShell";
 import type { Category } from "../lib/gripTypes";
 
-export const Route = createFileRoute("/categories")({ component: Categories });
+export const Route = createFileRoute("/categories/")({ component: Categories });
 
 function Categories() {
   const tree = useTree();
