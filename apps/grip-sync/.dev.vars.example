@@ -1,0 +1,4 @@
+# grip-sync — local dev credentials (gitignored)
+# Copy docs/grip-env.example → .dev.vars and fill in real values.
+GRIP_GITHUB_PAT=ghp_replace_me
+GRIP_ACCESS_CODE=dev-code

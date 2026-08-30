@@ -1,0 +1,18 @@
+name = "grip-sync"
+main = "src/worker.ts"
+compatibility_date = "2025-01-01"
+
+[observability]
+enabled = true
+
+[vars]
+# upstream dataset repo (override only if the suite moves)
+GRIP_UPSTREAM_REPO = "bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset"
+
+[[kv_namespaces]]
+binding = "GRIP_EDITS"
+id = "GRIP_EDITS_NAMESPACE_ID_PLACEHOLDER"
+
+# Secrets (set via `npx wrangler secret put` — NEVER in this file):
+#   GRIP_GITHUB_PAT   classic PAT from mmaaaaz (repo scope) — see docs/grip-env.example
+#   GRIP_ACCESS_CODE  gate for mutating endpoints

@@ -9,6 +9,15 @@
         "vitest": "^4.1.11",
       },
     },
+    "apps/grip-sync": {
+      "name": "@grip/sync",
+      "devDependencies": {
+        "@cloudflare/workers-types": "^4.20250830.0",
+        "typescript": "~5.7.3",
+        "vitest": "^4.1.11",
+        "wrangler": "^4.27.0",
+      },
+    },
     "apps/grip-web": {
       "name": "@grip/web",
       "dependencies": {
@@ -306,6 +315,8 @@
     "@floating-ui/react-dom": ["@floating-ui/react-dom@2.1.9", "", { "dependencies": { "@floating-ui/dom": "^1.8.0" }, "peerDependencies": { "react": ">=16.8.0", "react-dom": ">=16.8.0" } }, "sha512-JDjEFGCpImxDCA7JJKviA0M9+RtmJdj0m/NVU5IMgBK+AmZouAQQ7/+2GLH0GXXY0YMw9oXPB8hKdbPYg5QLYg=="],
 
     "@floating-ui/utils": ["@floating-ui/utils@0.2.12", "", {}, "sha512-HpCo8tmWzLVad5s2d19EhAz5zqrrQ6s69qd6moPMQvkOuSwDT1YgRfWSVuc4ennqrgv3OHppiOGMQ7oC13yIww=="],
+
+    "@grip/sync": ["@grip/sync@workspace:apps/grip-sync"],
 
     "@grip/web": ["@grip/web@workspace:apps/grip-web"],
 

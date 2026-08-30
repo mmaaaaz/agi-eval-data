@@ -1,0 +1,18 @@
+{
+  "name": "@grip/sync",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250830.0",
+    "typescript": "~5.7.3",
+    "vitest": "^4.1.11",
+    "wrangler": "^4.27.0"
+  }
+}
