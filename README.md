@@ -8,8 +8,11 @@ shape problems.
 |---|---|---|---|
 | **Real-world images** | [agi-eval-data.pages.dev](https://agi-eval-data.pages.dev) | 54.5k+ photos where VLMs fail | daily Drive scan → `data/latest.json` |
 | **Metro / transit** | [metro-eval.pages.dev](https://metro-eval.pages.dev) | 85 metro network maps · 38 countries · 30 official PDFs | hourly Drive scan → `data/metro.json` |
+| **GRIP geometric reasoning** | grip-eval (pages, deploy pending) | 34 synthetic sub-benchmarks · 100k images · 500k ground-truthed QA | static bake from [upstream dataset repo](https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset) → `data/grip/` |
 
-Questions are authored on the sites (access-gated) and frontier VLMs are graded against them.
+Questions are authored on the web/metro sites (access-gated) and frontier VLMs are graded
+against them. GRIP ships its own ground truth — that site browses samples and stages
+override edits, synced to the upstream dataset repo as one atomic commit.
 
 ---
 
@@ -22,13 +25,16 @@ apps/web           real-world images site — Vite · React 19 · TanStack Route
 apps/relay         Cloudflare Worker — AI chat relay (Vercel AI Gateway + Workers AI fallback) + questions API (D1)
 apps/metro-web     metro/transit site — same stack, NO chat — catalog (branch toggle, PDF preview), questions workspace
 apps/metro-relay   Cloudflare Worker — questions API only (D1 metro-eval-questions)
+apps/grip-web      GRIP geometric-reasoning site — browse 34 sub-benchmarks, ground-truth spoilers, scene overlays
+apps/grip-sync     Cloudflare Worker — stages override edits in KV, syncs to the upstream dataset repo (1 atomic commit)
 packages/shared    text normalization (normQ / normTags / normSql) — web + relay
 packages/site       shared UI/data/questions + metroGraph (MarkLayer, AssistPanel, types, routing)
 packages/questions-api  shared D1 API factory (source filtering + tags GC)
 scripts/           Drive scanners (drive_scan.py, metro_scan.py), build tooling, OG renderers
 data/latest.json   THE real-world artifact — overwritten by the sync bot (change-gated)
 data/metro.json    THE metro artifact (v4: folders/country/city taxonomy)
-docs/              plans & decision log · docs/METRO_PLAN.md is the metro design
+data/grip/         THE grip artifacts (tree.json + {slug}.json.gz ×34) — baked by scripts/grip_scan.py
+docs/              plans & decision log · docs/METRO_PLAN.md is the metro design · docs/grip.md is the grip design
 ```
 
 **Data flow**: Google Drive → (sync bot: metadata scan + link-share) → `data/*.json` →
