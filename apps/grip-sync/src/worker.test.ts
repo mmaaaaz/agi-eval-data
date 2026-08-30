@@ -76,7 +76,7 @@ function mockGithubFetch(opts: { refMoveStatus?: number } = {}) {
       return j({ object: { sha: NEW_COMMIT } }, opts.refMoveStatus ?? 200);
     }
     if (method === "POST" && url.endsWith("/dispatches")) {
-      return j({ ok: true }, 204);
+      return new Response(null, { status: 204 });
     }
     return j({ message: "unexpected" }, 500);
   });
