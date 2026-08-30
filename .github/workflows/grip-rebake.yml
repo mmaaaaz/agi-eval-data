@@ -1,0 +1,104 @@
+name: grip-rebake
+
+# Upstream (bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset) is the single
+# source of truth. This job re-bakes our derived artifacts whenever upstream
+# moves — hourly, on demand, or right after the grip-sync worker lands an
+# override batch (repository_dispatch). No-op when upstream is unchanged.
+
+on:
+  schedule:
+    - cron: "7 * * * *" # hourly at :07 (offset from metro/data syncs)
+  workflow_dispatch:
+    inputs:
+      force:
+        description: "re-bake even if upstream sha unchanged"
+        type: boolean
+        default: false
+  repository_dispatch:
+    types: [grip-rebake]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: grip-rebake
+  cancel-in-progress: false
+
+jobs:
+  rebake:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Compare upstream HEAD with baked marker
+        id: upstream
+        run: |
+          SHA=$(git ls-remote https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset.git HEAD | cut -f1)
+          BAKED=$(python -c "import json;print(json.load(open('data/grip/tree.json')).get('bakedFromCommit',''))" 2>/dev/null || echo "")
+          FORCE="${{ inputs.force || github.event.client_payload.force || 'false' }}"
+          echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          if [ "$SHA" = "$BAKED" ] && [ "$FORCE" != "true" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "upstream unchanged ($SHA) — nothing to do"
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+            echo "upstream $SHA vs baked '$BAKED' — re-baking"
+          fi
+
+      - name: Fetch annotations + overrides from upstream
+        if: steps.upstream.outputs.skip == 'false'
+        run: python scripts/grip_fetch.py
+
+      - name: Bake artifacts
+        if: steps.upstream.outputs.skip == 'false'
+        run: python scripts/grip_scan.py
+
+      - name: Validate (fail on drift or bad overrides)
+        if: steps.upstream.outputs.skip == 'false'
+        run: python scripts/grip_validate.py
+
+      - name: Copy to public/
+        if: steps.upstream.outputs.skip == 'false'
+        run: python scripts/grip_sync_public.py
+
+      - name: Commit + push artifacts
+        if: steps.upstream.outputs.skip == 'false'
+        run: |
+          git config user.name "grip-rebake-bot"
+          git config user.email "grip-rebake-bot@users.noreply.github.com"
+          git add data/grip apps/grip-web/public/data
+          if git diff --cached --quiet; then
+            echo "artifacts identical — no commit"
+          else
+            git commit -m "chore(grip): re-bake artifacts from upstream ${{ steps.upstream.outputs.sha }}"
+            git push
+          fi
+
+  notify-on-failure:
+    name: open issue when re-bake fails
+    needs: rebake
+    if: failure()
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Open or update a drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="grip re-bake failing — site may go stale"
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "$TITLE in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
+          BODY="Upstream re-bake failed at ${GITHUB_SHA::7}. The site keeps serving the last good bake, but it may be stale. Run logs: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
+          fi
