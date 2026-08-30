@@ -11,7 +11,7 @@ GRIP_UPSTREAM_REPO = "bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset"
 
 [[kv_namespaces]]
 binding = "GRIP_EDITS"
-id = "GRIP_EDITS_NAMESPACE_ID_PLACEHOLDER"
+id = "03077e64a24e4511abf0e28c726bb202"
 
 # Secrets (set via `npx wrangler secret put` — NEVER in this file):
 #   GRIP_GITHUB_PAT   classic PAT from mmaaaaz (repo scope) — see docs/grip-env.example
