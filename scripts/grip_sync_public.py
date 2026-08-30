@@ -16,9 +16,12 @@ from grip_common import OUT_DIR, PUBLIC_DIR
 def main() -> int:
     PUBLIC_DIR.mkdir(parents=True, exist_ok=True)
     n = 0
-    for src in sorted(OUT_DIR.glob("*.json")):
+    for src in sorted(OUT_DIR.glob("*.json.gz")):
         shutil.copy2(src, PUBLIC_DIR / src.name)
         n += 1
+    tree = OUT_DIR / "tree.json"
+    shutil.copy2(tree, PUBLIC_DIR / tree.name)
+    n += 1
     print(f"grip_sync_public: copied {n} files -> {PUBLIC_DIR}")
     return 0
 
