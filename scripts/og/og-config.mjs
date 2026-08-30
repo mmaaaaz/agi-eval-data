@@ -131,5 +131,46 @@ export function siteConfig(name) {
     };
   }
 
-  throw new Error(`unknown site: ${name} (expected web|metro)`);
+  if (name === "grip") {
+    const data = JSON.parse(readFileSync(join(root, "data", "grip", "tree.json"), "utf-8"));
+    const c = data.counts;
+    const routes = [
+      {
+        dir: "",
+        title: `Overview · grip-eval — geometric reasoning ledger`,
+        desc: `${fmt(c.questionsMain)} ground-truthed questions over ${fmt(c.imagesMain)} synthetic geometry images — 34 independently validated sub-benchmarks, 5 difficulty levels.`,
+        image: "overview.png",
+        url: "/",
+      },
+      {
+        dir: "categories",
+        title: `Categories · grip-eval — geometric reasoning ledger`,
+        desc: `All ${fmt(c.categories)} GRIP sub-benchmarks — route puzzles, nested polygons, cube structures, physics diagrams and more, with full scene metadata.`,
+        image: "overview.png",
+        url: "/categories",
+      },
+      {
+        dir: "browse",
+        title: `Browse · grip-eval — geometric reasoning ledger`,
+        desc: `Filter ${fmt(c.imagesMain)} samples by category, difficulty and question level — every question ships its independently validated ground truth.`,
+        image: "overview.png",
+        url: "/browse",
+      },
+      {
+        dir: "project",
+        title: `Project · grip-eval — geometric reasoning ledger`,
+        desc: "Programmatically generated, independently validated geometry & physical-reasoning suite — the third pillar of the VLM failure-modes benchmark.",
+        image: "overview.png",
+        url: "/project",
+      },
+    ];
+    return {
+      dist: join(root, "apps", "grip-web", "dist"),
+      RAW: "https://raw.githubusercontent.com/mmaaaaz/agi-eval-data/main/og/grip",
+      SITE: "https://grip-eval.pages.dev",
+      routes,
+    };
+  }
+
+  throw new Error(`unknown site: ${name} (expected web|metro|grip)`);
 }
