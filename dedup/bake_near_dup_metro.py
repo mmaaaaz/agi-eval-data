@@ -1,17 +1,17 @@
 #!/usr/bin/env python3
 """
-Bake nearDup.json for the /gallery/duplicates page — the derived artifact
-for the near-duplicate (CLIP) review UI.
+Bake nearDup.json for the metro /gallery/duplicates page — the derived
+artifact for the near-duplicate (CLIP) review UI on the METRO dataset.
 
-Input:  dedup/near-dup.csv  (produced by dedup/colab_clip_dedup.ipynb on Colab,
-        committed to the repo by a human). Schema: group_id, kept_file_id,
-        dropped_file_id, cosine. One row per dropped member; the kept member
-        repeats across rows of its group.
-Output: apps/web/public/data/nearDup.json — groups with names/sizes joined
-        from data/latest.json. Absent input → absent output (the UI treats
-        that as "no near-dup findings yet").
+Input:  dedup/metro-near-dup.csv (produced by dedup/colab_clip_dedup_metro.ipynb,
+        committed to the repo). Schema:
+          group_id, kept_file_id, dropped_file_id, cosine, branch, country, city
+        One row per dropped member. The kept member is NOT repeated (see below).
+Output: apps/metro-web/public/data/nearDup.json — groups with names/branch/
+        country/city joined from data/metro.json. Absent input → absent output
+        (UI treats that as "no near-dup findings yet").
 
-Run:  python dedup/bake_near_dup.py
+Run:  python dedup/bake_near_dup_metro.py
 """
 import csv
 import json
@@ -19,14 +19,14 @@ import os
 import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-SRC = os.path.join(ROOT, "data", "latest.json")
-CSV = os.path.join(ROOT, "dedup", "near-dup.csv")
-OUT = os.path.join(ROOT, "apps", "web", "public", "data")
+SRC = os.path.join(ROOT, "data", "metro.json")
+CSV = os.path.join(ROOT, "dedup", "metro-near-dup.csv")
+OUT = os.path.join(ROOT, "apps", "metro-web", "public", "data")
 
 
 def main():
     if not os.path.exists(CSV):
-        print("no dedup/near-dup.csv — skipping (review pass not run yet)")
+        print("no dedup/metro-near-dup.csv — skipping (review pass not run yet)")
         return
     t0 = time.perf_counter()
 
@@ -57,8 +57,11 @@ def main():
                 "name": r[1] if r else fid,
                 "size": int(r[3]) if r else 0,
                 "owner": r[5] if r else "",
+                "branch": (r[8][0] if r and len(r) > 8 else ""),
+                "country": (r[8][1] if r and len(r) > 8 and len(r[8]) > 1 else ""),
+                "city": (r[8][2] if r and len(r) > 8 and len(r[8]) > 2 else ""),
             })
-        # also surface the kept member so the UI can render the pair side-by-side
+        # surface the kept member too (for side-by-side render)
         kr = img_by_id.get(g["kept"])
         members.append({
             "id": g["kept"],
@@ -67,6 +70,9 @@ def main():
             "name": kr[1] if kr else g["kept"],
             "size": int(kr[3]) if kr else 0,
             "owner": kr[5] if kr else "",
+            "branch": (kr[8][0] if kr and len(kr) > 8 else ""),
+            "country": (kr[8][1] if kr and len(kr) > 8 and len(kr[8]) > 1 else ""),
+            "city": (kr[8][2] if kr and len(kr) > 8 and len(kr[8]) > 2 else ""),
         })
         out_groups.append({
             "id": gid,

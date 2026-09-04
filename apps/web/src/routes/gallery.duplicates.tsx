@@ -8,7 +8,6 @@ import { loadSettings } from "../lib/ai/settings";
 import { questionsApi } from "../lib/questions";
 import { ThumbImage } from "@site/thumb";
 import type { DupGroup, Row } from "../lib/types";
-import NearDupSection from "./NearDupSection";
 
 const searchSchema = z.object({
   q: z.string().catch(""),
@@ -129,11 +128,6 @@ function Duplicates() {
       <h1 className="text-2xl font-semibold tracking-tight text-white">
         Byte-identical copies
       </h1>
-
-      {/* CLIP near-duplicates review */}
-      <div className="mt-6">
-        <NearDupSection />
-      </div>
 
       {/* marked for removal */}
       {marked.length > 0 && (

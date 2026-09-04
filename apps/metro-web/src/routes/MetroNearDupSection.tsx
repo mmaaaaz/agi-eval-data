@@ -9,6 +9,9 @@ export interface NearDupMember {
   name: string;
   size: number;
   owner: string;
+  branch: string;
+  country: string;
+  city: string;
 }
 export interface NearDupGroup {
   id: string;
@@ -22,7 +25,13 @@ export interface NearDupData {
   droppedCount: number;
 }
 
-export default function NearDupSection() {
+const BRANCH_LABEL: Record<string, string> = {
+  ours: "ours",
+  "reason_map(exisiting_dataset)": "existing",
+  reason_map: "existing",
+};
+
+export default function MetroNearDupSection() {
   const [nd, setNd] = useState<NearDupData | null>(null);
   const [open, setOpen] = useState<Set<string>>(new Set());
   const [verdict, setVerdict] = useState<Record<string, "keep" | "drop">>({});
@@ -48,28 +57,33 @@ export default function NearDupSection() {
 
   const exportCsv = useCallback(() => {
     if (!nd) return;
-    const lines = ["group_id,file_id,verdict,similarity,filename"];
+    const lines = ["group_id,file_id,verdict,similarity,filename,branch,country,city"];
     for (const g of nd.groups) {
       for (const m of g.members) {
         const v = verdict[`${g.id}:${m.id}`] ?? (m.kept ? "keep" : "drop");
-        lines.push(`${g.id},${m.id},${v},${m.cos},"${m.name.replaceAll('"', '""')}"`);
+        lines.push(
+          `${g.id},${m.id},${v},${m.cos},"${m.name.replaceAll('"', '""')}",${m.branch},${m.country},${m.city}`,
+        );
       }
     }
     const blob = new Blob([lines.join("\n")], { type: "text/csv" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
-    a.download = "near-dup-review.csv";
+    a.download = "metro-near-dup-review.csv";
     a.click();
     URL.revokeObjectURL(a.href);
   }, [nd, verdict]);
 
-  if (err) return null; // artifact absent = no findings yet, page stays as-is
+  if (err) return null; // artifact absent = no findings yet, keep page as-is
   if (!nd || nd.groupCount === 0) {
     return (
-      <section className="mb-8 rounded-lg border border-[#262626] bg-[#0a0a0a]/40 p-4">
-        <h2 className="font-mono text-xs uppercase tracking-wider text-[#666]">near-duplicates (CLIP)</h2>
-        <p className="mt-2 font-mono text-[11px] text-[#666]">
-          no near-dup findings yet — run dedup/colab_clip_dedup.ipynb, commit dedup/near-dup.csv, rebake
+      <section className="mt-6 rounded-lg border border-[#262626] bg-[#0a0a0a]/40 p-4">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-[#666]">
+          near-duplicates (CLIP)
+        </p>
+        <p className="mt-1.5 font-mono text-[10px] text-[#666]">
+          no near-dup findings yet — run dedup/colab_clip_dedup_metro.ipynb, commit
+          dedup/metro-near-dup.csv, rebake
         </p>
       </section>
     );
@@ -78,13 +92,13 @@ export default function NearDupSection() {
   const dropped = Object.values(verdict).filter((v) => v === "drop").length;
 
   return (
-    <section className="mb-10 rounded-lg border border-[#262626] bg-[#0a0a0a]/40 p-4">
+    <section className="mt-8 rounded-lg border border-[#262626] bg-[#0a0a0a]/40 p-4">
       <div className="flex flex-wrap items-center gap-3">
-        <h2 className="font-mono text-xs uppercase tracking-wider text-[#666]">
+        <p className="font-mono text-[10px] uppercase tracking-wider text-[#666]">
           near-duplicates (CLIP cosine &gt; 0.95)
-        </h2>
+        </p>
         <span className="font-mono text-[11px] tabular-nums text-[#ededed]">
-          {fmtN(nd.groupCount)} groups · {fmtN(nd.droppedCount)} flagged
+          {fmtN(nd.groupCount)} group{nd.groupCount === 1 ? "" : "s"} · {fmtN(nd.droppedCount)} flagged
         </span>
         <button
           onClick={exportCsv}
@@ -93,9 +107,9 @@ export default function NearDupSection() {
           export review CSV{dropped > 0 ? ` (${dropped} marked drop)` : ""}
         </button>
       </div>
-      <p className="mt-1.5 font-mono text-[10px] text-[#666]">
-        same photo re-uploaded cropped/re-compressed — different bytes, same picture. mark keep/drop
-        per image, export the CSV, hand it back for the Drive trash pass.
+      <p className="mt-1.5 font-mono text-[10px] leading-5 text-[#666]">
+        same map re-uploaded at a different size/render — different bytes, same layout.
+        mark keep/drop per image, export the CSV, hand it back for the Drive trash pass.
       </p>
 
       <div className="mt-4 space-y-1">
@@ -103,7 +117,7 @@ export default function NearDupSection() {
           <div key={g.id} className={`rounded border border-[#262626]/60 ${open.has(g.id) ? "bg-black/40" : ""}`}>
             <button
               onClick={() => toggle(g.id)}
-              className="grid w-full grid-cols-[32px_minmax(0,1fr)_84px_20px] items-center gap-x-3 px-3 py-2 text-left hover:bg-[#0f0f0f] sm:grid-cols-[40px_minmax(0,1fr)_110px_84px_20px]"
+              className="grid w-full grid-cols-[32px_minmax(0,1fr)_90px_20px] items-center gap-x-3 px-3 py-2 text-left hover:bg-[#0f0f0f] sm:grid-cols-[40px_minmax(0,1fr)_110px_90px_20px]"
             >
               <span className="font-mono text-[10px] tabular-nums text-[#404040]">{String(i + 1).padStart(3, "0")}</span>
               <span className="min-w-0 truncate font-mono text-xs text-[#ededed]">
@@ -126,13 +140,16 @@ export default function NearDupSection() {
                     return (
                       <div
                         key={m.id}
-                        className={`w-36 overflow-hidden rounded-md border transition-colors ${
+                        className={`w-40 overflow-hidden rounded-md border transition-colors ${
                           v === "drop" ? "border-danger" : "border-[#262626]"
                         }`}
                       >
-                        <ThumbImage fileId={m.id} alt={m.name} className="h-28 w-full" />
+                        <ThumbImage fileId={m.id} alt={m.name} className="h-32 w-full" />
                         <div className="px-1.5 py-1">
                           <p className="truncate font-mono text-[9px] text-[#ededed]" title={m.name}>{m.name}</p>
+                          <p className="truncate font-mono text-[8px] text-[#666]">
+                            {BRANCH_LABEL[m.branch] ?? m.branch} · {m.country} · {m.city}
+                          </p>
                           <p className="font-mono text-[8px] text-[#666]">
                             {m.kept ? "auto-kept" : `cos ${m.cos.toFixed(3)}`} · {fmtB(m.size)}
                           </p>

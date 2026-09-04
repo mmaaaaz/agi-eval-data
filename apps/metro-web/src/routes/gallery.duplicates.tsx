@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useData } from "../lib/dataContext";
 import { fmtB, fmtN } from "../lib/format";
 import { Eyebrow } from "@site/section";
+import MetroNearDupSection from "./MetroNearDupSection";
 
 export const Route = createFileRoute("/gallery/duplicates")({ component: Duplicates });
 
@@ -54,6 +55,8 @@ function Duplicates() {
         uniqueness = first occurrence per md5 checksum · byte-identical dedup only · to clean
         up, open the Drive folder and trash duplicate copies (recoverable for 30 days)
       </p>
+
+      <MetroNearDupSection />
     </div>
   );
 }
