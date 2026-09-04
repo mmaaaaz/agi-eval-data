@@ -28,9 +28,32 @@ different bytes, same layout. MD5 exact matching (`dupGroups`) can't see these.
 
 ## Threshold / model notes
 
-- Cosine similarity **> 0.95** on **open_clip ViT-B/32** embeddings (fp32; 112 images is
-  trivial, no GPU needed).
-- Images embedded from **Drive thumbnails (~448px)** — CLIP's native input is 224px crops.
+- Cosine similarity **> 0.97** on **open_clip ViT-B/32** embeddings (fp32; 112 images
+  is trivial, no GPU needed).
+- Threshold was **tuned on the real set (2026-09-04)**: the highest same-STYLE
+  cross-map similarity is 0.9537 (Casablanca Tramway T3~T4 — *different lines*).
+  A true same-map re-encode clusters 0.97+, so 0.97 catches genuine duplicates
+  without flagging distinct maps that merely share a visual style.
+- **Result of the first verified pass: 0 near-duplicates.** The curated metro set
+  has no same-map re-encodes (md5 already handled the one exact copy). `0.95`
+  over-flags: it produced 2 false clusters (T3~T4, T1~T2) that pixel-checks
+  confirmed were distinct maps.
+- Images embedded from **Drive thumbnails (~448px)** — CLIP's native input is 224px.
 - **The kept member is never listed as its own drop** — the CSV asserts
   `kept_file_id != dropped_file_id` and fails loudly if violated.
-- Tighten to 0.97 or use ViT-L/14 for stricter perceptual matching (still trivial at 112).
+
+## Local (automatic) run
+
+You don't need Colab at all:
+
+```bash
+uv venv C:/Users/Maaz/.dedup-venv
+uv pip install --python C:/Users/Maaz/.dedup-venv/Scripts/python.exe torch open_clip_torch requests pillow
+C:/Users/Maaz/.dedup-venv/Scripts/python.exe dedup/run_local_dedup.py
+```
+
+Fetches public Drive thumbnails (no auth), embeds on CPU, clusters, writes
+`dedup/metro-near-dup.csv`, then:
+```bash
+bun run data:dedup:metro   # bakes apps/metro-web/public/data/nearDup.json
+```
