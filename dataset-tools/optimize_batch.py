@@ -150,10 +150,21 @@ def process_one(im: dict, mode: str, jr=None) -> dict:
         # 3) transcode
         out = T.transcode_one(data, ext, cap=CAP, jpeg_quality=JPEG_Q,
                               webp_quality=WEBP_Q)
+        rec["cap"] = CAP
+
+        # 3b) no-regression guard (batch_0002 finding): a re-encode that can't
+        # beat the original's size means the source was already compressed
+        # harder than our target — keep the original bytes, never grow a file.
+        # (batch_0002 had 5 such: 60-210 KB JPEGs that grew 1.4-2.3x at q78.)
+        if rec["mode"] == "inplace" and out["size"] >= len(data):
+            rec["status"] = "skipped_no_smaller"
+            rec["detail"] = (f"re-encode not smaller ({len(data)} -> {out['size']} B); "
+                             "original kept (no-regression guard)")
+            return rec
+
         rec["post"] = {"size": out["size"], "md5": out["md5"], "w": out["w"],
                        "h": out["h"], "codec": out["codec"],
                        "owner": pre["owner"], "created": pre["created"]}
-        rec["cap"] = CAP
 
         # 4) write-back
         if mode == "apply":
