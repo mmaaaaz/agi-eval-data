@@ -1,0 +1,39 @@
+{
+ "generated": "2026-09-05T17:43:37Z",
+ "before_gib": 94.99,
+ "after_gib": 14.26,
+ "files_total": 54609,
+ "files": {
+  "inplace": 49768,
+  "siblings": 1391
+ },
+ "pixels": {
+  "original_avg_mp": 6.2,
+  "cap_long_edge": 1568,
+  "upscale": false
+ },
+ "pipeline": [
+  "drive_scan manifest",
+  "deterministic batches (pilot-500, gnarly-2000, regular)",
+  "per-file server-truth pre-check",
+  "transcode: LANCZOS + EXIF-orientation",
+  "no-regression guard (never grow a file)",
+  "in-place files.update / webp sibling create",
+  "verification battery 100% of files",
+  "ledger committed to git per batch"
+ ],
+ "safety": [
+  "originals kept as Drive revisions",
+  "rollback drill 5/5 byte-perfect",
+  "zero deletions by this pipeline",
+  "zero data regressions"
+ ],
+ "metadata_preserved": [
+  "owner/uploader",
+  "createdTime",
+  "name lineage",
+  "md5 provenance"
+ ],
+ "cost": "Rs 0 (GitHub Actions public repo + Drive API free tier)",
+ "provenance": "dataset-tools/runs/<batch>/ in git"
+}
