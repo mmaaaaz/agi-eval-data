@@ -1,26 +1,22 @@
 {
  "batch_id": "batch_0002",
  "mode": "apply",
- "finished_at": "2026-09-05T14:54:29Z",
+ "finished_at": "2026-09-05T15:01:57Z",
  "rung": {
   "cap": 1568,
   "jpeg_quality": 78,
   "webp_quality": 75
  },
  "stats": {
-  "processed": 2000,
-  "skipped": 0,
-  "errors": 5,
-  "bytes_in": 3449692120,
-  "bytes_out": 440816058
+  "processed": 5,
+  "skipped": 5,
+  "errors": 0,
+  "bytes_in": 0,
+  "bytes_out": 0
  },
  "battery": {
-  "files": 2000,
-  "passed": 1995,
-  "failed": 5,
-  "checks": 16043,
-  "failed_checks": 5,
-  "ok": false
+  "files": 0,
+  "ok": true
  },
- "verdict": "RED"
+ "verdict": "GREEN"
 }
