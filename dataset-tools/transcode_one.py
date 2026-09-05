@@ -19,6 +19,20 @@ import os
 
 from PIL import Image, ImageOps, ImageCms
 
+# HEIC/HEIF + AVIF decoder registration (idempotent). The CI dry-run of
+# 2026-09-05 caught this: 72 HEIC files errored as "undecodable" because
+# pillow-heif was installed but never registered. Fail-soft on missing
+# plugins so environments without them still process non-HEIC files.
+try:
+    from pillow_heif import register_heif_opener
+    register_heif_opener()
+except ImportError:
+    pass
+try:
+    import pillow_avif  # noqa: F401  (registers AVIF on import)
+except ImportError:
+    pass
+
 # ---- deterministic environment assertion --------------------------------
 # Pillow 11.x writes deterministic JPEG/WebP bytes for fixed input+params.
 # If the CI runner ever drifts versions, fail loudly instead of silently

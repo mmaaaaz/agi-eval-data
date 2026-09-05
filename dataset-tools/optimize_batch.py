@@ -174,9 +174,16 @@ def process_one(im: dict, mode: str) -> dict:
         rec["elapsed_s"] = round(time.perf_counter() - t0, 2)
         return rec
 
-    except ValueError as e:          # undecodable → error row, batch continues
+    except ValueError as e:          # undecodable → skip row, batch continues
+        msg = str(e)
+        # Pre-existing dataset defects (corrupt/truncated uploads): skip and
+        # flag, never fail the batch — we simply must not touch these files.
+        if "undecodable image" in msg:
+            rec["status"] = "skipped_undecodable"
+            rec["detail"] = "source undecodable (pre-existing defect) — left untouched"
+            return rec
         rec["status"] = "error"
-        rec["detail"] = str(e)[:300]
+        rec["detail"] = msg[:300]
         return rec
     except Exception as e:  # noqa: BLE001
         rec["status"] = "error"
