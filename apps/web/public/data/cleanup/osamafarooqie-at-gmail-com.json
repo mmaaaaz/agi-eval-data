@@ -1,0 +1,43 @@
+{
+ "owner": "osamafarooqie@gmail.com",
+ "copies": 5,
+ "gib": 0.001,
+ "note": "Exact-duplicate copies (same md5) of a file that survives. Verify against the keep-twin, then trash in your own Drive.",
+ "items": [
+  {
+   "id": "14kwoSr_iEg8Jpawq6GjXFdM4MfIt1PCG",
+   "name": "IMG-20260815-WA0013.jpg",
+   "size": 319691,
+   "md5": "46a25312ccb21e6d55d5aca0421fa1ba",
+   "kept_id": "1uydTCBmAngcBJy9yxoZrVwcJTJIHmBl5"
+  },
+  {
+   "id": "1VK5k81AkMnHCgU47XuhtdtevsBE2EYHS",
+   "name": "IMG-20260815-WA0003.jpg",
+   "size": 313095,
+   "md5": "a656c1fc376e69f9b97f614331fbd189",
+   "kept_id": "16e2-kmkauJhyDJoGJHC6VExWdY4cTvI6"
+  },
+  {
+   "id": "1PC1jZDRcAiCiwDOSsts40PLLY8Ogiqwb",
+   "name": "IMG-20260815-WA0007.jpg",
+   "size": 311937,
+   "md5": "2b69f04719c6d93b64ba3d3d95fc4f47",
+   "kept_id": "1qMJr1Wc4pdTgh4InjSI6vx7ObVVWNZ2q"
+  },
+  {
+   "id": "1dE0fQee_q_5VPGU9NP84lXozx73mhR-l",
+   "name": "IMG-20260807-WA0000.jpg",
+   "size": 229128,
+   "md5": "04926768f4667e3e3b0e4b9e29117ca3",
+   "kept_id": "1n_aNiO9H21pGsTJBW_9e7Y49cS-cCi-N"
+  },
+  {
+   "id": "1d6bzkyeTHts64AV1TZnHaShypG68NTdK",
+   "name": "IMG-20260815-WA0112.jpg",
+   "size": 121067,
+   "md5": "11d1ea913926e401d114cafae8d65802",
+   "kept_id": "1Dx6RwrUnN5VqIOiyBXNVhbMpnfsM7hNL"
+  }
+ ]
+}

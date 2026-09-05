@@ -16,6 +16,7 @@ import csv
 import json
 import os
 from collections import defaultdict
+from datetime import datetime, timezone
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SRC = os.path.join(ROOT, "data", "latest.pre-cutover.json")  # pre-cutover truth: dups intact
@@ -47,9 +48,23 @@ def main():
            "text-decoration:none;margin:1px}</style>")
 
     index_rows = []
+    owners_json = []
     for owner, items in sorted(by_owner.items(), key=lambda kv: -sum(i["size"] for i in kv[1])):
         total = sum(i["size"] for i in items)
         slug = owner.replace("@", "-at-").replace(".", "-")
+        # JSON kit — the site's /gallery/optimization/$owner route renders this
+        kit = {
+            "owner": owner,
+            "copies": len(items),
+            "gib": round(total / 2**30, 3),
+            "note": ("Exact-duplicate copies (same md5) of a file that survives. "
+                     "Verify against the keep-twin, then trash in your own Drive."),
+            "items": sorted(items, key=lambda x: -x["size"]),
+        }
+        json.dump(kit, open(os.path.join(OUT, f"{slug}.json"), "w", encoding="utf-8"), indent=1)
+        owners_json.append({"owner": owner, "copies": len(items),
+                            "gib": round(total / 2**30, 3), "slug": slug})
+        # legacy standalone HTML kit (shareable link, no JS needed)
         rows_html = []
         for i in sorted(items, key=lambda x: -x["size"]):
             furl = f"https://drive.google.com/file/d/{i['id']}/view"
@@ -88,7 +103,15 @@ def main():
            "<table><tr><th>owner</th><th>copies</th><th>reclaimable</th><th>kit</th></tr>"
            + "".join(index_rows) + "</table>")
     open(os.path.join(OUT, "index.html"), "w", encoding="utf-8").write(idx)
-    print(f"wrote index for {len(by_owner)} owners")
+    idx_json = {
+        "generated": datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ"),
+        "total_copies": sum(o["copies"] for o in owners_json),
+        "total_gib": round(sum(o["gib"] for o in owners_json), 3),
+        "note": "Physical duplicate copies remain in Drive; deletion is owner-side only.",
+        "owners": owners_json,
+    }
+    json.dump(idx_json, open(os.path.join(OUT, "index.json"), "w", encoding="utf-8"), indent=1)
+    print(f"wrote index for {len(by_owner)} owners (+index.json)")
 
 
 if __name__ == "__main__":

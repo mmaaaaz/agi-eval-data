@@ -20,8 +20,10 @@ import { Route as ContributeEvaluateRouteImport } from './routes/contribute.eval
 import { Route as GalleryIndexRouteImport } from './routes/gallery.index'
 import { Route as GalleryDuplicatesRouteImport } from './routes/gallery.duplicates'
 import { Route as GalleryInsightsRouteImport } from './routes/gallery.insights'
+import { Route as GalleryOptimizationRouteImport } from './routes/gallery.optimization'
 import { Route as GalleryContributorsIndexRouteImport } from './routes/gallery.contributors.index'
 import { Route as GalleryContributorsEmailRouteImport } from './routes/gallery.contributors.$email'
+import { Route as GalleryOptimizationOwnerRouteImport } from './routes/gallery.optimization.$owner'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -78,6 +80,11 @@ const GalleryInsightsRoute = GalleryInsightsRouteImport.update({
   path: '/insights',
   getParentRoute: () => GalleryRoute,
 } as any)
+const GalleryOptimizationRoute = GalleryOptimizationRouteImport.update({
+  id: '/optimization',
+  path: '/optimization',
+  getParentRoute: () => GalleryRoute,
+} as any)
 const GalleryContributorsIndexRoute =
   GalleryContributorsIndexRouteImport.update({
     id: '/contributors/',
@@ -90,6 +97,12 @@ const GalleryContributorsEmailRoute =
     path: '/contributors/$email',
     getParentRoute: () => GalleryRoute,
   } as any)
+const GalleryOptimizationOwnerRoute =
+  GalleryOptimizationOwnerRouteImport.update({
+    id: '/$owner',
+    path: '/$owner',
+    getParentRoute: () => GalleryOptimizationRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -101,9 +114,11 @@ export interface FileRoutesByFullPath {
   '/contribute/evaluate': typeof ContributeEvaluateRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
+  '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
   '/contribute/': typeof ContributeIndexRoute
   '/gallery/': typeof GalleryIndexRoute
   '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
+  '/gallery/optimization/$owner': typeof GalleryOptimizationOwnerRoute
   '/gallery/contributors/': typeof GalleryContributorsIndexRoute
 }
 export interface FileRoutesByTo {
@@ -114,9 +129,11 @@ export interface FileRoutesByTo {
   '/contribute/evaluate': typeof ContributeEvaluateRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
+  '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
   '/contribute': typeof ContributeIndexRoute
   '/gallery': typeof GalleryIndexRoute
   '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
+  '/gallery/optimization/$owner': typeof GalleryOptimizationOwnerRoute
   '/gallery/contributors': typeof GalleryContributorsIndexRoute
 }
 export interface FileRoutesById {
@@ -130,9 +147,11 @@ export interface FileRoutesById {
   '/contribute/evaluate': typeof ContributeEvaluateRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
+  '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
   '/contribute/': typeof ContributeIndexRoute
   '/gallery/': typeof GalleryIndexRoute
   '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
+  '/gallery/optimization/$owner': typeof GalleryOptimizationOwnerRoute
   '/gallery/contributors/': typeof GalleryContributorsIndexRoute
 }
 export interface FileRouteTypes {
@@ -147,9 +166,11 @@ export interface FileRouteTypes {
     | '/contribute/evaluate'
     | '/gallery/duplicates'
     | '/gallery/insights'
+    | '/gallery/optimization'
     | '/contribute/'
     | '/gallery/'
     | '/gallery/contributors/$email'
+    | '/gallery/optimization/$owner'
     | '/gallery/contributors/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -160,9 +181,11 @@ export interface FileRouteTypes {
     | '/contribute/evaluate'
     | '/gallery/duplicates'
     | '/gallery/insights'
+    | '/gallery/optimization'
     | '/contribute'
     | '/gallery'
     | '/gallery/contributors/$email'
+    | '/gallery/optimization/$owner'
     | '/gallery/contributors'
   id:
     | '__root__'
@@ -175,9 +198,11 @@ export interface FileRouteTypes {
     | '/contribute/evaluate'
     | '/gallery/duplicates'
     | '/gallery/insights'
+    | '/gallery/optimization'
     | '/contribute/'
     | '/gallery/'
     | '/gallery/contributors/$email'
+    | '/gallery/optimization/$owner'
     | '/gallery/contributors/'
   fileRoutesById: FileRoutesById
 }
@@ -269,6 +294,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GalleryInsightsRouteImport
       parentRoute: typeof GalleryRoute
     }
+    '/gallery/optimization': {
+      id: '/gallery/optimization'
+      path: '/optimization'
+      fullPath: '/gallery/optimization'
+      preLoaderRoute: typeof GalleryOptimizationRouteImport
+      parentRoute: typeof GalleryRoute
+    }
     '/gallery/contributors/': {
       id: '/gallery/contributors/'
       path: '/contributors'
@@ -282,6 +314,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/gallery/contributors/$email'
       preLoaderRoute: typeof GalleryContributorsEmailRouteImport
       parentRoute: typeof GalleryRoute
+    }
+    '/gallery/optimization/$owner': {
+      id: '/gallery/optimization/$owner'
+      path: '/$owner'
+      fullPath: '/gallery/optimization/$owner'
+      preLoaderRoute: typeof GalleryOptimizationOwnerRouteImport
+      parentRoute: typeof GalleryOptimizationRoute
     }
   }
 }
@@ -300,9 +339,21 @@ const ContributeRouteWithChildren = ContributeRoute._addFileChildren(
   ContributeRouteChildren,
 )
 
+interface GalleryOptimizationRouteChildren {
+  GalleryOptimizationOwnerRoute: typeof GalleryOptimizationOwnerRoute
+}
+
+const GalleryOptimizationRouteChildren: GalleryOptimizationRouteChildren = {
+  GalleryOptimizationOwnerRoute: GalleryOptimizationOwnerRoute,
+}
+
+const GalleryOptimizationRouteWithChildren =
+  GalleryOptimizationRoute._addFileChildren(GalleryOptimizationRouteChildren)
+
 interface GalleryRouteChildren {
   GalleryDuplicatesRoute: typeof GalleryDuplicatesRoute
   GalleryInsightsRoute: typeof GalleryInsightsRoute
+  GalleryOptimizationRoute: typeof GalleryOptimizationRouteWithChildren
   GalleryIndexRoute: typeof GalleryIndexRoute
   GalleryContributorsEmailRoute: typeof GalleryContributorsEmailRoute
   GalleryContributorsIndexRoute: typeof GalleryContributorsIndexRoute
@@ -311,6 +362,7 @@ interface GalleryRouteChildren {
 const GalleryRouteChildren: GalleryRouteChildren = {
   GalleryDuplicatesRoute: GalleryDuplicatesRoute,
   GalleryInsightsRoute: GalleryInsightsRoute,
+  GalleryOptimizationRoute: GalleryOptimizationRouteWithChildren,
   GalleryIndexRoute: GalleryIndexRoute,
   GalleryContributorsEmailRoute: GalleryContributorsEmailRoute,
   GalleryContributorsIndexRoute: GalleryContributorsIndexRoute,

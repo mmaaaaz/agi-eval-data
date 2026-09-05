@@ -5,6 +5,7 @@ const TABS = [
   { to: "/gallery", label: "Images", exact: true },
   { to: "/gallery/insights", label: "Insights", exact: false },
   { to: "/gallery/duplicates", label: "Duplicates", exact: false },
+  { to: "/gallery/optimization", label: "Optimization", exact: false },
   { to: "/gallery/contributors", label: "Contributors", exact: false },
 ];
 

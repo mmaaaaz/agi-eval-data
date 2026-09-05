@@ -1,0 +1,38 @@
+{
+ "generated": "2026-09-05T18:44:58Z",
+ "total_copies": 1439,
+ "total_gib": 1.982,
+ "note": "Physical duplicate copies remain in Drive; deletion is owner-side only.",
+ "owners": [
+  {
+   "owner": "theyellowdog123@gmail.com",
+   "copies": 483,
+   "gib": 1.446,
+   "slug": "theyellowdog123-at-gmail-com"
+  },
+  {
+   "owner": "enad.alqurashi0599@gmail.com",
+   "copies": 798,
+   "gib": 0.328,
+   "slug": "enad-alqurashi0599-at-gmail-com"
+  },
+  {
+   "owner": "bilaljawaidcs@gmail.com",
+   "copies": 140,
+   "gib": 0.185,
+   "slug": "bilaljawaidcs-at-gmail-com"
+  },
+  {
+   "owner": "engr.rizwanqureshi786@gmail.com",
+   "copies": 13,
+   "gib": 0.022,
+   "slug": "engr-rizwanqureshi786-at-gmail-com"
+  },
+  {
+   "owner": "osamafarooqie@gmail.com",
+   "copies": 5,
+   "gib": 0.001,
+   "slug": "osamafarooqie-at-gmail-com"
+  }
+ ]
+}

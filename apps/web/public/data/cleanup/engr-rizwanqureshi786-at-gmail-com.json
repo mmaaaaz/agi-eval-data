@@ -1,0 +1,99 @@
+{
+ "owner": "engr.rizwanqureshi786@gmail.com",
+ "copies": 13,
+ "gib": 0.022,
+ "note": "Exact-duplicate copies (same md5) of a file that survives. Verify against the keep-twin, then trash in your own Drive.",
+ "items": [
+  {
+   "id": "1wm7MHwpGzZBY_MFSwxoLNEA1fFeNqehZ",
+   "name": "IMG_6345.HEIC",
+   "size": 3945227,
+   "md5": "8fde72539fb8369f307aa54ec17aee39",
+   "kept_id": "1BIXQF8Cuj7ZLpD-gKNTNhZR6-wyYGfUk"
+  },
+  {
+   "id": "1uve-QOb75sAoCkrxtxi8iAvoWH6b4nch",
+   "name": "IMG_4582.HEIC",
+   "size": 2508667,
+   "md5": "63e3319ae1dc17ef0d07a5952d10c9d3",
+   "kept_id": "1-dORNEpD9cx0YNEzr7qKoCjD_W7PTPeo"
+  },
+  {
+   "id": "1qG70gs9Zf95YataH9D_6G2INu8b-24tB",
+   "name": "IMG_6342.HEIC",
+   "size": 2488954,
+   "md5": "112945b4f6de27e132dc4633763e2184",
+   "kept_id": "1nPLE8ArClCkJQfKbPBUS3Q--Qkxg6nit"
+  },
+  {
+   "id": "1yegxSy_pf7330J_nt615vme_dlIEwV8f",
+   "name": "IMG_6274.HEIC",
+   "size": 2253497,
+   "md5": "5074508a288f44ba89a04e002057605e",
+   "kept_id": "1AMuUqcglO-EvwxR_DLyuFF6FQTtWIC7l"
+  },
+  {
+   "id": "1VOfYp7YMheeTAWsyIEm2_FKiT8Ep8gom",
+   "name": "IMG_6273.HEIC",
+   "size": 2234351,
+   "md5": "fb41cc3e6202af5c81a5f69c12a68524",
+   "kept_id": "1CmwB5OLjejpcuoBdztQE_PK2poOLOfj1"
+  },
+  {
+   "id": "1olcdCNTdeZ0RVpjbB4Ogv0DjC4P29o0y",
+   "name": "IMG_4347.HEIC",
+   "size": 1847654,
+   "md5": "3a0068523b12eca037998cdd7de4ee6b",
+   "kept_id": "1Dqwfj2_u1CZ4jVE_vdarnn9wGe3ges_q"
+  },
+  {
+   "id": "1i6lMcIvj8duZtxmH0lXtCWCxrigFbjky",
+   "name": "IMG_6246.HEIC",
+   "size": 1758541,
+   "md5": "bb0c5f5857234ce5f91a7394a6ebc0d2",
+   "kept_id": "1OYGkP2C098vI-EwE8MwvVIjIgXMDcrGk"
+  },
+  {
+   "id": "1E17xHJ1FJQ6DCZ7DDJAwRRp2xMm0_A5H",
+   "name": "IMG_6344.HEIC",
+   "size": 1588352,
+   "md5": "222c110741ab05d898dcfb1919da1c13",
+   "kept_id": "13YPyaPareRoogwG5F-2P5EJx_s2hVeGs"
+  },
+  {
+   "id": "1eI1qQLJHmBysySKPHV857IeneTX-Oo1U",
+   "name": "IMG_4293.HEIC",
+   "size": 1205036,
+   "md5": "cc59096b17001e609738eae53843fcf3",
+   "kept_id": "1LTwWgsQSgEDbxhoO_6NrMOyTTxKQfT9S"
+  },
+  {
+   "id": "1gc4vR5vv42erlqiyDiO6mavQsMieyu4n",
+   "name": "IMG_4573.HEIC",
+   "size": 1162969,
+   "md5": "2fb02a8110f8678e7c979980639a94f6",
+   "kept_id": "1fR9CXn5Prs5n4VCSYvXTVBGK4kLxaUlX"
+  },
+  {
+   "id": "1xGYPEdVs5xNqWn4drxSfZl5cBeoE48TG",
+   "name": "IMG_6270.HEIC",
+   "size": 1147714,
+   "md5": "1290a9e5c033c03b43937db85b059799",
+   "kept_id": "10Mg4sfcEdjPuyewJ3ND-BIzB7_Gp2jeH"
+  },
+  {
+   "id": "1xXHWGy-QYBdgs1tBf5pmYYRCjdDstAXv",
+   "name": "IMG_4575.HEIC",
+   "size": 939412,
+   "md5": "c2cbc17adb4b7fcf4bb33c215a5d0cde",
+   "kept_id": "19LujGILu2kA0UYm1i09gcuAbQTOuk5oU"
+  },
+  {
+   "id": "1pXRZnSONNX6caV5ImU5FCAvwzYK3xUVZ",
+   "name": "IMG_6250.HEIC",
+   "size": 745622,
+   "md5": "07698f9a76dbe39e0e2a228a8b255b34",
+   "kept_id": "1YauCRfpq-fMorTgt1TCtDTS6-ee-aPws"
+  }
+ ]
+}
