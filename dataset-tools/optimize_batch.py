@@ -76,13 +76,23 @@ class Journal:
 
     def append(self, rec: dict):
         rec["ts"] = now()
+        rec["run_mode"] = self.mode  # distinguish dry-run vs apply records
         self.records.append(rec)
         with open(self.path, "a", encoding="utf-8") as f:
             f.write(json.dumps(rec, separators=(",", ":")) + "\n")
 
     def done_ids(self) -> set:
+        # Only APPLY-run successes settle a file (bugfix 2026-09-05: records'
+        # `mode` field is the transcode type inplace/sibling, never "apply").
         return {r["id"] for r in self.records
-                if r.get("status") == "ok" and r.get("mode") == "apply"}
+                if r.get("status") == "ok" and r.get("run_mode") == "apply"}
+
+    def settled_md5(self, fid: str) -> set:
+        """All post-md5s recorded for fid by successful apply runs — used to
+        recognize already-optimized files even if the batch file changes."""
+        return {r["post"]["md5"] for r in self.records
+                if r.get("id") == fid and r.get("status") == "ok"
+                and r.get("run_mode") == "apply" and r.get("post", {}).get("md5")}
 
     def write_ledger(self, agg: dict):
         summary = {
@@ -98,7 +108,7 @@ class Journal:
 
 
 # ------------------------------------------------------------- per-file op --
-def process_one(im: dict, mode: str) -> dict:
+def process_one(im: dict, mode: str, jr=None) -> dict:
     """Full pipeline for one image. Returns a journal record."""
     fid, ext = im["id"], im["ext"]
     jpeg_family = ext in ("jpg", "jpeg")
@@ -126,6 +136,16 @@ def process_one(im: dict, mode: str) -> dict:
         data = DIO.download(fid)
         rec["pre"] = pre
         rec["bytes_in"] = len(data)
+
+        # 2b) already-optimized guard (belt & braces): if the live bytes' md5
+        # matches a settled post-md5 from an earlier apply run, this file is
+        # already generation-1 — never double-encode.
+        settled = jr.settled_md5(fid) if jr is not None else set()
+        if mode == "apply" and pre.get("md5") in settled:
+            rec["pre"] = pre
+            rec["status"] = "skipped_already_optimized"
+            rec["detail"] = "live md5 == settled post-md5 from prior apply run"
+            return rec
 
         # 3) transcode
         out = T.transcode_one(data, ext, cap=CAP, jpeg_quality=JPEG_Q,
@@ -224,7 +244,7 @@ def run(batch_file: str, mode: str) -> int:
     t0 = time.perf_counter()
     run_start = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with cf.ThreadPoolExecutor(max_workers=WORKERS) as pool:
-        futures = {pool.submit(process_one, im, mode): im for im in todo}
+        futures = {pool.submit(process_one, im, mode, jr): im for im in todo}
         for fut in cf.as_completed(futures):
             rec = fut.result()
             with _ledger_lock:
