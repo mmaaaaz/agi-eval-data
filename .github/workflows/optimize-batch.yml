@@ -20,8 +20,11 @@ on:
         type: choice
         options: [dry, apply]
 
+# Per-batch concurrency: same batch can never overlap itself (idempotent
+# resume makes even that survivable), but DIFFERENT batches may run in
+# parallel (4-wide, rate-limit math: ~2.1k QPM aggregate vs 12k cap).
 concurrency:
-  group: optimize-batch
+  group: optimize-batch-${{ inputs.batch_id }}
   cancel-in-progress: false
 
 permissions:
@@ -61,9 +64,16 @@ jobs:
             echo "no ledger changes"
           else
             git commit -m "ci(optimize): batch ${{ inputs.batch_id }} [${{ inputs.mode }}] — ${{ job.status }}"
-            git fetch origin main
-            git pull --rebase origin main
-            git push origin HEAD:main
+            # parallel batches commit concurrently: retry rebase loop
+            for i in 1 2 3 4 5; do
+              git fetch origin main
+              if git push origin HEAD:main; then
+                echo "pushed on attempt $i"; break
+              fi
+              echo "push raced with a parallel batch; rebasing (attempt $i)"
+              git pull --rebase origin main || git rebase --abort
+              sleep $((i * 5))
+            done
           fi
 
       - name: Upload artifacts (always — evidence on red too)
