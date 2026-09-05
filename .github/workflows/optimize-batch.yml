@@ -1,0 +1,76 @@
+name: optimize-batch
+
+# World-dataset optimization: ONE batch per run (plan v6 §2).
+# Dispatch:  gh workflow run optimize-batch -f batch_id=pilot-500 -f mode=dry
+# A red battery exits 3 → job fails → the queue orchestrator halts.
+# The ledger (dataset-tools/runs/<batch>/) is committed even on RED —
+# failure evidence is evidence. Concurrency group prevents overlap.
+
+on:
+  workflow_dispatch:
+    inputs:
+      batch_id:
+        description: "Batch file name under dataset-tools/batches/ (without .json)"
+        required: true
+        type: string
+      mode:
+        description: "dry = no Drive writes; apply = real in-place optimization"
+        required: true
+        default: dry
+        type: choice
+        options: [dry, apply]
+
+concurrency:
+  group: optimize-batch
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  batch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 360
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install pinned deps
+        run: pip install -r dataset-tools/requirements-ci.txt
+
+      - name: Run batch (${{ inputs.mode }})
+        env:
+          DRIVE_CLIENT_ID: ${{ secrets.DRIVE_CLIENT_ID }}
+          DRIVE_CLIENT_SECRET: ${{ secrets.DRIVE_CLIENT_SECRET }}
+          DRIVE_RW_REFRESH_TOKEN: ${{ secrets.DRIVE_RW_REFRESH_TOKEN }}
+        run: |
+          python dataset-tools/optimize_batch.py \
+            --batch "dataset-tools/batches/${{ inputs.batch_id }}.json" \
+            --mode "${{ inputs.mode }}"
+
+      - name: Commit batch ledger (green or red)
+        if: always()
+        run: |
+          git config user.name  "agi-eval-bot"
+          git config user.email "bot@agi-eval-data.local"
+          git add "dataset-tools/runs/${{ inputs.batch_id }}/" || true
+          if git diff --cached --quiet; then
+            echo "no ledger changes"
+          else
+            git commit -m "ci(optimize): batch ${{ inputs.batch_id }} [${{ inputs.mode }}] — ${{ job.status }}"
+            git fetch origin main
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi
+
+      - name: Upload artifacts (always — evidence on red too)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: "batch-${{ inputs.batch_id }}-${{ inputs.mode }}-${{ github.run_number }}"
+          path: dataset-tools/runs/
+          retention-days: 30
+          if-no-files-found: warn

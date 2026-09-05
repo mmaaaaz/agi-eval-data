@@ -1,0 +1,27 @@
+{
+  "manifest": "data/latest.json",
+  "keep_rule": "oldest",
+  "optimize": {
+    "rungs": [
+      {"cap_long_edge": 1568, "jpeg_quality": 78},
+      {"cap_long_edge": 1568, "jpeg_quality": 75},
+      {"cap_long_edge": 1568, "jpeg_quality": 72},
+      {"cap_long_edge": 1440, "jpeg_quality": 80},
+      {"cap_long_edge": 1280, "jpeg_quality": 80}
+    ],
+    "active_rung": 1,
+    "webp_quality": 75,
+    "upscale": false,
+    "resample": "lanczos",
+    "strip_metadata": true,
+    "workers": 4
+  },
+  "batches": {"pilot": 500, "regular": 2000},
+  "drive": {
+    "journal_folder": "Optimized Dataset/_journal",
+    "optimized_root_name": "Optimized Dataset",
+    "tyd_folder_id": "15Cz7j6Kj-HywKTa991185Zroh3MuF0u8"
+  },
+  "claude_cap_bytes": 5000000,
+  "approval_gates": {"dedup_delete": true, "cutover": true, "originals_delete": true}
+}
