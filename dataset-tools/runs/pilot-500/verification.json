@@ -1,7 +1,7 @@
 {
  "batch_id": "pilot-500",
  "mode": "dry",
- "finished_at": "2026-09-05T12:44:49Z",
+ "finished_at": "2026-09-05T12:53:23Z",
  "rung": {
   "cap": 1568,
   "jpeg_quality": 78,
@@ -10,17 +10,17 @@
  "stats": {
   "processed": 500,
   "skipped": 4,
-  "errors": 74,
-  "bytes_in": 1568483937,
-  "bytes_out": 61651526
+  "errors": 0,
+  "bytes_in": 1672230072,
+  "bytes_out": 72063516
  },
  "battery": {
-  "files": 422,
-  "passed": 422,
+  "files": 918,
+  "passed": 918,
   "failed": 0,
-  "checks": 4224,
+  "checks": 9188,
   "failed_checks": 0,
   "ok": true
  },
- "verdict": "RED"
+ "verdict": "GREEN"
 }
