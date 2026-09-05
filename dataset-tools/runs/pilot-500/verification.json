@@ -1,0 +1,26 @@
+{
+ "batch_id": "pilot-500",
+ "mode": "dry",
+ "finished_at": "2026-09-05T12:44:49Z",
+ "rung": {
+  "cap": 1568,
+  "jpeg_quality": 78,
+  "webp_quality": 75
+ },
+ "stats": {
+  "processed": 500,
+  "skipped": 4,
+  "errors": 74,
+  "bytes_in": 1568483937,
+  "bytes_out": 61651526
+ },
+ "battery": {
+  "files": 422,
+  "passed": 422,
+  "failed": 0,
+  "checks": 4224,
+  "failed_checks": 0,
+  "ok": true
+ },
+ "verdict": "RED"
+}
