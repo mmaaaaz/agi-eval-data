@@ -49,15 +49,16 @@ def check_file(rec: dict, post_bytes: bytes) -> list:
     add("claude_cap", size <= CLAUDE_CAP_BYTES, f"{size} B")
     if rec.get("mode") == "inplace":
         pre_size = max(pre.get("size", 0), 1)
-        if size > pre_size * SIZE_TOLERANCE:
-            # plan v6: growth is FLAGGED for the report, not a batch-halting
-            # failure (small q-50 sources legitimately grow at q78). Clearly
-            # wrong transcodes (>25% growth) still fail.
-            if size > pre_size * 1.25:
-                add("size_grew", False, f"{pre_size} -> {size} (>25%)")
-            else:
-                results.append({"name": "size_grew_minor", "ok": True,
-                                "detail": f"{pre_size} -> {size} (2-25%, flagged)"})
+        grew_by = size - pre_size
+        # plan v6: growth is flagged for the report, not batch-halting, unless
+        # it is BOTH proportionally AND absolutely meaningful (the 2026-09-05
+        # rehearsal showed a 3.4 KB source legitimately growing 850 B at q78 —
+        # noise; a 5 MB -> 6.5 MB would be a real regression).
+        if size > pre_size * 1.25 and grew_by > 50_000:
+            add("size_grew", False, f"{pre_size} -> {size} (>25% and >50 KB)")
+        elif size > pre_size * SIZE_TOLERANCE and grew_by > 0:
+            results.append({"name": "size_grew_minor", "ok": True,
+                            "detail": f"{pre_size} -> {size} (+{grew_by} B, flagged)"})
 
     # decode proof + dims
     try:

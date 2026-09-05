@@ -1,0 +1,26 @@
+{
+ "batch_id": "rehearsal-001",
+ "mode": "apply",
+ "finished_at": "2026-09-05T12:59:46Z",
+ "rung": {
+  "cap": 1568,
+  "jpeg_quality": 78,
+  "webp_quality": 75
+ },
+ "stats": {
+  "processed": 20,
+  "skipped": 2,
+  "errors": 1,
+  "bytes_in": 18257780,
+  "bytes_out": 2886914
+ },
+ "battery": {
+  "files": 18,
+  "passed": 17,
+  "failed": 1,
+  "checks": 181,
+  "failed_checks": 1,
+  "ok": false
+ },
+ "verdict": "RED"
+}

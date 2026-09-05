@@ -109,6 +109,10 @@ def process_one(im: dict, mode: str) -> dict:
     try:
         # 1) server truth BEFORE touching anything
         meta = DIO.get_meta(fid)
+        if meta.get("trashed"):
+            rec["status"] = "skipped_trashed"
+            rec["detail"] = "file is in trash (dedup or manual) — left untouched"
+            return rec
         if meta.get("mimeType") == "image/gif" and ext == "gif":
             rec.update(status="skipped_gif", detail="animated gif pass-through")
             return rec

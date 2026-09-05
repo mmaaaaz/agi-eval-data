@@ -97,7 +97,7 @@ def with_retry(fn, *args, **kw):
 
 
 META_FIELDS = ("id, name, mimeType, size, md5Checksum, version, createdTime, "
-               "owners(emailAddress), parents")
+               "trashed, owners(emailAddress), parents")
 
 
 def get_meta(fid: str, fields: str = META_FIELDS) -> dict:

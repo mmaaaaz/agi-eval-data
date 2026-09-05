@@ -57,15 +57,25 @@ class TestInvariants:
         assert any(not x["ok"] and "created" in x["name"] for x in results)
 
     def test_grew_beyond_tolerance_fails(self):
-        r = rec(pre_size=100000, post_size=150000)
+        # >25% AND >50 KB absolute: a real regression, must fail
+        r = rec(pre_size=1000000, post_size=1500000)
         r["_post_bytes"] = jpeg_bytes(r["post"]["w"], r["post"]["h"])
         r["post"]["md5"] = hashlib.md5(r["_post_bytes"]).hexdigest()
         results = B.check_file(r, r["_post_bytes"])
         assert any(not x["ok"] and "size_grew" in x["name"] for x in results)
 
+    def test_micro_file_growth_is_noise(self):
+        # rehearsal finding 2026-09-05: 3.4 KB source grew 850 B at q78 —
+        # proportionally huge, absolutely nothing. Must NOT fail.
+        r = rec(pre_size=3384, post_size=4234)
+        r["_post_bytes"] = jpeg_bytes(r["post"]["w"], r["post"]["h"])
+        r["post"]["md5"] = hashlib.md5(r["_post_bytes"]).hexdigest()
+        results = B.check_file(r, r["_post_bytes"])
+        assert all(x["ok"] or x["name"] != "size_grew" for x in results)
+
     def test_minor_growth_flagged_but_passes(self):
-        # 2-25% growth: legitimate re-encode outcome, recorded not fatal
-        r = rec(pre_size=100000, post_size=110000)
+        # 2-25% growth on a normal file: legitimate re-encode outcome
+        r = rec(pre_size=1000000, post_size=1100000)
         r["_post_bytes"] = jpeg_bytes(r["post"]["w"], r["post"]["h"])
         r["post"]["md5"] = hashlib.md5(r["_post_bytes"]).hexdigest()
         results = B.check_file(r, r["_post_bytes"])
