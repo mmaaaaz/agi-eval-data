@@ -1,0 +1,26 @@
+{
+ "batch_id": "batch_0007",
+ "mode": "apply",
+ "finished_at": "2026-09-05T15:38:55Z",
+ "rung": {
+  "cap": 1568,
+  "jpeg_quality": 78,
+  "webp_quality": 75
+ },
+ "stats": {
+  "processed": 2000,
+  "skipped": 64,
+  "errors": 0,
+  "bytes_in": 3701378709,
+  "bytes_out": 436546176
+ },
+ "battery": {
+  "files": 1936,
+  "passed": 1936,
+  "failed": 0,
+  "checks": 15488,
+  "failed_checks": 0,
+  "ok": true
+ },
+ "verdict": "GREEN"
+}
