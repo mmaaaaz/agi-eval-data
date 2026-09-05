@@ -157,11 +157,22 @@ def process_one(im: dict, mode: str) -> dict:
                     rec["status"] = "error"; rec["detail"] = "no parent folder"
                     return rec
                 new_name = (im["name"] or f"{fid}.webp").rsplit(".", 1)[0] + ".webp"
-                created = DIO.create_media(new_name, parent, out["data"],
-                                           "image/webp")
-                rec["new_id"] = created["id"]
-                rec["post"]["owner"] = (created.get("owners") or [{}])[0].get("emailAddress")
-                rec["post"]["created"] = (created.get("createdTime") or "")[:10]
+                safe_name = new_name.replace("'", "\\'")
+                existing = DIO.with_retry(
+                    DIO.service().files().list,
+                    q=f"name='{safe_name}' and '{parent}' in parents and trashed=false",
+                    fields="files(id,md5Checksum)", pageSize=2).get("files", [])
+                if existing and existing[0].get("md5Checksum") == out["md5"]:
+                    # idempotent re-run: our own sibling from a previous
+                    # attempt exists with identical bytes — reuse it
+                    rec["new_id"] = existing[0]["id"]
+                    rec["reused_sibling"] = True
+                else:
+                    created = DIO.create_media(new_name, parent, out["data"],
+                                               "image/webp")
+                    rec["new_id"] = created["id"]
+                    rec["post"]["owner"] = (created.get("owners") or [{}])[0].get("emailAddress")
+                    rec["post"]["created"] = (created.get("createdTime") or "")[:10]
         else:
             rec["new_id"] = None  # dry: nothing written
 
@@ -211,6 +222,7 @@ def run(batch_file: str, mode: str) -> int:
     todo = [f for f in files if f["id"] not in already]
 
     t0 = time.perf_counter()
+    run_start = dt.datetime.now(dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
     with cf.ThreadPoolExecutor(max_workers=WORKERS) as pool:
         futures = {pool.submit(process_one, im, mode): im for im in todo}
         for fut in cf.as_completed(futures):
@@ -231,9 +243,12 @@ def run(batch_file: str, mode: str) -> int:
                         f"err={_stats['errors']} skip={_stats['skipped']} "
                         f"| {time.perf_counter()-t0:.0f}s")
 
-    # battery aggregates over ALL records in this run
-    checkable = [r for r in jr.records if r.get("battery")]
-    agg = B.aggregate([r["battery"] for r in checkable]) if checkable else {"files": 0, "ok": True}
+    # battery aggregates over THIS RUN's records only (the ledger file is
+    # append-only across runs — aggregating the file would double-count and
+    # wrongly re-judge records already settled by earlier runs)
+    run_recs = [r for r in jr.records if r.get("attempted_at", "") >= run_start
+                and r.get("battery")]
+    agg = B.aggregate([r["battery"] for r in run_recs]) if run_recs else {"files": 0, "ok": True}
     summary = jr.write_ledger(agg)
 
     log(f"VERDICT {summary['verdict']} | battery files={agg.get('files')} "

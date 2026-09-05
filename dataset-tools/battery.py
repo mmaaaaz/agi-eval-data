@@ -24,13 +24,16 @@ def check_file(rec: dict, post_bytes: bytes) -> list:
 
     pre, post = rec.get("pre", {}), rec.get("post", {})
 
-    # identity invariants
-    add("id_unchanged", rec.get("id") is not None)
-    add("name_unchanged", rec.get("name") == rec.get("name"))
-    add("owner_unchanged", post.get("owner") == pre.get("owner"),
-        f"{pre.get('owner')} -> {post.get('owner')}")
-    add("created_unchanged", post.get("created") == pre.get("created"),
-        f"{pre.get('created')} -> {post.get('created')}")
+    # identity invariants — only meaningful for IN-PLACE rewrites (same file).
+    # Siblings are NEW files (owned by maaaazau, created today) — pilot apply
+    # 2026-09-05 proved applying these checks to siblings false-fails 255/255.
+    if rec.get("mode") == "inplace":
+        add("owner_unchanged", post.get("owner") == pre.get("owner"),
+            f"{pre.get('owner')} -> {post.get('owner')}")
+        add("created_unchanged", post.get("created") == pre.get("created"),
+            f"{pre.get('created')} -> {post.get('created')}")
+    else:
+        add("sibling_new_id", bool(rec.get("new_id")), rec.get("new_id"))
 
     # mimeType/codec invariant
     if rec.get("mode") == "inplace":
@@ -44,7 +47,7 @@ def check_file(rec: dict, post_bytes: bytes) -> list:
     add("md5_matches_encoded", actual == post.get("md5"),
         f"claimed {post.get('md5','')[:12]}… actual {actual[:12]}…")
 
-    # size rules
+    # size rules (never applies to siblings — they are new, not replacements)
     size = post.get("size", 0)
     add("claude_cap", size <= CLAUDE_CAP_BYTES, f"{size} B")
     if rec.get("mode") == "inplace":
