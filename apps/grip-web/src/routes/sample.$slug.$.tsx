@@ -143,6 +143,7 @@ function SamplePage(_props: SamplePageProps) {
               q={q}
               levelName={levelNameOf(q.difficulty_level)}
               index={i}
+              constantBaseline={cat.constantLevels?.includes(q.difficulty_level) ?? false}
               edit={edit?.patch.changes.some((c) => c.field === `q:${q.question_id}`) ? edit : undefined}
               onEdit={(qq) => { setEditQ(qq); setEditSceneKey(null); }}
             />

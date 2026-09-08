@@ -59,6 +59,8 @@ export type Category = {
   score: { min: number; mean: number; max: number } | null;
   overridesApplied: number;
   modifiedSampleIds: string[];
+  /** closed levels whose answers are structurally constant at 100% upstream */
+  constantLevels?: number[];
 };
 
 export type GripTree = {

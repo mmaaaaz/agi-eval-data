@@ -38,10 +38,12 @@ interface Props {
   levelName: string;
   index: number;
   edit?: StagedEdit;
+  /** true when upstream flags this level as structurally constant (100% baseline) */
+  constantBaseline?: boolean;
   onEdit: (q: Question) => void;
 }
 
-export function QuestionCard({ q, levelName, index, edit, onEdit }: Props) {
+export function QuestionCard({ q, levelName, index, edit, constantBaseline, onEdit }: Props) {
   const [open, setOpen] = useState(false);
   return (
     <div className={`rounded-lg border bg-[#0a0a0a] p-3.5 ${edit ? "border-[#8b5cf6]/50" : "border-[#262626]"}`}>
@@ -52,6 +54,14 @@ export function QuestionCard({ q, levelName, index, edit, onEdit }: Props) {
         <span className="font-mono text-[9px] uppercase tracking-wider text-[#666]">{levelName}</span>
         <span className="rounded border border-[#262626] px-1.5 py-0.5 font-mono text-[9px] text-[#666]">{q.question_type}</span>
         <AnswerFormatChip format={q.answer_format} />
+        {constantBaseline && (
+          <span
+            className="cursor-help rounded bg-[#8a6d1f]/20 px-1.5 py-0.5 font-mono text-[9px] text-[#d4b04a]"
+            title="upstream audit: this level's answer is structurally constant at 100% — accuracy here carries no discriminative signal"
+          >
+            baseline 100%
+          </span>
+        )}
         {edit && (
           <span
             className="cursor-help rounded bg-[#8b5cf6]/20 px-1.5 py-0.5 font-mono text-[9px] text-[#a78bfa]"

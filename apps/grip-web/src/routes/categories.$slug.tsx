@@ -35,6 +35,14 @@ function CategoryDetailPage() {
         {cat.openCount > 0 && <span className="text-[#a78bfa]">+{fmtN(cat.openCount)} open</span>}
         {cat.legacyImages > 0 && <span className="text-[#8a6d1f]">{fmtN(cat.legacyImages)} legacy imgs</span>}
         {cat.score && <span>difficulty {cat.score.min.toFixed(2)}–{cat.score.max.toFixed(2)} (mean {cat.score.mean.toFixed(3)})</span>}
+        {cat.constantLevels && cat.constantLevels.length > 0 && (
+          <span
+            className="cursor-help text-[#d4b04a]"
+            title="upstream audit: these closed levels are structurally constant at 100% — accuracy carries no discriminative signal"
+          >
+            ⚠ constant baseline: L{cat.constantLevels.join(", L")}
+          </span>
+        )}
         <a href={upstreamBlobUrl(`Dataset/${cat.folder}/README.md`)} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">
           README ↗
         </a>

@@ -66,6 +66,18 @@ LEVEL_NAMES = {
     5: "Extrapolative/Counterfactual",
 }
 
+# Upstream README §6 / final_suite_audit: closed levels whose answers are
+# structurally constant at 100% (every image yields the same answer), so they
+# carry no discriminative signal. Surfaced as honesty chips on the site.
+CONSTANT_BASELINE_LEVELS: dict[str, tuple[int, ...]] = {
+    "cube_net": (1,),
+    "gear_train": (2,),
+    "optical_illusion": (1,),
+    "orthographic": (5,),
+    "polyhedron": (5,),
+    "symmetry_pattern": (5,),
+}
+
 
 def ensure_out_dir() -> Path:
     OUT_DIR.mkdir(parents=True, exist_ok=True)

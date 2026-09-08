@@ -25,7 +25,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).parent))
 from grip_common import (
-    CATEGORIES, LEVEL_NAMES, OUT_DIR, UPSTREAM_REPO, ensure_out_dir,
+    CATEGORIES, CONSTANT_BASELINE_LEVELS, LEVEL_NAMES, OUT_DIR, UPSTREAM_REPO, ensure_out_dir,
 )
 
 CACHE = Path(".grip-cache")
@@ -288,6 +288,7 @@ def main() -> int:
                       "max": max(scores)} if scores else None,
             "overridesApplied": n_applied,
             "modifiedSampleIds": modified,
+            "constantLevels": list(CONSTANT_BASELINE_LEVELS.get(slug, ())),
         })
         (OUT_DIR / f"{slug}.json.gz").write_bytes(gzip_bytes(
             json.dumps({"slug": slug, "records": records}, ensure_ascii=False)))
