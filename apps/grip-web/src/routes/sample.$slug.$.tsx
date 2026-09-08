@@ -35,6 +35,7 @@ function SamplePage(_props: SamplePageProps) {
   const [editSceneKey, setEditSceneKey] = useState<string | null>(null);
   const [tab, setTab] = useState<QTab>("closed");
   const [editOq, setEditOq] = useState(false);
+  const [editOqOpenKey, setEditOqOpenKey] = useState<string | null>(null);
 
   const sample = detail?.records.find((r) => r.sub === sub && r.id === id);
 
@@ -152,7 +153,7 @@ function SamplePage(_props: SamplePageProps) {
             <OpenQuestionCard
               oq={sample.oq}
               edit={edit?.patch.changes.some((c) => c.field.startsWith("oq.")) ? edit : undefined}
-              onEdit={() => setEditOq(true)}
+              onEdit={(oqq) => { setEditOq(true); setEditOqOpenKey(null); }}
             />
           )}
           {tab === "open" && !sample.oq && (
@@ -177,6 +178,8 @@ function SamplePage(_props: SamplePageProps) {
           slug={slug}
           sample={sample}
           question={editQ}
+          openQuestion={editOq ? sample.oq : null}
+          openKey={editOqOpenKey}
           sceneKey={editSceneKey === "__scene__" ? null : editSceneKey}
           existing={edit}
           onClose={() => { setEditQ(null); setEditSceneKey(null); setEditOq(false); }}

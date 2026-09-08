@@ -27,20 +27,21 @@ function Overview() {
       <section className="pb-7">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#a1a1a1]">grip-benchmark-34 · synthetic · independently validated</p>
         <p className="t-num mt-2 text-5xl font-semibold tabular-nums tracking-tighter text-white sm:text-6xl lg:text-7xl">
-          {fmtN(c.questionsMain)}
+          {fmtN(c.questionsMain + (c.openTotal ?? 0))}
         </p>
         <p className="mt-3 font-mono text-[11px] text-[#666] sm:text-xs">
-          ground-truthed questions · {fmtN(c.imagesMain)} images · {c.categories} sub-benchmarks · 5 difficulty levels
+          ground-truthed questions ({fmtN(c.questionsMain)} closed L1–L5 + {fmtN(c.openTotal ?? 0)} open-ended) ·{" "}
+          {fmtN(c.imagesMain)} images · {c.categories} sub-benchmarks
         </p>
       </section>
 
       <section aria-label="dataset stats" className="grid grid-cols-2 gap-px overflow-hidden rounded-lg border border-[#262626] bg-[#262626] sm:grid-cols-3 lg:grid-cols-6">
-        <Tile label="questions" value={fmtN(c.questionsMain)} />
+        <Tile label="closed questions (L1–L5)" value={fmtN(c.questionsMain)} />
+        <Tile label="open-ended questions" value={fmtN(c.openTotal ?? 0)} />
         <Tile label="images" value={fmtN(c.imagesMain)} />
         <Tile label="sub-benchmarks" value={fmtN(c.categories)} />
         <Tile label="geometric / physical" value={`${geometric} / ${physical}`} />
         <Tile label="per level (L1–L5)" value={fmtN(c.levels["1"] ?? 0)} />
-        <Tile label="legacy snapshot images" value={fmtN(c.legacyImages)} />
       </section>
 
       <section aria-label="quick jump" className="mt-3 grid grid-cols-2 gap-3 lg:grid-cols-4">
@@ -56,15 +57,15 @@ function Overview() {
           <span className="font-mono text-[10px] text-[#666]">{c.categories} categories · full folder tree</span>
         </div>
         <div className="overflow-x-auto rounded-lg border border-[#262626]">
-          <table className="w-full min-w-[720px] text-left text-sm">
+          <table className="w-full min-w-[780px] text-left text-sm">
             <thead>
               <tr className="border-b border-[#262626] font-mono text-[9px] uppercase tracking-widest text-[#666]">
                 <th className="px-3 py-2 font-normal">category</th>
                 <th className="px-3 py-2 font-normal">class</th>
                 <th className="px-3 py-2 text-right font-normal">images</th>
                 <th className="px-3 py-2 text-right font-normal">questions</th>
+                <th className="px-3 py-2 text-right font-normal">open</th>
                 <th className="px-3 py-2 text-right font-normal">mean diff.</th>
-                <th className="px-3 py-2 text-right font-normal">subsuites</th>
               </tr>
             </thead>
             <tbody>
@@ -83,10 +84,12 @@ function Overview() {
                   <td className="px-3 py-2 font-mono text-[10px] text-[#666]">{cat.geometryClass}</td>
                   <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{fmtN(cat.images)}</td>
                   <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{fmtN(cat.questions)}</td>
+                  <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-[#a78bfa]">
+                    {cat.openCount > 0 ? `+${fmtN(cat.openCount)}` : "—"}
+                  </td>
                   <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">
                     {cat.score ? cat.score.mean.toFixed(3) : "—"}
                   </td>
-                  <td className="px-3 py-2 text-right font-mono text-xs tabular-nums text-[#666]">{cat.subsuites.length}</td>
                 </tr>
               ))}
             </tbody>

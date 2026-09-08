@@ -2,13 +2,17 @@ import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { upstreamBlobUrl } from "../lib/gripImage";
 import { stageEdit, workerConfigured } from "../lib/gripSync";
-import type { Question, Sample } from "../lib/gripTypes";
+import type { OpenQuestion, Question, Sample } from "../lib/gripTypes";
 import { saveLocalEdit, type LocalEdit } from "../routes/sample.$slug.$";
 
 interface Props {
   slug: string;
   sample: Sample;
   question: Question | null;
+  /** open question being edited, when the target is the open tier */
+  openQuestion?: OpenQuestion | null;
+  /** open sub-fact key to preselect, or null */
+  openKey?: string | null;
   /** scene key to edit, or null when editing a question */
   sceneKey: string | null;
   existing?: LocalEdit;
@@ -16,15 +20,25 @@ interface Props {
   onSaved: () => void;
 }
 
+function openCurrentValue(oq: OpenQuestion | null | undefined, key: string | null | undefined): unknown {
+  if (!oq || !key) return "";
+  if (key in oq) return oq[key as keyof OpenQuestion];
+  return oq.subfacts[key];
+}
+
 /** Generate + stage an override patch. Falls back to copy-JSON when the
  *  grip-sync worker isn't configured in /settings. */
-export function EditDialog({ slug, sample, question, sceneKey, existing, onClose, onSaved }: Props) {
+export function EditDialog({ slug, sample, question, openQuestion, openKey, sceneKey, existing, onClose, onSaved }: Props) {
+  const isOq = !question && openQuestion != null;
   const target = question
     ? { field: `q:${question.question_id}.${"ground_truth"}`, label: `L${question.difficulty_level} · ${question.question_type}` }
-    : { field: sceneKey ? `scene.${sceneKey}` : "", label: sceneKey ?? "" };
+    : isOq
+      ? { field: `oq.${openKey ?? "prompt"}`, label: `open · ${openKey ?? "prompt"}` }
+      : { field: sceneKey ? `scene.${sceneKey}` : "", label: sceneKey ?? "" };
 
   const [field, setField] = useState(target.field);
-  const [current, setCurrent] = useState<string>(() => String(currentValue(sample, question, sceneKey)));
+  const [current, setCurrent] = useState<string>(() =>
+    String(isOq ? openCurrentValue(openQuestion, openKey) : currentValue(sample, question, sceneKey)));
   const [next, setNext] = useState("");
   const [reason, setReason] = useState("");
   const [author, setAuthor] = useState(() => {
@@ -73,16 +87,49 @@ export function EditDialog({ slug, sample, question, sceneKey, existing, onClose
         onClick={(e) => e.stopPropagation()}
       >
         <p className="font-mono text-[10px] uppercase tracking-[0.2em] text-[#666]">stage override · {slug}/{sample.id}</p>
-        <h2 className="mt-1 text-sm font-medium text-white">{question ? `Question ${question.question_id}` : `Scene key: ${sceneKey}`}</h2>
+        <h2 className="mt-1 text-sm font-medium text-white">
+          {question
+            ? `Question ${question.question_id}`
+            : isOq
+              ? `Open question ${openQuestion?.question_id}`
+              : `Scene key: ${sceneKey}`}
+        </h2>
         {question && <p className="mt-1 line-clamp-2 text-xs text-[#a1a1a1]">{question.question_text}</p>}
 
         <label className="mt-4 block font-mono text-[10px] uppercase tracking-wider text-[#666]">field</label>
-        <input
+        <select
           value={field}
-          onChange={(e) => setField(e.target.value)}
-          spellCheck={false}
+          onChange={(e) => {
+            setField(e.target.value);
+            const v = e.target.value;
+            if (isOq) setCurrent(String(openCurrentValue(openQuestion, v.slice(3))));
+            else if (v.startsWith("q:")) {
+              const qid = v.slice(2).split(".")[0];
+              const q = sample.q.find((qq) => qq.question_id === qid);
+              if (q && v.endsWith(".ground_truth")) setCurrent(String(q.ground_truth));
+            } else if (v.startsWith("scene.")) {
+              setCurrent(String(sample.scene[v.slice(6)] ?? ""));
+            }
+          }}
           className="mt-1 w-full rounded border border-[#262626] bg-black px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-[#8b5cf6]"
-        />
+        >
+          {question && (
+            <option value={`q:${question.question_id}.ground_truth`}>
+              q: {question.question_type} · ground truth
+            </option>
+          )}
+          {isOq && openQuestion && (
+            <>
+              <option value="oq.prompt">oq: prompt</option>
+              {Object.keys(openQuestion.subfacts).map((k) => (
+                <option key={k} value={`oq.${k}`}>oq: {k}</option>
+              ))}
+            </>
+          )}
+          {!question && !isOq && sceneKey && (
+            <option value={`scene.${sceneKey}`}>scene: {sceneKey}</option>
+          )}
+        </select>
 
         <div className="mt-3 grid grid-cols-2 gap-3">
           <div>

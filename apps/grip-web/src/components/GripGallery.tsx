@@ -94,6 +94,7 @@ export function GripGallery({ samples, onOpen, badge }: Props) {
                     />
                     <div className="mt-1.5 flex items-center gap-1.5">
                       <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[#666] group-hover:text-[#a1a1a1]" title={s.id}>
+                        {s.oq != null && <span className="mr-1 inline-block h-[6px] w-[6px] rounded-full bg-[#8b5cf6] align-middle" title="has open-ended question" />}
                         {s.id}
                       </span>
                       {badge?.(s)}
