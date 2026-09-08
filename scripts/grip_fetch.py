@@ -31,6 +31,7 @@ from grip_common import OUT_DIR, UPSTREAM_REPO
 
 CACHE = Path(".grip-cache")
 RAW = f"https://raw.githubusercontent.com/{UPSTREAM_REPO}/main"
+MEDIA = f"https://media.githubusercontent.com/media/{UPSTREAM_REPO}/main"
 UA = {"User-Agent": "grip-fetch/2", "Accept": "*/*"}
 
 
@@ -147,11 +148,26 @@ def discover_override_paths() -> list[str]:
     return overrides_from_listing(sub)
 
 
+def is_lfs_pointer(data: bytes) -> bool:
+    """raw.githubusercontent returns pointer text for LFS-backed files.
+    Pointer content can use CRLF or LF line endings — match the URL prefix."""
+    return data.lstrip().startswith(b"version https://git-lfs.github.com/spec/v1")
+
+
 def fetch_file(repo_rel: str, dest: Path) -> None:
     dest.parent.mkdir(parents=True, exist_ok=True)
     req = urllib.request.Request(f"{RAW}/{repo_rel}", headers=UA)
-    with urllib.request.urlopen(req, timeout=300) as r, open(dest, "wb") as f:
-        f.write(r.read())
+    with urllib.request.urlopen(req, timeout=300) as r:
+        data = r.read()
+    if is_lfs_pointer(data):
+        # upstream moved this file into LFS — re-fetch real bytes via media host
+        req2 = urllib.request.Request(f"{MEDIA}/{repo_rel}", headers=UA)
+        with urllib.request.urlopen(req2, timeout=600) as r2:
+            data = r2.read()
+        if is_lfs_pointer(data):
+            raise RuntimeError(f"LFS resolution failed for {repo_rel} (still a pointer)")
+    with open(dest, "wb") as f:
+        f.write(data)
 
 
 # ---------- main ----------

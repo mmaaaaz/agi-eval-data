@@ -7,6 +7,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from grip_fetch import (
     parse_ls_remote, cache_path_for, needs_rebake,
     annotations_from_listing, overrides_from_listing, last_baked_sha,
+    is_lfs_pointer,
 )
 
 
@@ -75,6 +76,24 @@ class ListingFilterTests(unittest.TestCase):
 
     def test_empty_listing(self):
         self.assertEqual(annotations_from_listing([], "Dataset/x"), [])
+
+
+class LfsDetectionTests(unittest.TestCase):
+    POINTER = ("version https://git-lfs.github.com/spec/v1\n"
+               "oid sha256:1a7895539816ab499467499033719d72c7757fdace6d9c5d661bbf0367bc614d\n"
+               "size 22221\n")
+
+    def test_pointer_detected(self):
+        self.assertTrue(is_lfs_pointer(self.POINTER.encode()))
+
+    def test_json_not_pointer(self):
+        self.assertFalse(is_lfs_pointer(b'{"id": "route_puzzle_0001"}'))
+
+    def test_empty_not_pointer(self):
+        self.assertFalse(is_lfs_pointer(b""))
+
+    def test_partial_prefix_not_enough(self):
+        self.assertFalse(is_lfs_pointer(b"version https://git-lfs.github.com/spec/"))
 
 
 class LastBakedShaTests(unittest.TestCase):
