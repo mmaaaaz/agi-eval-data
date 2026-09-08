@@ -9,6 +9,17 @@ export type Question = {
   answer_format: string | object;
 };
 
+export type OpenQuestion = {
+  question_id: string;
+  prompt: string;
+  acceptance_set: string[];
+  targets: string[];
+  tolerances: Record<string, { absolute_tolerance?: number; unit?: string }>;
+  scoring: { confidence_range: [number, number]; partial_credit_fields: string[] };
+  dataset_version?: string;
+  subfacts: Record<string, unknown>;
+};
+
 export type Sample = {
   id: string;
   /** subsuite: "main" = the canonical 5-level suite; others are snapshot dirs */
@@ -22,6 +33,8 @@ export type Sample = {
   canvas: [number, number] | [number | null, number | null];
   scene: Record<string, unknown>;
   q: Question[];
+  /** open-loop question — present only for eligible main-suite images */
+  oq?: OpenQuestion | null;
 };
 
 export type Subsuite = { id: string; hasAnnotations: boolean };

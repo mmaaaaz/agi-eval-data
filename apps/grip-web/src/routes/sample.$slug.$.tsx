@@ -5,9 +5,12 @@ import { useTree } from "../components/GripShell";
 import { useCategoryDetail } from "../lib/gripData";
 import { gripImageUrl } from "../lib/gripImage";
 import { QuestionCard } from "../components/QuestionCard";
+import { OpenQuestionCard } from "../components/OpenQuestionCard";
 import { ScenePanel } from "../components/ScenePanel";
 import { EditDialog } from "../components/EditDialog";
 import type { Question } from "../lib/gripTypes";
+
+type QTab = "closed" | "open";
 
 /** Two route shapes because sample ids collide across subsuites:
  *  /sample/$slug/$id           (main)
@@ -30,6 +33,8 @@ function SamplePage(_props: SamplePageProps) {
   const { detail, loading, error } = useCategoryDetail(slug);
   const [editQ, setEditQ] = useState<Question | null>(null);
   const [editSceneKey, setEditSceneKey] = useState<string | null>(null);
+  const [tab, setTab] = useState<QTab>("closed");
+  const [editOq, setEditOq] = useState(false);
 
   const sample = detail?.records.find((r) => r.sub === sub && r.id === id);
 
@@ -98,14 +103,41 @@ function SamplePage(_props: SamplePageProps) {
           </p>
         </div>
 
-        {/* right rail: questions + scene */}
+        {/* right rail: question regime tabs + questions + scene */}
         <div className="flex flex-col gap-3">
           {isLegacy && (
             <p className="rounded-lg border border-[#8a6d1f]/40 bg-[#8a6d1f]/10 px-3 py-2 font-mono text-[10px] text-[#d4b04a]">
               legacy snapshot — this subsuite predates the five-level retrofit (its questions may not cover L1–L5).
             </p>
           )}
-          {sample.q.map((q, i) => (
+
+          {/* regime tabs */}
+          <div className="flex flex-wrap items-center gap-1">
+            <button
+              onClick={() => setTab("closed")}
+              className={`rounded-md border px-3 py-1.5 font-mono text-[11px] transition-colors ${
+                tab === "closed"
+                  ? "border-white bg-white text-black"
+                  : "border-[#262626] text-[#a1a1a1] hover:border-[#404040] hover:text-white"
+              }`}
+            >
+              closed (L1–L5)
+            </button>
+            {sample.oq && (
+              <button
+                onClick={() => setTab("open")}
+                className={`rounded-md border px-3 py-1.5 font-mono text-[11px] transition-colors ${
+                  tab === "open"
+                    ? "border-[#8b5cf6] bg-[#8b5cf6] text-black"
+                    : "border-[#8b5cf6]/40 text-[#a78bfa] hover:bg-[#8b5cf6]/10"
+                }`}
+              >
+                open-ended
+              </button>
+            )}
+          </div>
+
+          {tab === "closed" && sample.q.map((q, i) => (
             <QuestionCard
               key={q.question_id}
               q={q}
@@ -115,6 +147,18 @@ function SamplePage(_props: SamplePageProps) {
               onEdit={(qq) => { setEditQ(qq); setEditSceneKey(null); }}
             />
           ))}
+          {tab === "open" && sample.oq && (
+            <OpenQuestionCard
+              oq={sample.oq}
+              edit={edit?.patch.changes.some((c) => c.field.startsWith("oq.")) ? edit : undefined}
+              onEdit={() => setEditOq(true)}
+            />
+          )}
+          {tab === "open" && !sample.oq && (
+            <p className="rounded-lg border border-dashed border-[#262626] px-3 py-2 font-mono text-[11px] text-[#666]">
+              no open-ended question for this image (excluded upstream).
+            </p>
+          )}
           {edit && (
             <button
               onClick={() => { setEditQ(null); setEditSceneKey("__scene__"); }}
@@ -127,15 +171,15 @@ function SamplePage(_props: SamplePageProps) {
         </div>
       </div>
 
-      {(editQ || editSceneKey) && sample && (
+      {(editQ || editSceneKey || editOq) && sample && (
         <EditDialog
           slug={slug}
           sample={sample}
           question={editQ}
           sceneKey={editSceneKey === "__scene__" ? null : editSceneKey}
           existing={edit}
-          onClose={() => { setEditQ(null); setEditSceneKey(null); }}
-          onSaved={() => { setEditQ(null); setEditSceneKey(null); window.location.reload(); }}
+          onClose={() => { setEditQ(null); setEditSceneKey(null); setEditOq(false); }}
+          onSaved={() => { setEditQ(null); setEditSceneKey(null); setEditOq(false); window.location.reload(); }}
         />
       )}
     </div>
