@@ -19,6 +19,7 @@ on:
 
 permissions:
   contents: write
+  issues: write
 
 concurrency:
   group: grip-rebake
@@ -95,8 +96,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           TITLE="grip re-bake failing — site may go stale"
-          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --search "$TITLE in:title" --json number --jq '.[0].number' 2>/dev/null || echo "")
           BODY="Upstream re-bake failed at ${GITHUB_SHA::7}. The site keeps serving the last good bake, but it may be stale. Run logs: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" --json number --jq '.[0].number' 2>/dev/null || true)
           if [ -n "$EXISTING" ]; then
             gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "$BODY"
           else
