@@ -50,6 +50,7 @@ export type Category = {
   imagesMain: number;
   questions: number;
   questionsMain: number;
+  openCount: number;
   legacyImages: number;
   subsuites: Subsuite[];
   galleries: GalleryNode[];
@@ -71,6 +72,7 @@ export type GripTree = {
     questions: number;
     imagesMain: number;
     questionsMain: number;
+    openTotal: number;
     legacyImages: number;
     levels: Record<string, number>;
   };

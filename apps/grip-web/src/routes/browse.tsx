@@ -16,6 +16,7 @@ export const Route = createFileRoute("/browse")({
     q: typeof s.q === "string" ? s.q : "",
     min: typeof s.min === "string" && s.min !== "" ? Number(s.min) : null,
     max: typeof s.max === "string" && s.max !== "" ? Number(s.max) : null,
+    open: s.open === "1",
   }),
 });
 
@@ -80,6 +81,7 @@ function Browse() {
       const q = normQ(search.q);
       rows = rows.filter((r) => normQ(r.id).includes(q) || r.q.some((qq) => normQ(qq.question_text).includes(q)));
     }
+    if (search.open) rows = rows.filter((r) => r.oq != null);
     return rows;
   }, [records, search, tree.categories]);
 
@@ -133,6 +135,17 @@ function Browse() {
           placeholder="max score"
           className="w-24 rounded border border-[#262626] bg-black px-2 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-[#8b5cf6]"
         />
+        <button
+          onClick={() => setParam({ open: search.open ? null : "1" })}
+          className={`rounded border px-2.5 py-1.5 font-mono text-[10px] transition-colors ${
+            search.open
+              ? "border-[#8b5cf6] bg-[#8b5cf6]/15 text-[#a78bfa]"
+              : "border-[#262626] text-[#666] hover:border-[#404040] hover:text-[#a1a1a1]"
+          }`}
+          title="only samples with an open-ended question"
+        >
+          open only
+        </button>
         {selectedSlugs.length > 0 && (
           <button onClick={() => setParam({ cats: null })} className="rounded border border-[#262626] px-2 py-1.5 font-mono text-[10px] text-[#a1a1a1] hover:border-[#404040]">
             clear {selectedSlugs.length} category filter{selectedSlugs.length === 1 ? "" : "s"}

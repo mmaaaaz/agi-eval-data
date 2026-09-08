@@ -32,6 +32,7 @@ function CategoryDetailPage() {
       <div className="mb-5 flex flex-wrap items-center gap-x-5 gap-y-1.5 font-mono text-[11px] text-[#666]">
         <span className="text-[#a1a1a1]">{cat.folder}</span>
         <span>{fmtN(cat.imagesMain)} main imgs · {fmtN(cat.questionsMain)} q</span>
+        {cat.openCount > 0 && <span className="text-[#a78bfa]">+{fmtN(cat.openCount)} open</span>}
         {cat.legacyImages > 0 && <span className="text-[#8a6d1f]">{fmtN(cat.legacyImages)} legacy imgs</span>}
         {cat.score && <span>difficulty {cat.score.min.toFixed(2)}–{cat.score.max.toFixed(2)} (mean {cat.score.mean.toFixed(3)})</span>}
         <a href={upstreamBlobUrl(`Dataset/${cat.folder}/README.md`)} target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">

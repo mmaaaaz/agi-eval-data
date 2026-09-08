@@ -74,6 +74,7 @@ function CategoryCard({ cat }: { cat: Category }) {
       <div className="mt-2.5 flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] text-[#a1a1a1]">
         <span>{fmtN(cat.imagesMain)} imgs</span>
         <span>{fmtN(cat.questionsMain)} q</span>
+        {cat.openCount > 0 && <span className="text-[#a78bfa]">+{fmtN(cat.openCount)} open</span>}
         {subsuiteCount > 0 && <span className="text-[#666]">+{subsuiteCount} subsuite{subsuiteCount === 1 ? "" : "s"}</span>}
         {galleryCount > 0 && <span className="text-[#666]">· {galleryCount} gallery</span>}
       </div>
