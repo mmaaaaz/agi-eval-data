@@ -113,6 +113,8 @@ def main() -> int:
               f"level {lv}: {levels.get(str(lv))} != 100000")
     check(tree.get("levelNames") == {str(k): v for k, v in LEVEL_NAMES.items()},
           "levelNames mismatch")
+    check(counts.get("openTotal") == 91_904,
+          f"open questions {counts.get('openTotal')} != 91904")
 
     details: dict[str, dict] = {}
     levels_seen: Counter[int] = Counter()
@@ -126,9 +128,15 @@ def main() -> int:
         check(len(recs) == cat["images"],
               f"{slug}: detail records {len(recs)} != tree {cat['images']}")
         n_q = 0
+        n_open = 0
         for rec in recs:
             qs = rec["q"]
             n_q += len(qs)
+            oq = rec.get("oq")
+            if oq is not None:
+                n_open += 1
+                check(bool(oq.get("prompt")) and bool(oq.get("acceptance_set")),
+                      f"{slug}/{rec['id']}: open question missing prompt/acceptance_set")
             if rec.get("sub") == "main":
                 # canonical suite: exactly 5, levels 1..5
                 if len(qs) != 5:
@@ -147,6 +155,8 @@ def main() -> int:
             check(img.exists(), f"{slug}/{rec['id']}: image missing {rec['img']}")
         check(n_q == cat["questions"],
               f"{slug}: detail questions {n_q} != tree {cat['questions']}")
+        check(n_open == cat["openCount"],
+              f"{slug}: detail open {n_open} != tree {cat['openCount']}")
 
     check_overrides(details)
 

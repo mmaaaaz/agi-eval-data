@@ -131,6 +131,40 @@ def read_records(sub: dict, folder: str) -> list[dict]:
     return out
 
 
+# ---------- open-loop questions ----------
+
+OQ_RESERVED = {"question_id", "image", "prompt", "acceptance_set", "targets",
+               "tolerances", "scoring", "dataset_version"}
+
+
+def load_open_index(folder: str) -> dict[str, dict]:
+    """image filename -> cleaned open-question record, from the fetched cache.
+
+    Open rows exist only for category-root (main) images upstream; subsuite
+    folders have none. Returns {} when the category has no open tier.
+    """
+    p = CACHE / "Dataset" / folder / "open_annotations.jsonl"
+    if not p.exists():
+        return {}
+    idx: dict[str, dict] = {}
+    with p.open(encoding="utf-8") as f:
+        for line in f:
+            if not line.strip():
+                continue
+            o = json.loads(line)
+            idx[o["image"]] = {
+                "question_id": o["question_id"],
+                "prompt": o["prompt"],
+                "acceptance_set": o.get("acceptance_set", []),
+                "targets": o.get("targets", []),
+                "tolerances": o.get("tolerances", {}),
+                "scoring": o.get("scoring", {}),
+                "dataset_version": o.get("dataset_version"),
+                "subfacts": {k: v for k, v in o.items() if k not in OQ_RESERVED},
+            }
+    return idx
+
+
 # ---------- overrides ----------
 
 def load_overrides(slug: str) -> dict[str, dict]:
@@ -148,8 +182,9 @@ def load_overrides(slug: str) -> dict[str, dict]:
 def apply_overrides(records: list[dict], slug: str) -> tuple[int, list[str]]:
     """Apply override patches in place. Returns (applied, ids).
 
-    A `from` that does not match the CURRENT value is a hard error — the
-    override is stale and a human must re-assert or drop it.
+    Field grammar: `q:<qid>.<prop>` (closed), `scene.<key>`, and `oq.<subfact>`
+    (open-loop; also `oq.prompt`). A `from` that does not match the CURRENT
+    value is a hard error — the override is stale and a human must re-assert.
     """
     ovs = load_overrides(slug)
     if not ovs:
@@ -181,6 +216,18 @@ def apply_overrides(records: list[dict], slug: str) -> tuple[int, list[str]]:
                         f"override conflict {slug}/{sid} scene.{key}: "
                         f"from={ch['from']!r} actual={rec['scene'].get(key)!r}")
                 rec["scene"][key] = to
+            elif field.startswith("oq."):
+                if rec.get("oq") is None:
+                    raise SystemExit(f"{slug}/{sid}: no open question on this sample")
+                key = field[len("oq."):]
+                if "from" in ch and str(rec["oq"].get(key, rec["oq"].get("subfacts", {}).get(key))) != str(ch["from"]):
+                    raise SystemExit(
+                        f"override conflict {slug}/{sid} oq.{key}: "
+                        f"from={ch['from']!r} actual={rec['oq'].get(key, rec['oq'].get('subfacts', {}).get(key))!r}")
+                if key in rec["oq"]:
+                    rec["oq"][key] = to
+                else:
+                    rec["oq"]["subfacts"][key] = to
             else:
                 raise SystemExit(f"{slug}/{sid}: bad field {field}")
             applied += 1
@@ -203,12 +250,18 @@ def main() -> int:
         records = [r for sub in subsuites for r in read_records(sub, folder)]
         if not records:
             raise SystemExit(f"{slug}: no records — fetch failed for {folder}?")
+        open_idx = load_open_index(folder)
+        for r in records:
+            r["oq"] = open_idx.get(Path(r["img"]).name)
         n_applied, modified = apply_overrides(records, slug)
 
         qtypes: Counter[str] = Counter()
         n_q = 0
+        n_open = 0
         for r in records:
             n_q += len(r["q"])
+            if r["oq"] is not None:
+                n_open += 1
             if r["sub"] == "main":
                 for q in r["q"]:
                     qtypes[q["question_type"]] += 1
@@ -225,6 +278,7 @@ def main() -> int:
             "imagesMain": sum(1 for r in records if r["sub"] == "main"),
             "questions": n_q,
             "questionsMain": sum(len(r["q"]) for r in records if r["sub"] == "main"),
+            "openCount": n_open,
             "legacyImages": sum(1 for r in records if r.get("legacy")),
             "subsuites": subsuites,
             "galleries": galleries,
@@ -239,7 +293,7 @@ def main() -> int:
             json.dumps({"slug": slug, "records": records}, ensure_ascii=False)))
         total_img += len(records)
         total_q += n_q
-        print(f"  {slug}: {len(records)} imgs / {n_q} q / "
+        print(f"  {slug}: {len(records)} imgs / {n_q} q / {n_open} open / "
               f"{len(subsuites)} subsuites / {n_applied} overrides")
 
     tree = {
@@ -253,6 +307,7 @@ def main() -> int:
             "questions": total_q,
             "imagesMain": sum(c["imagesMain"] for c in cat_entries),
             "questionsMain": sum(c["questionsMain"] for c in cat_entries),
+            "openTotal": sum(c["openCount"] for c in cat_entries),
             "legacyImages": sum(c["legacyImages"] for c in cat_entries),
             "levels": {str(k): v for k, v in sorted(level_counts.items())},
         },
