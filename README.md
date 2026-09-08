@@ -7,11 +7,12 @@ images, metro/transit network maps, and synthetic geometry where vision-language
 |---|---|---|---|
 | **Real-world images** | [agi-eval-data.pages.dev](https://agi-eval-data.pages.dev) | 54.5k+ photos where VLMs fail | daily Drive scan → `data/latest.json` |
 | **Metro / transit** | [metro-eval.pages.dev](https://metro-eval.pages.dev) | 85 metro network maps · 38 countries · 30 official PDFs | hourly Drive scan → `data/metro.json` |
-| **GRIP geometric reasoning** | [grip-eval.pages.dev](https://grip-eval.pages.dev) | 34 synthetic sub-benchmarks · 100k images · 500k ground-truthed QA | hourly CI re-bake from [upstream dataset repo](https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset) → `data/grip/` |
+| **GRIP geometric reasoning** | [grip-eval.pages.dev](https://grip-eval.pages.dev) | 34 synthetic sub-benchmarks · 100k images · 500k closed + 92k open ground-truthed QA | hourly CI re-bake from [upstream dataset repo](https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset) → `data/grip/` |
 
 Questions are authored on the web/metro sites (access-gated) and frontier VLMs are graded
-against them. GRIP ships its own ground truth — that site browses samples and stages
-override edits (KV → one atomic commit on the upstream repo → auto re-bake → deploy).
+against them. GRIP ships its own ground truth — that site browses samples with tabbed
+closed (L1–L5) / open-ended questions and stages override edits (KV → one atomic commit
+on the upstream repo → auto re-bake → deploy).
 
 ---
 

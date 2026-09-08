@@ -41,6 +41,26 @@ bun run check:grip     # validate artifacts + overrides (exit-code; CI-able)
 bun run dev:grip-web   # site on localhost:5175
 ```
 
+## Question tiers
+
+GRIP now has TWO question regimes per eligible image:
+
+- **Closed (L1–L5)** — the original five-level ladder, exact ground truth,
+  500,000 questions (100k per level). Invariants enforced by `grip_validate.py`.
+- **Open-ended** — one long-form reasoning prompt per *eligible* image with
+  sub-fact targets, per-field tolerances (e.g. ±10°) and a 0–1 confidence
+  self-score. **91,904 rows** (`open_annotations.jsonl` upstream, baked into each
+  record's `oq` field). Spec: `OPEN_QUESTION_SPEC.md` upstream. Exclusions are
+  explicit per domain (e.g. laser_mirror drops zero-reflection items → 2,250 rows).
+- **Honesty chips** — upstream's audit flags six closed levels whose answers are
+  structurally constant at 100% (no discriminative signal): cube_net L1,
+  gear_train L2, optical_illusion L1, orthographic L5, polyhedron L5,
+  symmetry_pattern L5. The site surfaces these as amber chips.
+
+The sample page has **tabs**: closed (L1–L5) / open-ended. Browse has an
+"open only" filter. Override field grammar: `q:<qid>.<prop>`, `scene.<key>`,
+and `oq.<subfact>` for the open tier.
+
 ## Environment (only the sync worker needs credentials)
 
 Copy `docs/grip-env.example` → `apps/grip-sync/.dev.vars` (gitignored), or set in prod:
