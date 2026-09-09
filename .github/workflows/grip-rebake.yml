@@ -78,13 +78,23 @@ jobs:
         run: |
           git config user.name "grip-rebake-bot"
           git config user.email "grip-rebake-bot@users.noreply.github.com"
+          PRE=$(git rev-parse HEAD)
           git add data/grip apps/grip-web/public/data
-          if git diff --cached --quiet; then
-            echo "artifacts identical — no commit"
-          else
+          if ! git diff --cached --quiet; then
             git commit -m "chore(grip): re-bake artifacts from upstream ${{ steps.upstream.outputs.sha }}"
-            git push
           fi
+          # version.json = the client's pin target (artifact commit sha). It must
+          # reference OUR repo (jsDelivr @<commit> resolves here), so it can only
+          # be known AFTER the artifact commit — hence stamped here, not in
+          # grip_scan. Stamp when artifacts changed OR the file is missing
+          # (bootstrap); otherwise stay silent so runs converge with no churn.
+          if [ "$(git rev-parse HEAD)" != "$PRE" ] || [ ! -f data/grip/version.json ]; then
+            printf '{"commit": "%s", "builtAt": "%s"}\n' \
+              "$(git rev-parse HEAD)" "$(date -u +%Y-%m-%dT%H:%M:%SZ)" > data/grip/version.json
+            git add data/grip/version.json
+            git commit -m "chore(grip): stamp version.json -> $(git rev-parse --short HEAD) (client pin target)"
+          fi
+          git push
 
   notify-on-failure:
     name: open issue when re-bake fails
