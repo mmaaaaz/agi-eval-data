@@ -45,6 +45,7 @@ jobs:
           BAKED=$(python -c "import json;print(json.load(open('data/grip/tree.json')).get('bakedFromCommit',''))" 2>/dev/null || echo "")
           FORCE="${{ inputs.force || github.event.client_payload.force || 'false' }}"
           echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "force=$FORCE" >> "$GITHUB_OUTPUT"
           if [ "$SHA" = "$BAKED" ] && [ "$FORCE" != "true" ]; then
             echo "skip=true" >> "$GITHUB_OUTPUT"
             echo "upstream unchanged ($SHA) — nothing to do"
@@ -59,7 +60,10 @@ jobs:
           # authenticated api.github.com calls (~40/run vs 5k/hr cap); the
           # anonymous 60/hr pool shared by all runners 403s unpredictably
           GITHUB_TOKEN: ${{ github.token }}
-        run: python scripts/grip_fetch.py
+        # --force must reach grip_fetch too: on an unchanged upstream it
+        # otherwise short-circuits without populating .grip-cache and the
+        # bake step crashes ("no .grip-cache/manifest.json")
+        run: python scripts/grip_fetch.py ${{ steps.upstream.outputs.force == 'true' && '--force' || '' }}
 
       - name: Bake artifacts
         if: steps.upstream.outputs.skip == 'false'
