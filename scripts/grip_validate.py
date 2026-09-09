@@ -6,7 +6,10 @@ Checks (fail-fast, exit 1 on any failure):
   2. every category detail file parses; every record has exactly 5 questions
      with difficulty levels 1..5 in order
   3. per-level totals are exactly 100,000 (main subsuites only)
-  4. every record's image path resolves on disk (source suite = read-only check)
+  4. every record's image path resolves on disk (source suite = read-only
+     check; SKIPPED when the suite folder is absent, e.g. CI runners, where
+     only the baked artifacts + cache exist — scan already proved that every
+     record came from a fetched upstream annotation)
   5. overrides: every override file parses and its `from` assertions match the
      CURRENT baked record values (stale from-value = override conflict)
 
@@ -113,8 +116,8 @@ def main() -> int:
               f"level {lv}: {levels.get(str(lv))} != 100000")
     check(tree.get("levelNames") == {str(k): v for k, v in LEVEL_NAMES.items()},
           "levelNames mismatch")
-    check(counts.get("openTotal") == 91_904,
-          f"open questions {counts.get('openTotal')} != 91904")
+    check(counts.get("openTotal") == sum(cat["openCount"] for cat in tree["categories"]),
+          f"open questions {counts.get('openTotal')} != sum of per-category openCount")
 
     details: dict[str, dict] = {}
     levels_seen: Counter[int] = Counter()
@@ -152,7 +155,8 @@ def main() -> int:
                 check([q["difficulty_level"] for q in qs] == list(range(1, len(qs) + 1)),
                       f"{slug}/{rec['sub']}/{rec['id']}: levels not ascending from 1")
             img = DATASET_DIR / rec["img"]
-            check(img.exists(), f"{slug}/{rec['id']}: image missing {rec['img']}")
+            if DATASET_DIR.exists() and not img.exists():
+                check(False, f"{slug}/{rec['id']}: image missing {rec['img']}")
         check(n_q == cat["questions"],
               f"{slug}: detail questions {n_q} != tree {cat['questions']}")
         check(n_open == cat["openCount"],

@@ -47,11 +47,12 @@ GRIP now has TWO question regimes per eligible image:
 
 - **Closed (L1–L5)** — the original five-level ladder, exact ground truth,
   500,000 questions (100k per level). Invariants enforced by `grip_validate.py`.
-- **Open-ended** — one long-form reasoning prompt per *eligible* image with
+- **Open-ended** — one long-form reasoning prompt per image with
   sub-fact targets, per-field tolerances (e.g. ±10°) and a 0–1 confidence
-  self-score. **91,904 rows** (`open_annotations.jsonl` upstream, baked into each
-  record's `oq` field). Spec: `OPEN_QUESTION_SPEC.md` upstream. Exclusions are
-  explicit per domain (e.g. laser_mirror drops zero-reflection items → 2,250 rows).
+  self-score. **100,000 rows — full coverage** since upstream `ba6bcb05`
+  (2026-09-08; previously 91,904 rows with per-domain exclusions)
+  (`open_annotations.jsonl` upstream, baked into each record's `oq` field).
+  Spec: `OPEN_QUESTION_SPEC.md` upstream.
 - **Honesty chips** — upstream's audit flags six closed levels whose answers are
   structurally constant at 100% (no discriminative signal): cube_net L1,
   gear_train L2, optical_illusion L1, orthographic L5, polyhedron L5,
