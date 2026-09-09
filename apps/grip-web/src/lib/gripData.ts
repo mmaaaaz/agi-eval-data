@@ -3,16 +3,76 @@
  *
  * Same stale-while-revalidate CacheStorage pattern as @site/data, but the detail
  * tier is gzip-baked (committed .json.gz) and decompressed with DecompressionStream.
+ *
+ * Version pinning (anti-staleness): the jsDelivr fallback caches @main for 12h
+ * at the edge and 7 days in browsers, so a plain @main fallback can serve a
+ * PREVIOUS bake for days (seen live 2026-09-09: mobile users behind CGNAT
+ * exhausted raw.githubusercontent's per-IP anonymous limit, 429'd, and silently
+ * fell back to stale jsDelivr). Every bake commits version.json {commit,
+ * builtAt}; the client probes it fresh (cache-busted) and pins ALL artifact
+ * URLs to that commit — jsDelivr @<commit> is immutable, raw gets ?v=<commit> —
+ * so a fallback can never disagree with the primary.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { CategoryDetail, GripTree } from "./gripTypes";
 
-const ARTIFACT_BASES = [
-  (p: string) => `https://raw.githubusercontent.com/mmaaaaz/agi-eval-data/main/data/grip/${p}`,
-  (p: string) => `https://cdn.jsdelivr.net/gh/mmaaaaz/agi-eval-data@main/data/grip/${p}`,
+const DATA_REPO = "mmaaaaz/agi-eval-data";
+const VERSION_LS_KEY = "grip-data-version";
+const CACHE_KEY = "grip-eval-data-v1";
+const LEGACY_MAIN_BASES = [
+  (p: string) => `https://raw.githubusercontent.com/${DATA_REPO}/main/data/grip/${p}`,
+  (p: string) => `https://cdn.jsdelivr.net/gh/${DATA_REPO}@main/data/grip/${p}`,
 ];
 
-const CACHE_KEY = "grip-eval-data-v1";
+let versionPromise: Promise<string | null> | null = null;
+
+function readPinnedVersion(): string | null {
+  try {
+    return window.localStorage.getItem(VERSION_LS_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function savePinnedVersion(commit: string): void {
+  try {
+    window.localStorage.setItem(VERSION_LS_KEY, commit);
+  } catch {
+    /* private mode etc. — probe still works per-load */
+  }
+}
+
+/** Fresh (cache-busted) version probe; resolves to a full commit sha. */
+async function probeVersion(): Promise<string> {
+  const res = await fetch(
+    `https://raw.githubusercontent.com/${DATA_REPO}/main/data/grip/version.json?v=${Date.now()}`,
+    { cache: "no-store" },
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  const v = (await res.json()) as { commit?: unknown };
+  if (typeof v.commit !== "string" || v.commit.length < 8) throw new Error("malformed version.json");
+  return v.commit;
+}
+
+/** The commit all artifact URLs are pinned to (null → legacy @main bases). */
+async function pinnedCommit(): Promise<string | null> {
+  versionPromise ??= probeVersion()
+    .then((c) => {
+      savePinnedVersion(c);
+      return c;
+    })
+    .catch(() => readPinnedVersion()); // probe failed → last known good, else null
+  return versionPromise;
+}
+
+function artifactBases(commit: string | null): ((p: string) => string)[] {
+  if (!commit) return LEGACY_MAIN_BASES;
+  const qs = `?v=${commit}`;
+  return [
+    (p: string) => `https://raw.githubusercontent.com/${DATA_REPO}/main/data/grip/${p}${qs}`,
+    (p: string) => `https://cdn.jsdelivr.net/gh/${DATA_REPO}@${commit}/data/grip/${p}`,
+  ];
+}
 
 function isValidTree(x: unknown): x is GripTree {
   if (!x || typeof x !== "object") return false;
@@ -43,9 +103,9 @@ async function putCachedJson(url: string, data: unknown): Promise<void> {
   }
 }
 
-async function fetchJson<T>(path: string, validate: (x: unknown) => x is T, onProgress?: (frac: number | null) => void): Promise<T> {
+async function fetchJson<T>(bases: ((p: string) => string)[], path: string, validate: (x: unknown) => x is T, onProgress?: (frac: number | null) => void): Promise<T> {
   let lastErr: unknown = null;
-  for (const base of ARTIFACT_BASES) {
+  for (const base of bases) {
     const url = base(path);
     try {
       const res = await fetch(url);
@@ -80,16 +140,24 @@ async function readWithProgress(res: Response, onProgress?: (frac: number | null
   return parts.join("");
 }
 
-/** Decompress a gzip Response body with DecompressionStream (all modern browsers). */
-async function fetchGzJson<T>(path: string, validate: (x: unknown) => x is T): Promise<T> {
+/** Gunzip a Response. Falls back to a blob round-trip where the fetch layer
+ *  exposes no stream body (some in-app/automated browsers — they threw
+ *  "no body" on the old pipeThrough path even though arrayBuffer works). */
+async function gunzipToText(res: Response): Promise<string> {
+  if (res.body && "DecompressionStream" in globalThis) {
+    return new Response(res.body.pipeThrough(new DecompressionStream("gzip"))).text();
+  }
+  const buf = await res.arrayBuffer();
+  return new Response(new Blob([buf]).stream().pipeThrough(new DecompressionStream("gzip"))).text();
+}
+
+async function fetchGzJson<T>(bases: ((p: string) => string)[], path: string, validate: (x: unknown) => x is T): Promise<T> {
   let lastErr: unknown = null;
-  for (const base of ARTIFACT_BASES) {
+  for (const base of bases) {
     try {
       const res = await fetch(base(path));
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      if (!res.body) throw new Error("no body");
-      const stream = res.body.pipeThrough(new DecompressionStream("gzip"));
-      const text = await new Response(stream).text();
+      const text = await gunzipToText(res);
       const parsed = JSON.parse(text) as unknown;
       if (!validate(parsed)) throw new Error("malformed artifact");
       return parsed;
@@ -124,10 +192,13 @@ export function useGripTree(): TreeState {
     inFlight.current = true;
     setState((s) => ({ ...s, error: null }));
     try {
-      const tree = await fetchJson("tree.json", isValidTree, (frac) =>
+      const commit = await pinnedCommit();
+      const bases = artifactBases(commit);
+      const tree = await fetchJson(bases, "tree.json", isValidTree, (frac) =>
         setState((s) => (s.tree ? s : { ...s, progress: frac })));
       setState({ tree, progress: 1, loading: false, error: null });
-      void putCachedJson(ARTIFACT_BASES[0]("tree.json"), tree);
+      // same URL the cache read uses below — the pair must agree on the key
+      void putCachedJson(bases[0]("tree.json"), tree);
     } catch (e) {
       setState((s) => ({ ...s, loading: false, error: e instanceof Error ? e.message : "fetch failed" }));
     } finally {
@@ -137,10 +208,12 @@ export function useGripTree(): TreeState {
 
   useEffect(() => {
     let alive = true;
-    void cachedJson("tree.json", isValidTree).then((cached) => {
-      if (!alive || !cached) return;
-      setState((s) => (s.tree ? s : { ...s, tree: cached, loading: false, progress: 1 }));
-    });
+    void pinnedCommit()
+      .then((commit) => (commit ? cachedJson(artifactBases(commit)[0]("tree.json"), isValidTree) : null))
+      .then((cached) => {
+        if (!alive || !cached) return;
+        setState((s) => (s.tree ? s : { ...s, tree: cached, loading: false, progress: 1 }));
+      });
     void load();
     return () => { alive = false; };
   }, [load]);
@@ -158,7 +231,8 @@ export function loadCategoryDetail(slug: string): Promise<CategoryDetail> {
   if (hit) return Promise.resolve(hit);
   const pending = detailInFlight.get(slug);
   if (pending) return pending;
-  const p = fetchGzJson(`${slug}.json.gz`, isValidDetail)
+  const p = pinnedCommit()
+    .then((commit) => fetchGzJson(artifactBases(commit), `${slug}.json.gz`, isValidDetail))
     .then((d) => {
       detailMem.set(slug, d);
       detailInFlight.delete(slug);

@@ -8,6 +8,7 @@ Windows-safe plain copy (no symlinks). Run after grip_scan.py.
 """
 from __future__ import annotations
 
+import json
 import shutil
 import sys
 from pathlib import Path
@@ -26,6 +27,19 @@ def main() -> int:
     tree = OUT_DIR / "tree.json"
     shutil.copy2(tree, dest / tree.name)
     n += 1
+    # version.json: the client's fresh probe target. It pins artifact URLs to
+    # this bake (jsDelivr @<commit> is immutable; raw gets ?v=<commit>) so the
+    # 12h-edge/7-day-browser cache of jsDelivr @main can never serve a stale
+    # fallback. MUST live in data/grip/ (committed by grip-rebake).
+    t = json.loads(tree.read_text(encoding="utf-8"))
+    commit = t.get("bakedFromCommit")
+    if not commit:
+        print("grip_sync_public: WARNING — tree.json has no bakedFromCommit; version.json skipped")
+    else:
+        version = {"commit": commit, "builtAt": t.get("builtAt")}
+        (OUT_DIR / "version.json").write_text(json.dumps(version), encoding="utf-8")
+        (dest / "version.json").write_text(json.dumps(version), encoding="utf-8")
+        n += 1
     print(f"grip_sync_public: copied {n} files -> {dest}")
     return 0
 
