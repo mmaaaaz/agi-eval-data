@@ -55,6 +55,10 @@ jobs:
 
       - name: Fetch annotations + overrides from upstream
         if: steps.upstream.outputs.skip == 'false'
+        env:
+          # authenticated api.github.com calls (~40/run vs 5k/hr cap); the
+          # anonymous 60/hr pool shared by all runners 403s unpredictably
+          GITHUB_TOKEN: ${{ github.token }}
         run: python scripts/grip_fetch.py
 
       - name: Bake artifacts
