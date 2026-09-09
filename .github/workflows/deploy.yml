@@ -17,6 +17,12 @@ on:
       - "bun.lock"
       - "turbo.json"
       - ".github/workflows/deploy.yml"
+  workflow_dispatch:
+    inputs:
+      force_grip:
+        description: "deploy grip pages even if no grip frontend paths changed"
+        type: boolean
+        default: false
 
 concurrency:
   group: deploy-main
@@ -30,12 +36,17 @@ jobs:
       relay: ${{ steps.filter.outputs.relay }}
       metro_web: ${{ steps.filter.outputs.metro_web }}
       metro_app: ${{ steps.filter.outputs.metro_app }}
+      grip_web: ${{ steps.filter.outputs.grip_web }}
+      grip_app: ${{ steps.filter.outputs.grip_app }}
       secrets: ${{ steps.secrets.outputs.ok }}
     steps:
       - uses: actions/checkout@v4
 
       - uses: dorny/paths-filter@v3
         id: filter
+        # push only: workflow_dispatch has no base to diff against — outputs
+        # stay empty there and the force_grip input drives grip deploys
+        if: github.event_name == 'push'
         with:
           filters: |
             web:
@@ -46,7 +57,6 @@ jobs:
               - "package.json"
               - "bun.lock"
               - "turbo.json"
-              - ".github/workflows/deploy.yml"
             metro_web:
               - "apps/metro-web/**"
               - "packages/site/**"
@@ -54,23 +64,21 @@ jobs:
               - "data/metro.json"
               - "scripts/metro_build_data.py"
               - "scripts/og/**"
-              - ".github/workflows/deploy.yml"
             metro_app:
               - "apps/metro-relay/**"
               - "packages/shared/**"
               - "packages/questions-api/**"
-              - ".github/workflows/deploy.yml"
+            # grip frontend only — grip DATA lives in data/grip/ but is fetched
+            # at runtime from raw.githubusercontent, so artifact re-bakes never
+            # need a site rebuild
             grip_web:
               - "apps/grip-web/**"
               - "packages/site/**"
               - "packages/shared/**"
-              - "data/grip/**"
-              - "scripts/grip_*.py"
+              - "bun.lock"
               - "scripts/og/**"
-              - ".github/workflows/deploy.yml"
             grip_app:
               - "apps/grip-sync/**"
-              - ".github/workflows/deploy.yml"
 
       - id: secrets
         env:
@@ -86,7 +94,7 @@ jobs:
   relay:
     name: deploy relay
     needs: changes
-    if: needs.changes.outputs.relay == 'true' && needs.changes.outputs.metro_app == 'false' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.relay == 'true' && needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -111,7 +119,7 @@ jobs:
   pages:
     name: deploy pages
     needs: changes
-    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.metro_web == 'false' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.secrets == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -214,7 +222,7 @@ jobs:
   grip-pages:
     name: deploy grip pages
     needs: changes
-    if: needs.changes.outputs.grip_web == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.grip_web == 'true' || inputs.force_grip == true
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-grip
