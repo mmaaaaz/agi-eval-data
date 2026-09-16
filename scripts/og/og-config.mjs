@@ -11,6 +11,22 @@ const here = dirname(fileURLToPath(import.meta.url));
 const root = resolve(here, "..", "..");
 const fmt = (n) => n.toLocaleString("en-US");
 
+/** One-line summary of the open-model report, read from its baked artifact. */
+function openModelsDesc() {
+  try {
+    const a = JSON.parse(readFileSync(join(root, "data", "open-models", "models.json"), "utf-8"));
+    const ranked = [...a.models].sort((x, y) => (y.totals.acc ?? 0) - (x.totals.acc ?? 0));
+    const fmtPct = (v) => (v * 100).toFixed(1) + "%";
+    return (
+      ranked.map((m) => m.label + " " + fmtPct(m.totals.acc)).join(" vs ") +
+      " on " + fmt(a.benchmark.questionsPerModel) + " GRIP questions each — " +
+      a.domains.length + " domains x 5 levels, every answer re-graded by one frozen rule."
+    );
+  } catch {
+    return "Open vision-language models re-graded on the GRIP benchmark under one frozen rule — per-domain, per-level, fully sortable.";
+  }
+}
+
 export function siteConfig(name) {
   if (name === "web") {
     const data = JSON.parse(readFileSync(join(root, "data", "latest.json"), "utf-8"));
@@ -162,6 +178,13 @@ export function siteConfig(name) {
         desc: "Programmatically generated, independently validated geometry & physical-reasoning suite — the third pillar of the VLM failure-modes benchmark.",
         image: "overview.png",
         url: "/project",
+      },
+      {
+        dir: "open-models",
+        title: "Open-model evaluation · grip-eval",
+        desc: openModelsDesc(),
+        image: "overview.png",
+        url: "/open-models",
       },
     ];
     return {

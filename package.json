@@ -19,6 +19,8 @@
     "data:dedup:metro": "python dedup/bake_near_dup_metro.py",
     "data:metro": "python scripts/metro_scan.py --ci",
     "data:grip": "python scripts/grip_scan.py && python scripts/grip_validate.py && python scripts/grip_sync_public.py",
+    "data:open-models": "python scripts/open_models_bake.py && python scripts/open_models_public.py",
+    "data:open-models:refresh": "python scripts/open_models_bake.py --refresh && python scripts/open_models_public.py",
     "check:grip": "python scripts/grip_validate.py",
     "dev:grip-web": "turbo run dev --filter=@grip/web"
   },
