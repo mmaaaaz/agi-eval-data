@@ -658,6 +658,11 @@ def scan_domain(path: Path, refresh: bool):
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--refresh", action="store_true", help="ignore the per-domain regrade cache")
+    ap.add_argument(
+        "--allow-unpaired",
+        action="store_true",
+        help="publish even when a run's recorded ground truth differs from the reference run",
+    )
     args = ap.parse_args()
 
     models = discover_models()
@@ -990,6 +995,29 @@ def main() -> int:
         assert abs(sum(x["n"] for x in m["totals"]["levels"]) - m["totals"]["n"]) <= 5, f"{m['id']} level n != total"
     for d in domains_out:
         assert len(d["per"]) == len(model_out), f"{d['key']} missing a model row - every run must cover all {len(domains_out)} domains"
+
+    # A run graded against a different ground truth is not comparable. Refuse to
+    # publish it by default: the headline would be a data difference, not a model one.
+    pairing = integrity["gtPairing"]
+    if pairing["checked"] and (pairing["mismatch"] or pairing["missing"]) and not args.allow_unpaired:
+        print(
+            f"REFUSING TO WRITE: ground truth is not shared across runs - "
+            f"{pairing['mismatch']:,} mismatches and {pairing['missing']:,} missing of {pairing['checked']:,} "
+            f"questions compared against {pairing['reference']}.",
+            file=sys.stderr,
+        )
+        for mid, row in pairing["perModel"].items():
+            if row["mismatch"] or row["missing"]:
+                print(
+                    f"  {mid}: {row['mismatch']:,} mismatches / {row['missing']:,} missing of {row['checked']:,}",
+                    file=sys.stderr,
+                )
+        print(
+            "  -> that run was evaluated on a different dataset snapshot, or against different ground truth.\n"
+            "     Re-run it on the same snapshot, or pass --allow-unpaired to publish the difference deliberately.",
+            file=sys.stderr,
+        )
+        return 2
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
     (OUT_DIR / "models.json").write_text(json.dumps(artifact, separators=(",", ":"), ensure_ascii=False), encoding="utf-8")
