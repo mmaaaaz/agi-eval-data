@@ -4,6 +4,11 @@ client_secret.json
 *.local
 .env
 
+# raw VLM evaluation runs (hundreds of MB) — the baked artifact IS tracked
+data/open-model-analysis/*/
+!data/open-model-analysis/legacy/
+data/open-models/.cache/
+
 # local scan artifacts (data/latest.json IS tracked; snapshots aren't)
 snapshots/
 duplicates*.csv

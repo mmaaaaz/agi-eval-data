@@ -75,6 +75,8 @@ jobs:
               - "apps/grip-web/**"
               - "packages/site/**"
               - "packages/shared/**"
+              - "data/open-models/**"
+              - "scripts/open_models_public.py"
               - "bun.lock"
               - "scripts/og/**"
             grip_app:
@@ -236,6 +238,9 @@ jobs:
 
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
+
+      - name: Publish open-model artifact to public/
+        run: python scripts/open_models_public.py
 
       - name: Build grip site
         run: bunx turbo run build --filter=@grip/web

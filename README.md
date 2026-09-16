@@ -26,6 +26,7 @@ apps/relay         Cloudflare Worker — AI chat relay (Vercel AI Gateway + Work
 apps/metro-web     metro/transit site — same stack, NO chat — catalog (branch toggle, PDF preview), questions workspace
 apps/metro-relay   Cloudflare Worker — questions API only (D1 metro-eval-questions)
 apps/grip-web      GRIP geometric-reasoning site — browse 34 sub-benchmarks, ground-truth spoilers, scene overlays
+                   + /open-models  the open-model evaluation report (leaderboard, matrix, compare, audit)
 apps/grip-sync     Cloudflare Worker — stages override edits in KV, syncs to the upstream dataset repo (1 atomic commit)
 packages/shared    text normalization (normQ / normTags / normSql) — web + relay
 packages/site       shared UI/data/questions + metroGraph (MarkLayer, AssistPanel, types, routing)
@@ -34,6 +35,8 @@ scripts/           Drive scanners (drive_scan.py, metro_scan.py), build tooling,
 data/latest.json   THE real-world artifact — overwritten by the sync bot (change-gated)
 data/metro.json    THE metro artifact (v4: folders/country/city taxonomy)
 data/grip/         THE grip artifacts (tree.json + {slug}.json.gz ×34) — baked by scripts/grip_scan.py
+data/open-models/  THE open-model artifact (models.json + version.json + models.meta.json) — baked by
+                   scripts/open_models_bake.py from the raw runs in data/open-model-analysis/
 docs/              plans & decision log · docs/METRO_PLAN.md is the metro design · docs/grip.md is the grip design
 ```
 
@@ -68,6 +71,46 @@ VQA-style `questions.jsonl`.
   upstream → Pages redeploys. Drift-checked at both ends (`baseCommitAtEdit` SHA anchor);
   conflicts block the sync instead of overwriting.
 
+## The open-model report (`/open-models`, inside apps/grip-web)
+
+A nested report on the grip site — no separate deployment. Every answer that each open VLM
+produced on the GRIP benchmark is re-graded by **one frozen rule**, so each model has exactly
+one accuracy; the runs' own scorer is reported beside it as a grader-quality check.
+
+| Page | What it shows |
+|---|---|
+| `/open-models` | Leaderboard, findings, difficulty curve, family bars, head-to-head |
+| `/open-models/domains` | Every domain / family / level as a sortable, filterable table (+ TSV export) |
+| `/open-models/domains/$slug` | Domain detail: level ladder, oracle, question formats, sampled disagreements |
+| `/open-models/matrix` | Domain × level heat grid for one model and one metric |
+| `/open-models/compare` | Any two runs: wins, per-family/level gaps, 1:1 scatter, paired table |
+| `/open-models/audit` | Grader disagreements classified, zero levels, single-answer levels, ground-truth drift |
+| `/open-models/method` | The frozen rule, what was verified, exact vs rule-dependent, caveats, reproduce |
+| `/open-models/models/$id` | Per-run card: levels, families, strengths, grader disagreements |
+
+**Adding a model is a data change, not a code change.**
+
+```bash
+# 1. drop the run: one JSONL per domain (question_id / level / prediction / groundtruth / correct / ...)
+#    data/open-model-analysis/<run-dir>/<model-id>/*.jsonl      <- either layout works
+bun run data:open-models     # bake + publish into apps/grip-web/public/data/
+# 2. the bake seeds a models.meta.json entry for the new run — fill in label / org / params /
+#    license / links (params and licence are on the model's Hugging Face card), then re-bake:
+bun run data:open-models
+bun run dev:grip-web         # /open-models
+```
+
+The bake refuses to ship an unpaired comparison: every run must record the **same ground truth
+for the same question id** as the reference run (it prints `N mismatches / M missing`, and the
+Method page states it), so a run from another team is either comparable or visibly not.
+
+The raw runs (hundreds of MB) are git-ignored; the baked artifact (~140 KB) is committed and
+read by the site at runtime (same-origin first, then raw.githubusercontent / jsDelivr), so a
+re-bake goes live without touching a component. `open_models_bake.py` asserts its own
+invariants before writing, and `src/lib/openModelsReport.test.ts` cross-checks the headline
+figures against the standalone report this section replaced
+(`data/open-model-analysis/legacy/`).
+
 ## Local development
 
 ```bash
@@ -75,7 +118,7 @@ bun install                # workspace install (apps + packages)
 
 bun run dev:web             # real-world site on localhost:5173
 bun run dev:metro-web       # metro site on localhost:5174 (or 5183)
-bun run dev:grip-web        # grip site on localhost:5175
+bun run dev:grip-web        # grip site (incl. /open-models) on localhost:5175
 bun run dev:relay           # foundation worker on localhost:8787
 bun run dev:metro-relay     # metro worker on localhost:8788
 bun run typecheck           # tsc across the workspace
@@ -88,6 +131,8 @@ python scripts/grip_fetch.py            # upstream annotations+overrides → .gr
 python scripts/grip_scan.py             # bake → data/grip/*.json.gz (+ public copy)
 python scripts/grip_validate.py         # dataset invariants + override conflict check
 python scripts/metro_build_data.py      # bake metro version.json (sync feed)
+python scripts/open_models_bake.py      # re-grade the open-model runs -> data/open-models/models.json
+python scripts/open_models_public.py    # copy that artifact into apps/grip-web/public/data/
 ```
 
 Each site expects its relay URL + access code in `/settings` (stored in your browser).

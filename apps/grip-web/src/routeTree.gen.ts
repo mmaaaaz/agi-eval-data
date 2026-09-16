@@ -11,10 +11,19 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as BrowseRouteImport } from './routes/browse'
+import { Route as OpenModelsRouteImport } from './routes/open-models'
 import { Route as ProjectRouteImport } from './routes/project'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as CategoriesIndexRouteImport } from './routes/categories.index'
 import { Route as CategoriesSlugRouteImport } from './routes/categories.$slug'
+import { Route as OpenModelsIndexRouteImport } from './routes/open-models.index'
+import { Route as OpenModelsAuditRouteImport } from './routes/open-models.audit'
+import { Route as OpenModelsCompareRouteImport } from './routes/open-models.compare'
+import { Route as OpenModelsMatrixRouteImport } from './routes/open-models.matrix'
+import { Route as OpenModelsMethodRouteImport } from './routes/open-models.method'
+import { Route as OpenModelsDomainsIndexRouteImport } from './routes/open-models.domains.index'
+import { Route as OpenModelsDomainsSlugRouteImport } from './routes/open-models.domains.$slug'
+import { Route as OpenModelsModelsIdRouteImport } from './routes/open-models.models.$id'
 import { Route as SampleSlugSplatRouteImport } from './routes/sample.$slug.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -25,6 +34,11 @@ const IndexRoute = IndexRouteImport.update({
 const BrowseRoute = BrowseRouteImport.update({
   id: '/browse',
   path: '/browse',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OpenModelsRoute = OpenModelsRouteImport.update({
+  id: '/open-models',
+  path: '/open-models',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectRoute = ProjectRouteImport.update({
@@ -47,6 +61,46 @@ const CategoriesSlugRoute = CategoriesSlugRouteImport.update({
   path: '/categories/$slug',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OpenModelsIndexRoute = OpenModelsIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsAuditRoute = OpenModelsAuditRouteImport.update({
+  id: '/audit',
+  path: '/audit',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsCompareRoute = OpenModelsCompareRouteImport.update({
+  id: '/compare',
+  path: '/compare',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsMatrixRoute = OpenModelsMatrixRouteImport.update({
+  id: '/matrix',
+  path: '/matrix',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsMethodRoute = OpenModelsMethodRouteImport.update({
+  id: '/method',
+  path: '/method',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsDomainsIndexRoute = OpenModelsDomainsIndexRouteImport.update({
+  id: '/domains/',
+  path: '/domains/',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsDomainsSlugRoute = OpenModelsDomainsSlugRouteImport.update({
+  id: '/domains/$slug',
+  path: '/domains/$slug',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
+const OpenModelsModelsIdRoute = OpenModelsModelsIdRouteImport.update({
+  id: '/models/$id',
+  path: '/models/$id',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
 const SampleSlugSplatRoute = SampleSlugSplatRouteImport.update({
   id: '/sample/$slug/$',
   path: '/sample/$slug/$',
@@ -56,11 +110,20 @@ const SampleSlugSplatRoute = SampleSlugSplatRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
+  '/open-models': typeof OpenModelsRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/open-models/audit': typeof OpenModelsAuditRoute
+  '/open-models/compare': typeof OpenModelsCompareRoute
+  '/open-models/matrix': typeof OpenModelsMatrixRoute
+  '/open-models/method': typeof OpenModelsMethodRoute
   '/categories/': typeof CategoriesIndexRoute
+  '/open-models/': typeof OpenModelsIndexRoute
+  '/open-models/domains/$slug': typeof OpenModelsDomainsSlugRoute
+  '/open-models/models/$id': typeof OpenModelsModelsIdRoute
   '/sample/$slug/$': typeof SampleSlugSplatRoute
+  '/open-models/domains/': typeof OpenModelsDomainsIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -68,29 +131,55 @@ export interface FileRoutesByTo {
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/open-models/audit': typeof OpenModelsAuditRoute
+  '/open-models/compare': typeof OpenModelsCompareRoute
+  '/open-models/matrix': typeof OpenModelsMatrixRoute
+  '/open-models/method': typeof OpenModelsMethodRoute
   '/categories': typeof CategoriesIndexRoute
+  '/open-models': typeof OpenModelsIndexRoute
+  '/open-models/domains/$slug': typeof OpenModelsDomainsSlugRoute
+  '/open-models/models/$id': typeof OpenModelsModelsIdRoute
   '/sample/$slug/$': typeof SampleSlugSplatRoute
+  '/open-models/domains': typeof OpenModelsDomainsIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/browse': typeof BrowseRoute
+  '/open-models': typeof OpenModelsRouteWithChildren
   '/project': typeof ProjectRoute
   '/settings': typeof SettingsRoute
   '/categories/$slug': typeof CategoriesSlugRoute
+  '/open-models/audit': typeof OpenModelsAuditRoute
+  '/open-models/compare': typeof OpenModelsCompareRoute
+  '/open-models/matrix': typeof OpenModelsMatrixRoute
+  '/open-models/method': typeof OpenModelsMethodRoute
   '/categories/': typeof CategoriesIndexRoute
+  '/open-models/': typeof OpenModelsIndexRoute
+  '/open-models/domains/$slug': typeof OpenModelsDomainsSlugRoute
+  '/open-models/models/$id': typeof OpenModelsModelsIdRoute
   '/sample/$slug/$': typeof SampleSlugSplatRoute
+  '/open-models/domains/': typeof OpenModelsDomainsIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
     | '/browse'
+    | '/open-models'
     | '/project'
     | '/settings'
     | '/categories/$slug'
+    | '/open-models/audit'
+    | '/open-models/compare'
+    | '/open-models/matrix'
+    | '/open-models/method'
     | '/categories/'
+    | '/open-models/'
+    | '/open-models/domains/$slug'
+    | '/open-models/models/$id'
     | '/sample/$slug/$'
+    | '/open-models/domains/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -98,22 +187,40 @@ export interface FileRouteTypes {
     | '/project'
     | '/settings'
     | '/categories/$slug'
+    | '/open-models/audit'
+    | '/open-models/compare'
+    | '/open-models/matrix'
+    | '/open-models/method'
     | '/categories'
+    | '/open-models'
+    | '/open-models/domains/$slug'
+    | '/open-models/models/$id'
     | '/sample/$slug/$'
+    | '/open-models/domains'
   id:
     | '__root__'
     | '/'
     | '/browse'
+    | '/open-models'
     | '/project'
     | '/settings'
     | '/categories/$slug'
+    | '/open-models/audit'
+    | '/open-models/compare'
+    | '/open-models/matrix'
+    | '/open-models/method'
     | '/categories/'
+    | '/open-models/'
+    | '/open-models/domains/$slug'
+    | '/open-models/models/$id'
     | '/sample/$slug/$'
+    | '/open-models/domains/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BrowseRoute: typeof BrowseRoute
+  OpenModelsRoute: typeof OpenModelsRouteWithChildren
   ProjectRoute: typeof ProjectRoute
   SettingsRoute: typeof SettingsRoute
   CategoriesSlugRoute: typeof CategoriesSlugRoute
@@ -135,6 +242,13 @@ declare module '@tanstack/react-router' {
       path: '/browse'
       fullPath: '/browse'
       preLoaderRoute: typeof BrowseRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/open-models': {
+      id: '/open-models'
+      path: '/open-models'
+      fullPath: '/open-models'
+      preLoaderRoute: typeof OpenModelsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/project': {
@@ -165,6 +279,62 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CategoriesSlugRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/open-models/': {
+      id: '/open-models/'
+      path: '/'
+      fullPath: '/open-models/'
+      preLoaderRoute: typeof OpenModelsIndexRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/audit': {
+      id: '/open-models/audit'
+      path: '/audit'
+      fullPath: '/open-models/audit'
+      preLoaderRoute: typeof OpenModelsAuditRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/compare': {
+      id: '/open-models/compare'
+      path: '/compare'
+      fullPath: '/open-models/compare'
+      preLoaderRoute: typeof OpenModelsCompareRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/matrix': {
+      id: '/open-models/matrix'
+      path: '/matrix'
+      fullPath: '/open-models/matrix'
+      preLoaderRoute: typeof OpenModelsMatrixRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/method': {
+      id: '/open-models/method'
+      path: '/method'
+      fullPath: '/open-models/method'
+      preLoaderRoute: typeof OpenModelsMethodRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/domains/': {
+      id: '/open-models/domains/'
+      path: '/domains'
+      fullPath: '/open-models/domains/'
+      preLoaderRoute: typeof OpenModelsDomainsIndexRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/domains/$slug': {
+      id: '/open-models/domains/$slug'
+      path: '/domains/$slug'
+      fullPath: '/open-models/domains/$slug'
+      preLoaderRoute: typeof OpenModelsDomainsSlugRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
+    '/open-models/models/$id': {
+      id: '/open-models/models/$id'
+      path: '/models/$id'
+      fullPath: '/open-models/models/$id'
+      preLoaderRoute: typeof OpenModelsModelsIdRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
     '/sample/$slug/$': {
       id: '/sample/$slug/$'
       path: '/sample/$slug/$'
@@ -175,9 +345,36 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface OpenModelsRouteChildren {
+  OpenModelsAuditRoute: typeof OpenModelsAuditRoute
+  OpenModelsCompareRoute: typeof OpenModelsCompareRoute
+  OpenModelsMatrixRoute: typeof OpenModelsMatrixRoute
+  OpenModelsMethodRoute: typeof OpenModelsMethodRoute
+  OpenModelsIndexRoute: typeof OpenModelsIndexRoute
+  OpenModelsDomainsSlugRoute: typeof OpenModelsDomainsSlugRoute
+  OpenModelsModelsIdRoute: typeof OpenModelsModelsIdRoute
+  OpenModelsDomainsIndexRoute: typeof OpenModelsDomainsIndexRoute
+}
+
+const OpenModelsRouteChildren: OpenModelsRouteChildren = {
+  OpenModelsAuditRoute: OpenModelsAuditRoute,
+  OpenModelsCompareRoute: OpenModelsCompareRoute,
+  OpenModelsMatrixRoute: OpenModelsMatrixRoute,
+  OpenModelsMethodRoute: OpenModelsMethodRoute,
+  OpenModelsIndexRoute: OpenModelsIndexRoute,
+  OpenModelsDomainsSlugRoute: OpenModelsDomainsSlugRoute,
+  OpenModelsModelsIdRoute: OpenModelsModelsIdRoute,
+  OpenModelsDomainsIndexRoute: OpenModelsDomainsIndexRoute,
+}
+
+const OpenModelsRouteWithChildren = OpenModelsRoute._addFileChildren(
+  OpenModelsRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BrowseRoute: BrowseRoute,
+  OpenModelsRoute: OpenModelsRouteWithChildren,
   ProjectRoute: ProjectRoute,
   SettingsRoute: SettingsRoute,
   CategoriesSlugRoute: CategoriesSlugRoute,

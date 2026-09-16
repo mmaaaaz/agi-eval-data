@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Spatial Reasoning Bench — open-model accuracy report</title>
+<style>
+  :root{
+    --bg:oklch(98.5% 0.004 90); --surface:#fff; --surface-2:oklch(99% 0.003 90);
+    --ink:oklch(21% 0.02 265); --ink-2:oklch(43% 0.015 265); --muted:oklch(57% 0.012 265);
+    --line:oklch(90% 0.008 90); --line-2:oklch(95.5% 0.006 90);
+    --ivl:oklch(50% 0.15 262); --ds:oklch(62% 0.14 52); --base:oklch(70% 0.02 265);
+    --warn:oklch(52% 0.16 27); --warn-soft:oklch(96.5% 0.025 27);
+    --ok:oklch(52% 0.11 165); --ok-soft:oklch(97% 0.02 165);
+    --r:10px; --mono:ui-monospace,"SF Mono","Cascadia Mono",Menlo,Consolas,monospace;
+    --s1:6px; --s2:10px; --s3:14px; --s4:20px; --s5:30px; --s6:44px;
+  }
+  *{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{margin:0;background:var(--bg);color:var(--ink);
+    font:15px/1.55 Inter,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    -webkit-font-smoothing:antialiased;padding-bottom:var(--s6)}
+  .wrap{max-width:1640px;margin:0 auto;padding:0 28px}
+  .num{font-family:var(--mono);font-variant-numeric:tabular-nums}
+  .topbar{display:flex;align-items:center;gap:var(--s3);padding:var(--s3) 0;border-bottom:1px solid var(--line);
+    font:600 11px/1 var(--mono);letter-spacing:.13em;text-transform:uppercase;color:var(--muted)}
+  .topbar .sep{color:var(--line)}
+  .topbar .right{margin-left:auto;display:flex;gap:var(--s2);align-items:center}
+  header{padding:var(--s6) 0 var(--s5)}
+  .hero{display:grid;grid-template-columns:1fr auto;gap:var(--s5);align-items:center}
+  h1{margin:0 0 var(--s3);font-size:clamp(27px,3.2vw,40px);line-height:1.1;letter-spacing:-.022em;font-weight:680}
+  h1 em{font-style:normal;color:var(--ivl)}
+  .sub{color:var(--ink-2);max-width:74ch;font-size:15.5px}
+  .motif{width:132px;height:132px;flex:none}
+  .coverage{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:1px;background:var(--line);
+    border:1px solid var(--line);border-radius:var(--r);overflow:hidden;margin-top:var(--s5)}
+  .coverage div{background:var(--surface);padding:13px 15px}
+  .coverage .k{font:600 10.5px/1 var(--mono);letter-spacing:.11em;text-transform:uppercase;color:var(--muted);margin-bottom:7px}
+  .coverage .v{font:600 20px/1 var(--mono);letter-spacing:-.02em}
+  .coverage .v small{font:500 12px/1 var(--mono);color:var(--muted);margin-left:5px;letter-spacing:0}
+  .chips{display:flex;flex-wrap:wrap;gap:var(--s1);margin-top:var(--s3)}
+  .chip{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border:1px solid var(--line);border-radius:999px;
+    background:var(--surface);font:500 12px/1 var(--mono);color:var(--ink-2)}
+  .chip.flag{color:var(--warn);border-color:oklch(88% 0.06 27);background:var(--warn-soft)}
+  .dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex:none}
+  .dot.ivl{color:var(--ivl)} .dot.ds{color:var(--ds)} .dot.base{color:var(--base)} .dot.ok{color:var(--ok)}
+  nav{display:flex;flex-wrap:wrap;gap:var(--s4);padding:var(--s2) 0;border-bottom:1px solid var(--line);
+    font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase}
+  nav a{color:var(--muted);text-decoration:none;padding:4px 0;border-bottom:2px solid transparent}
+  nav a:hover{color:var(--ink);border-bottom-color:var(--ivl)}
+  .kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(255px,1fr));gap:var(--s3);margin:var(--s4) 0 var(--s2)}
+  .kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:var(--s3) var(--s4) var(--s4);position:relative;overflow:hidden}
+  .kpi .who{font:600 11.5px/1 var(--mono);letter-spacing:.07em;text-transform:uppercase;color:var(--ink-2);display:flex;align-items:center;gap:8px}
+  .kpi .big{font:600 44px/1 var(--mono);letter-spacing:-.035em;margin:var(--s3) 0 2px;font-variant-numeric:tabular-nums}
+  .kpi .cap{font:500 11.5px/1 var(--mono);color:var(--muted);letter-spacing:.04em;text-transform:uppercase}
+  .kpi dl{display:grid;grid-template-columns:auto 1fr;gap:3px var(--s2);margin:var(--s3) 0 0;font:400 12.5px/1.5 var(--mono)}
+  .kpi dt{color:var(--muted)} .kpi dd{margin:0;text-align:right;color:var(--ink-2);font-weight:600;font-variant-numeric:tabular-nums}
+  .kpi .rail{position:absolute;left:0;right:0;bottom:0;height:3px;background:var(--line-2)}
+  .kpi .rail i{display:block;height:100%}
+  .kpi.ivl .big{color:var(--ivl)} .kpi.ivl .rail i{background:var(--ivl)}
+  .kpi.ds .big{color:var(--ds)} .kpi.ds .rail i{background:var(--ds)}
+  .kpi.base .big{color:var(--ink-2)} .kpi.base .rail i{background:var(--base)}
+  .kpi.ok .big{color:var(--ok)} .kpi.ok .rail i{background:var(--ok)}
+  section{margin-top:var(--s6);scroll-margin-top:var(--s3)}
+  h2{font-size:19.5px;letter-spacing:-.012em;margin:0 0 4px;font-weight:660;display:flex;align-items:baseline;gap:var(--s2)}
+  h2 span.n{font:600 11.5px/1 var(--mono);color:var(--muted);letter-spacing:.1em}
+  h3.sh{font-size:14px;font-weight:640;margin:var(--s5) 0 var(--s2)}
+  .lede{color:var(--ink-2);margin:var(--s1) 0 var(--s4);max-width:104ch}
+  .find{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:var(--s3)}
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:var(--s3) var(--s4) var(--s4)}
+  .card h3{margin:0 0 var(--s1);font-size:14.5px;font-weight:640;letter-spacing:-.005em}
+  .card p{margin:0;color:var(--ink-2);font-size:13.5px}
+  .card p+p{margin-top:var(--s2)}
+  .card b{color:var(--ink);font-weight:640}
+  .card .tag{font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted);display:block;margin-bottom:var(--s2)}
+  .card.alert{border-color:oklch(88% 0.06 27);background:linear-gradient(180deg,var(--warn-soft),var(--surface) 42%)}
+  .card.okcard{border-color:oklch(89% 0.05 165);background:linear-gradient(180deg,var(--ok-soft),var(--surface) 42%)}
+  code{font:500 12.5px/1.4 var(--mono);background:var(--line-2);padding:1px 5px;border-radius:4px;word-break:break-word}
+  .controls{display:flex;flex-wrap:wrap;gap:var(--s2) var(--s4);align-items:center;padding:var(--s2) var(--s3);
+    background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:var(--s3);
+    position:sticky;top:0;z-index:20;box-shadow:0 1px 0 oklch(0% 0 0/.03)}
+  .ctl-label{font:600 10.5px/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--muted)}
+  .seg{display:inline-flex;background:var(--line-2);border-radius:8px;padding:3px}
+  .seg button{border:0;background:none;font:600 12.5px/1 Inter,sans-serif;color:var(--ink-2);padding:7px 12px;border-radius:6px;cursor:pointer}
+  .seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px oklch(0% 0 0/.08)}
+  input[type=search]{font:400 13.5px/1 Inter,sans-serif;padding:9px 12px;border:1px solid var(--line);
+    border-radius:8px;background:var(--surface-2);min-width:200px;color:var(--ink)}
+  .fams{display:flex;flex-wrap:wrap;gap:5px}
+  .fam{font:500 11.5px/1 var(--mono);padding:6px 10px;border:1px solid var(--line);border-radius:999px;
+    background:var(--surface-2);color:var(--ink-2);cursor:pointer}
+  .fam[aria-pressed="true"]{background:var(--ink);border-color:var(--ink);color:oklch(98% 0 0)}
+  .ghost{font:600 12.5px/1 Inter,sans-serif;background:none;border:1px solid var(--line);border-radius:8px;
+    padding:9px 13px;color:var(--ink-2);cursor:pointer}
+  .count{margin-left:auto;font:500 12px/1 var(--mono);color:var(--muted)}
+  :focus-visible{outline:2px solid var(--ivl);outline-offset:2px}
+  .tblwrap{overflow:auto;max-height:74vh;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+  table.grid{border-collapse:separate;border-spacing:0;width:100%;font-size:13px}
+  table.grid th,table.grid td{padding:8px 9px;text-align:right;white-space:nowrap;border-bottom:1px solid var(--line-2)}
+  table.grid thead th{position:sticky;top:0;background:var(--surface-2);z-index:3;cursor:pointer;user-select:none;
+    font:600 10.5px/1.3 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--line)}
+  table.grid thead tr.groups th{top:0;z-index:4;background:var(--surface);font-size:11px;color:var(--ink-2);cursor:default;border-bottom:0}
+  table.grid thead tr.cols th{top:29px}
+  table.grid th .gd{display:inline-flex;align-items:center;gap:6px}
+  table.grid thead th[data-sort]:hover{color:var(--ink)}
+  table.grid th.sorted{color:var(--ink)}
+  table.grid th.sorted::after{content:"\\25BC";font-size:8.5px;margin-left:5px}
+  table.grid th.sorted.asc::after{content:"\\25B2"}
+  table.grid tbody tr:hover td{background:oklch(97.6% 0.008 262)}
+  table.grid th.first,table.grid td.first{position:sticky;left:0;z-index:2;text-align:left;background:var(--surface);box-shadow:1px 0 0 var(--line-2)}
+  table.grid thead th.first{z-index:5;background:var(--surface-2)}
+  table.grid tbody tr:hover td.first{background:oklch(97.6% 0.008 262)}
+  td.first .nm{font-weight:560}
+  td.first .famtag{display:block;font:500 10px/1.4 var(--mono);color:var(--muted)}
+  .mk{color:var(--warn);font-weight:700;margin-left:5px;cursor:help}
+  td.acc{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600;min-width:62px}
+  td.baseCell,td.partial{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);font-weight:500}
+  td.baseCell{background:oklch(97.4% 0.003 265)}
+  td.delta{font-family:var(--mono);font-variant-numeric:tabular-nums;font-weight:600}
+  td.delta .up{color:var(--ivl)} td.delta .down{color:var(--ds)}
+  td.pf{font-family:var(--mono);font-variant-numeric:tabular-nums;color:var(--ink-2);font-weight:500}
+  td.pf .hi{color:var(--warn);font-weight:650}
+  table.grid tfoot td{position:sticky;bottom:0;background:var(--surface-2);font-weight:650;border-top:1px solid var(--line);border-bottom:0}
+  .empty{padding:28px;text-align:center;color:var(--muted)}
+  .matrix{display:grid;grid-template-columns:repeat(auto-fit,minmax(430px,1fr));gap:var(--s3)}
+  .panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:var(--s3) var(--s3) var(--s2);overflow:auto}
+  .panel header.ph{display:flex;align-items:center;gap:8px;margin-bottom:var(--s2);
+    font:600 12px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-2)}
+  .panel table{border-collapse:separate;border-spacing:0;width:100%;font-size:12px}
+  .panel th,.panel td{padding:4px 6px;text-align:right;font-family:var(--mono);font-variant-numeric:tabular-nums;white-space:nowrap}
+  .panel thead th{font:600 10px/1 var(--mono);letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+  .panel td.d,.panel thead th.d{text-align:left;font-family:Inter,sans-serif;font-weight:500;color:var(--ink-2);font-size:12px}
+  .panel td.h{border-radius:3px;color:var(--ink);font-weight:600}
+  .panel tr.grp td{background:var(--line-2);font-family:Inter,sans-serif;font-weight:600;color:var(--ink-2);font-size:11px;
+    letter-spacing:.04em;text-align:left;border-radius:3px}
+  .panel td.all{font-weight:650;color:var(--ink)}
+  .scale{display:flex;align-items:center;gap:7px;font:500 11px/1 var(--mono);color:var(--muted);margin-bottom:var(--s3)}
+  .scale i{width:16px;height:10px;border-radius:2px;display:inline-block}
+  .charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(440px,1fr));gap:var(--s3)}
+  .chart{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:var(--s3) var(--s4) var(--s4)}
+  .chart h3{margin:0 0 3px;font-size:14.5px;font-weight:640}
+  .chart p.note{margin:0 0 var(--s3);font-size:12.5px;color:var(--muted)}
+  .legend{display:flex;gap:var(--s3);margin-bottom:var(--s3);font:500 11.5px/1 var(--mono);color:var(--ink-2);flex-wrap:wrap}
+  .legend span{display:inline-flex;align-items:center;gap:6px}
+  .swatch{width:10px;height:10px;border-radius:3px}
+  .hbars{display:grid;gap:8px}
+  .hrow{display:grid;grid-template-columns:136px 1fr;gap:var(--s2);align-items:center}
+  .hrow .lbl{font:500 12px/1.3 Inter,sans-serif;color:var(--ink-2);text-align:right}
+  .hrow .bars{display:grid;gap:3px}
+  .btrack{position:relative;height:13px;background:var(--line-2);border-radius:3px}
+  .btrack i{position:absolute;inset:0 auto 0 0;border-radius:3px;min-width:2px}
+  .btrack b{position:absolute;top:-1px;font:600 11px/13px var(--mono);color:var(--ink-2);white-space:nowrap}
+  .fill-ivl{background:var(--ivl)} .fill-ds{background:var(--ds)} .fill-base{background:var(--base)}
+  .vbars{display:flex;gap:var(--s2);align-items:flex-end;height:200px;padding-top:8px}
+  .vgrp{flex:1;display:flex;gap:4px;align-items:flex-end;height:100%}
+  .vcol{flex:1;display:flex;flex-direction:column;justify-content:flex-end;height:100%}
+  .vcol i{display:block;border-radius:3px 3px 0 0;background:var(--ivl)}
+  .vcol.ds i{background:var(--ds)} .vcol.bs i{background:var(--base)}
+  .vcol b{font:600 10.5px/1 var(--mono);color:var(--ink-2);text-align:center;margin-bottom:4px}
+  .vaxis{display:flex;gap:var(--s2);border-top:1px solid var(--line);padding-top:8px;margin-top:6px}
+  .vaxis div{flex:1;text-align:center;font:600 11px/1 var(--mono);color:var(--muted)}
+  .divbars{display:grid;gap:6px}
+  .drow{display:grid;grid-template-columns:136px 1fr 58px;gap:var(--s2);align-items:center}
+  .drow .lbl{font:500 12px/1.3 Inter,sans-serif;color:var(--ink-2);text-align:right}
+  .dtrack{position:relative;height:14px;background:var(--line-2);border-radius:3px}
+  .dtrack .zero{position:absolute;left:50%;top:-3px;bottom:-3px;width:1px;background:var(--line)}
+  .dtrack i{position:absolute;top:1px;bottom:1px;border-radius:2px}
+  .dtrack i.pos{left:50%;background:var(--ivl)} .dtrack i.neg{right:50%;background:var(--ds)}
+  .drow b{font:600 11.5px/1 var(--mono);text-align:right}
+  .notes{display:grid;grid-template-columns:repeat(auto-fit,minmax(350px,1fr));gap:var(--s3)}
+  .notes ul,.notes ol{margin:0;padding-left:18px;color:var(--ink-2);font-size:13.5px}
+  .notes li+li{margin-top:6px}
+  table.plain{border-collapse:collapse;width:100%;font-size:12.5px}
+  table.plain th,table.plain td{padding:7px 9px;border-bottom:1px solid var(--line-2);font-family:var(--mono);
+    font-weight:500;color:var(--ink-2);white-space:normal;vertical-align:top}
+  table.plain th{font-weight:650;color:var(--ink);background:oklch(97.5% 0.004 265);text-align:left}
+  table.plain td.n{text-align:right;white-space:nowrap}
+  table.plain code{background:none;padding:0;font-size:12px}
+  .ex{display:block;font:500 11px/1.6 var(--mono);color:var(--muted)}
+  footer{margin-top:var(--s6);padding-top:var(--s3);border-top:1px solid var(--line);color:var(--muted);font:400 12.5px/1.7 var(--mono)}
+  @media (max-width:880px){.wrap{padding:0 16px}.hero{grid-template-columns:1fr}.motif{display:none}.count{margin-left:0}}
+  @media print{
+    body{background:#fff;padding:0}.controls,nav,.motif{display:none}
+    .tblwrap,.panel,.chart,.card,.kpi{break-inside:avoid}
+    .tblwrap{max-height:none;overflow:visible}
+    table.grid thead th{position:static}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="topbar">
+  <span>Spatial Reasoning Bench</span><span class="sep">/</span>
+  <span>Open-model evaluation</span><span class="sep">/</span>
+  <span>Accuracy report rev 3</span>
+  <span class="right"><span class="dot ivl"></span>InternVL3.5-8B<span class="dot ds" style="margin-left:12px"></span>DeepSeek-VL2-Small</span>
+</div>
+
+<header>
+  <div class="hero">
+    <div>
+      <h1>Spatial reasoning accuracy of two open VLMs — <em>one grading rule</em>, verified end to end</h1>
+      <p class="sub">Every answer in both runs is re-graded by a single frozen rule, so each model has exactly one accuracy here. The pipeline's own score is reported only as a grader-quality check: it agrees on 98.0% / 97.4% of questions and mis-scores the rest in both directions.</p>
+    </div>
+    <svg class="motif" viewBox="0 0 132 132" fill="none" aria-hidden="true">
+      <rect x="1" y="1" width="130" height="130" rx="10" stroke="var(--line)"/>
+      <rect x="30" y="30" width="72" height="72" stroke="var(--ink)" stroke-opacity=".5"/>
+      <rect x="42" y="42" width="48" height="48" stroke="var(--ivl)" stroke-opacity=".7"/>
+      <rect x="54" y="54" width="24" height="24" stroke="var(--ivl)" stroke-opacity=".4"/>
+      <path d="M12 120 L12 66 M12 120 L66 120" stroke="var(--line)" stroke-width="1.5"/>
+      <path d="M12 92 A28 28 0 0 0 40 120" stroke="var(--ds)" stroke-opacity=".65" stroke-width="1.5"/>
+      <circle cx="12" cy="120" r="2.5" fill="var(--ds)" fill-opacity=".75"/>
+      <path d="M96 12 h24 M108 12 v24" stroke="var(--line)" stroke-width="1.5"/>
+      <path d="M96 20 l8 8 l8 -8 l8 8" stroke="var(--muted)" stroke-opacity=".45" stroke-width="1.2"/>
+    </svg>
+  </div>
+
+  <div class="coverage">
+    <div><div class="k">Domains</div><div class="v">34</div></div>
+    <div><div class="k">Reasoning families</div><div class="v">9</div></div>
+    <div><div class="k">Difficulty levels</div><div class="v">L1&ndash;L5</div></div>
+    <div><div class="k">Questions / model</div><div class="v">252505</div></div>
+    <div><div class="k">Images / model</div><div class="v">50501<small>1,500 per domain</small></div></div>
+    <div><div class="k">Grading rule</div><div class="v">frozen<small>v3</small></div></div>
+  </div>
+
+  <div class="chips">
+    <span class="chip flag">11 domain-levels score 0.0% for both models</span>
+    <span class="chip flag">4 of them are grading failures</span>
+    <span class="chip flag">6 levels have a single answer</span>
+    <span class="chip flag">1,500 of 3,000 images per domain evaluated</span>
+  </div>
+</header>
+
+<nav>
+  <a href="#findings">01 Findings</a><a href="#table">02 Results table</a><a href="#matrix">03 Domain &times; level</a>
+  <a href="#charts">04 Families &amp; levels</a><a href="#audit">05 Grading audit</a><a href="#method">06 Method</a>
+</nav>
+
+<section class="kpis" id="kpis"></section>
+
+<section id="findings">
+  <h2><span class="n">01</span>Findings</h2>
+  <p class="lede">Every figure below is computed from the dataset embedded in this page. Accuracy means correct under the frozen rule in section 06, counted per question over the full evaluated set; nothing is excluded from the denominator.</p>
+  <div class="find">
+    <div class="card">
+      <span class="tag">Headline</span>
+      <h3>InternVL3.5-8B <span class="num">36.9%</span> vs DeepSeek-VL2-Small <span class="num">29.6%</span></h3>
+      <p>A gap of <b>7.3 points</b>, and it survives every check applied: the pipeline's own score (37.3% / 30.9%), this rule, and partial credit (38.7% / 31.0%).</p>
+      <p>Neither model reaches 40%: both fail roughly two of every three questions.</p>
+    </div>
+    <div class="card okcard">
+      <span class="tag">Grader quality</span>
+      <h3>The pipeline's flag agrees on 98.0% / 97.4% of questions</h3>
+      <p>Where it differs, it errs both ways: it credits <b>2980</b> / <b>5039</b> answers this rule rejects, and rejects <b>2110</b> / <b>1643</b> it accepts. The effects partly cancel in the headline (37.3 → 36.9, 30.9 → 29.6).</p>
+      <p>Per domain they do not: projectile_motion moves 70.4 → <b>85.2</b>, clock_reading 35.2 → <b>25.9</b> (InternVL).</p>
+    </div>
+    <div class="card alert">
+      <span class="tag">Publish blocker</span>
+      <h3>11 domain-levels score 0.0% for both models</h3>
+      <p>4 are grading failures: ground truth stored as <code>{'time_of_flight_s': 3.9, 'range_m': 34.5}</code> or <code>['blue', 'purple']</code>, which a string grader cannot read. This rule recovers them — depth_height L3, fbd L3, fbd L4, projectile_motion L4.</p>
+      <p>6 are semicolon answers like <code>no; new value 25</code> where models supply one part (up to 42.0% of parts present). 1 is genuinely wrong on both models.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Level design</span>
+      <h3>6 levels have one answer for all 1,500 images</h3>
+      <p>cube_net L1 is always <code>6</code>, gear_train L2 <code>opposite</code>, optical_illusion L1 <code>2</code>, orthographic L5 <code>front and side</code>, polyhedron L5 <code>no</code>, symmetry_pattern L5 <code>yes</code>. Blind answering scores 100% on all six.</p>
+      <p>Models profit: <b>85.2%</b> / <b>46.3%</b> over those 9000 questions. Dropping the three constant L5 levels cuts the apparent L5 rebound from 7.1 to 3.0 points (InternVL) and from 3.3 to 1.4 (DeepSeek).</p>
+    </div>
+    <div class="card">
+      <span class="tag">Difficulty curve</span>
+      <h3>Accuracy falls to L4 on both models</h3>
+      <p>InternVL: 52.2 → 48.8 → 33.0 → 21.8 → 28.9. DeepSeek: 37.1 → 44.3 → 27.3 → 18.0 → 21.3.</p>
+      <p>L4 is the real difficulty peak; L5 only looks easier because of the constant levels above. DeepSeek is also weaker on L1 than L2 (37.1% vs 44.3%), consistent with its 15.5% unparsed-response rate against 0.6% for InternVL.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Baseline</span>
+      <h3>Always answering the most common answer scores 13.8%</h3>
+      <p>InternVL's 36.9% is <b>+23.2</b> above that floor, DeepSeek's <b>+15.8</b>. Family floors run from 8.3% to 17.6%, so small answer spaces flatter raw accuracy.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Families</span>
+      <h3>Mechanical and solid-geometry tasks lead; search and estimation trail</h3>
+      <p>InternVL: <b>Physical & Mechanical</b> 46.4%, Solid Geometry 45.2%, weakest Analytic 26.1%. DeepSeek: best Solid Geometry 36.6%, weakest Analytic 20.3%.</p>
+      <p>Best domains: projectile_motion 85.2, cube_net 64.9, polyhedron 62.3. Worst: hex_pathfinding 9.7, embedded_figures 11.7, coordinate_geometry 13.6, impossible_object 17.6 — open-ended search and metric estimation on a reference frame.</p>
+    </div>
+    <div class="card">
+      <span class="tag">Head to head</span>
+      <h3>InternVL leads where mechanics dominate; DeepSeek wins 9 of 34 domains</h3>
+      <p>Largest InternVL margins: projectile_motion <b>+41.1</b>, gear_train <b>+37.8</b>, depth_height <b>+24.4</b>, fbd <b>+21.4</b>. DeepSeek's wins concentrate in impossible_object +9.2, hex_pathfinding +7.4, orthographic +5.5, fold_punch +5.4.</p>
+      <p>Both sit under 20% on the same hard core: hex_pathfinding, embedded_figures, coordinate_geometry, impossible_object.</p>
+    </div>
+  </div>
+</section>
+
+<section id="table">
+  <h2><span class="n">02</span>Results table</h2>
+  <p class="lede">One accuracy per model per row, with the five difficulty levels. Click a header to sort; filter by family or text. <b>Oracle</b> is the majority-answer baseline for that row — a model bar near it means the row is largely guessable. <b>Partial</b> is the mean share of answer parts correct (a diagnostic, not an accuracy). <span style="color:var(--warn)">&#9670;</span> marks rows with single-answer levels.</p>
+  <div class="controls">
+    <span class="ctl-label">Rows</span>
+    <div class="seg" id="viewSeg" role="group" aria-label="Row grouping">
+      <button data-view="domain" aria-pressed="true">By domain</button>
+      <button data-view="family" aria-pressed="false">By family</button>
+      <button data-view="level" aria-pressed="false">By level</button>
+    </div>
+    <input type="search" id="q" placeholder="Filter domains&hellip;" aria-label="Filter domains">
+    <span class="ctl-label">Families</span>
+    <div class="fams" id="fams"></div>
+    <button class="ghost" id="reset">Reset</button>
+    <span class="count" id="count"></span>
+  </div>
+  <div class="tblwrap"><table class="grid" id="tbl"></table></div>
+</section>
+
+<section id="matrix">
+  <h2><span class="n">03</span>Domain &times; level matrix</h2>
+  <p class="lede">The whole benchmark at a glance: 34 domains &times; 5 levels per model, shaded by accuracy and grouped by reasoning family. Hover a cell for counts, partial credit and that slice's oracle.</p>
+  <div class="scale">
+    <span>0%</span><i style="background:oklch(97% 0.018 40)"></i><i style="background:oklch(90% 0.045 100)"></i>
+    <i style="background:oklch(80% 0.07 140)"></i><i style="background:oklch(68% 0.09 170)"></i><i style="background:oklch(55% 0.08 180)"></i>
+    <span>100.0%+</span>
+  </div>
+  <div class="matrix" id="matrix"></div>
+</section>
+
+<section id="charts">
+  <h2><span class="n">04</span>Families and difficulty levels</h2>
+  <div class="charts">
+    <div class="chart">
+      <h3>Accuracy by reasoning family</h3>
+      <p class="note">Grey is the majority-answer oracle for the same slice — the floor a model must clear.</p>
+      <div class="legend"><span><i class="swatch" style="background:var(--base)"></i>Oracle</span><span><i class="swatch" style="background:var(--ivl)"></i>InternVL3.5-8B</span><span><i class="swatch" style="background:var(--ds)"></i>DeepSeek-VL2-Small</span></div>
+      <div class="hbars" id="famChart"></div>
+    </div>
+    <div class="chart">
+      <h3>Accuracy by difficulty level</h3>
+      <p class="note">Paired bars per level with that level's oracle.</p>
+      <div class="legend"><span><i class="swatch" style="background:var(--base)"></i>Oracle</span><span><i class="swatch" style="background:var(--ivl)"></i>InternVL</span><span><i class="swatch" style="background:var(--ds)"></i>DeepSeek</span></div>
+      <div class="vbars" id="lvlChart"></div>
+      <div class="vaxis"><div>L1</div><div>L2</div><div>L3</div><div>L4</div><div>L5</div></div>
+    </div>
+    <div class="chart">
+      <h3>Head-to-head gap by domain</h3>
+      <p class="note">InternVL minus DeepSeek, in accuracy points. Right is InternVL, left is DeepSeek.</p>
+      <div class="divbars" id="divChart"></div>
+    </div>
+  </div>
+</section>
+
+<section id="audit">
+  <h2><span class="n">05</span>Grading audit</h2>
+  <p class="lede">Why the pipeline's own score differs from the number in this report. Every disagreement is classified straight from the data, with examples.</p>
+  <h3 class="sh">Where the pipeline's grader errs</h3>
+  <div class="card" id="classTbl"></div>
+  <h3 class="sh">Levels where the pipeline scores 0.0% for both models</h3>
+  <div class="card" id="zeroTbl"></div>
+  <h3 class="sh">Domains the two gradings move most</h3>
+  <div class="notes">
+    <div class="card"><span class="tag">Under-scored by the pipeline</span><div id="moveTbl"></div></div>
+    <div class="card"><span class="tag">Over-scored by the pipeline</span><div id="dropTbl"></div></div>
+    <div class="card"><span class="tag">Single-answer levels</span>
+      <p style="margin:0 0 8px;color:var(--ink-2);font-size:13.5px">One ground truth for all 1,500 images — exclude or rebalance.</p>
+      <div id="constTbl"></div></div>
+  </div>
+</section>
+
+<section id="method">
+  <h2><span class="n">06</span>Method, verification and caveats</h2>
+  <div class="notes">
+    <div class="card">
+      <span class="tag">The frozen grading rule</span>
+      <ol>
+        <li>Answer text is lower-cased; punctuation, quoting, bracket and whitespace variation is normalised away.</li>
+        <li><b>Text answers</b> must appear as a whole word or phrase — a match may not sit inside a longer word. This stops ground truth <code>connected</code> from matching inside <code>disconnected</code>.</li>
+        <li><b>Numeric answers</b> must appear in the model's committed answer (after its final-answer marker, if it emits one) within 1% relative or 0.05 absolute tolerance.</li>
+        <li><b>Multi-part ground truth</b> (semicolon-separated) requires every part; the share matched is reported as partial credit.</li>
+        <li><b>Structured ground truth</b> (dict or list literals) is parsed: numbers must match numbers, string entries match by token, and ranked lists must be in the given order.</li>
+        <li>Anything still failing is wrong. Nothing is dropped from the denominator.</li>
+      </ol>
+    </div>
+    <div class="card okcard">
+      <span class="tag">Verification performed</span>
+      <ul>
+        <li>Raw counts recounted with grep/awk, independent of the Python pipeline: <b>252,505</b> records per model and <b>94,121</b> / <b>78,098</b> <code>"correct": true</code> — identical.</li>
+        <li>Zero duplicate question ids; all <b>252,505</b> records carry <code>"error": null</code>; ground truth byte-identical across runs, so the comparison is paired.</li>
+        <li>Levels exactly balanced at 50,501 questions each; per-domain spot checks reproduce the tables.</li>
+        <li>All 11772 grading disagreements are categorised and sampled (section 05) rather than assumed away.</li>
+        <li>Every figure in this page's text is computed from the embedded dataset at build time — nothing is transcribed by hand.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Exact vs rule-dependent</span>
+      <ul>
+        <li><b>Exact:</b> all counts, per-domain / level / family accuracies, oracle baselines, single-answer detection and coverage — integer counts over complete files.</li>
+        <li><b>Rule-dependent:</b> accuracy itself, because "correct" needs a stated comparison rule. The rule above is frozen and published; the pipeline's looser rule gives 37.3% / 30.9%, and that spread is the honest uncertainty on any single number here.</li>
+        <li><b>Estimate:</b> the sampling error below is statistical, not measured, and assumes the image subset was drawn at random.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Caveats for the paper</span>
+      <ul>
+        <li><b>Half sample.</b> Files are named <code>*_dataset_3000</code> but hold 1,500 distinct images each (ids span 1–3,000). Confirm intent; full-set numbers may shift.</li>
+        <li>angle_estimation carries 1,501 images in both runs — one more than every other domain.</li>
+        <li>Accuracy is per question (5 per image), so repeated question formats dominate some domains.</li>
+        <li>If the subset is random, sampling error at n=7,500 is roughly ±1.1 points (95%); domain gaps under ~1.5 points are noise. projectile_motion (n=1,000) is ±3 points.</li>
+        <li>The shipped pipeline still mis-scores the 4 structured zero-levels and gives no credit on 6 multi-part levels; both need fixing before per-domain numbers are published.</li>
+      </ul>
+    </div>
+    <div class="card">
+      <span class="tag">Reproduce</span>
+      <ul>
+        <li><code>_aggregate.py</code>, <code>_report.py</code> — counts, level and domain rollups. <code>_baseline.py</code> — majority-answer oracles and single-answer levels.</li>
+        <li><code>_final_grade.py</code> — the frozen grading rule applied to every answer.</li>
+        <li><code>_audit_disagree.py</code>, <code>_nearmiss.py</code>, <code>_tolerance.py</code> — disagreement classification and the tolerance sensitivity check.</li>
+        <li><code>_payload4.py</code> → <code>_page_data_v4.json</code> — the dataset embedded in this page.</li>
+        <li><code>_test_page.cjs</code> — 42 assertions over this page: sorting, views, filters, the matrix, the audit tables and payload-to-render agreement.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<footer id="foot"></footer>
+</div>
+
+<script id="payload" type="application/json">{"families": ["Plane Geometry", "Solid Geometry", "Transformational", "Physical & Mechanical", "Topological", "Projective", "Analytic", "Optical", "Inductive"], "models": [{"id": "internvl3_5-8b", "label": "InternVL3.5-8B", "n": 252505, "acc": 93251, "as": 94121, "over": 2980, "under": 2110, "partial": 97692.4, "pf": 1461, "levels": [{"n": 50501, "acc": 26343, "partial": 26343.0}, {"n": 50501, "acc": 24656, "partial": 24773.5}, {"n": 50501, "acc": 16665, "partial": 17552.5}, {"n": 50501, "acc": 10994, "partial": 11822.9}, {"n": 50501, "acc": 14593, "partial": 17200.5}]}, {"id": "deepseek-vl2-small", "label": "DeepSeek-VL2-Small", "n": 252505, "acc": 74702, "as": 78098, "over": 5039, "under": 1643, "partial": 78341.3, "pf": 39013, "levels": [{"n": 50501, "acc": 18715, "partial": 18715.0}, {"n": 50501, "acc": 22366, "partial": 22452.0}, {"n": 50501, "acc": 13774, "partial": 14689.7}, {"n": 50501, "acc": 9082, "partial": 9932.6}, {"n": 50501, "acc": 10765, "partial": 12552.0}]}], "domains": [{"k": "angle_estimation", "f": 0, "per": [{"n": 7505, "acc": 3039, "as": 3058, "over": 19, "under": 0, "partial": 3039.0, "pf": 0, "levels": [{"n": 1501, "acc": 853, "as": 853, "partial": 853.0}, {"n": 1501, "acc": 529, "as": 529, "partial": 529.0}, {"n": 1501, "acc": 501, "as": 501, "partial": 501.0}, {"n": 1501, "acc": 537, "as": 556, "partial": 537.0}, {"n": 1501, "acc": 619, "as": 619, "partial": 619.0}]}, {"n": 7505, "acc": 2613, "as": 2645, "over": 32, "under": 0, "partial": 2613.0, "pf": 1124, "levels": [{"n": 1501, "acc": 885, "as": 885, "partial": 885.0}, {"n": 1501, "acc": 505, "as": 510, "partial": 505.0}, {"n": 1501, "acc": 374, "as": 377, "partial": 374.0}, {"n": 1501, "acc": 553, "as": 577, "partial": 553.0}, {"n": 1501, "acc": 296, "as": 296, "partial": 296.0}]}], "base": {"o": 0.07381745502998001, "l": [0.3597601598934044, 0.18254497001998668, 0.290473017988008, 0.23317788141239174, 0.29447035309793473], "top": "obtuse"}, "const": []}, {"k": "clock_reading", "f": 3, "per": [{"n": 7500, "acc": 1942, "as": 2641, "over": 699, "under": 0, "partial": 1942.0, "pf": 0, "levels": [{"n": 1500, "acc": 631, "as": 631, "partial": 631.0}, {"n": 1500, "acc": 1126, "as": 1126, "partial": 1126.0}, {"n": 1500, "acc": 129, "as": 662, "partial": 129.0}, {"n": 1500, "acc": 20, "as": 99, "partial": 20.0}, {"n": 1500, "acc": 36, "as": 123, "partial": 36.0}]}, {"n": 7500, "acc": 1319, "as": 1655, "over": 336, "under": 0, "partial": 1319.0, "pf": 147, "levels": [{"n": 1500, "acc": 343, "as": 343, "partial": 343.0}, {"n": 1500, "acc": 915, "as": 915, "partial": 915.0}, {"n": 1500, "acc": 37, "as": 308, "partial": 37.0}, {"n": 1500, "acc": 13, "as": 53, "partial": 13.0}, {"n": 1500, "acc": 11, "as": 36, "partial": 11.0}]}], "base": {"o": 0.10133333333333333, "l": [0.09266666666666666, 0.5066666666666667, 0.005333333333333333, 0.01, 0.012], "top": "before"}, "const": []}, {"k": "combination", "f": 2, "per": [{"n": 7500, "acc": 2691, "as": 2888, "over": 197, "under": 0, "partial": 2691.0, "pf": 0, "levels": [{"n": 1500, "acc": 110, "as": 110, "partial": 110.0}, {"n": 1500, "acc": 561, "as": 561, "partial": 561.0}, {"n": 1500, "acc": 788, "as": 788, "partial": 788.0}, {"n": 1500, "acc": 428, "as": 428, "partial": 428.0}, {"n": 1500, "acc": 804, "as": 1001, "partial": 804.0}]}, {"n": 7500, "acc": 2250, "as": 3027, "over": 777, "under": 0, "partial": 2250.0, "pf": 1539, "levels": [{"n": 1500, "acc": 542, "as": 542, "partial": 542.0}, {"n": 1500, "acc": 621, "as": 1077, "partial": 621.0}, {"n": 1500, "acc": 430, "as": 430, "partial": 430.0}, {"n": 1500, "acc": 472, "as": 619, "partial": 472.0}, {"n": 1500, "acc": 185, "as": 359, "partial": 185.0}]}], "base": {"o": 0.1316, "l": [0.212, 0.25466666666666665, 0.32266666666666666, 0.2673333333333333, 0.628], "top": "yes"}, "const": []}, {"k": "combination3d", "f": 1, "per": [{"n": 7500, "acc": 1990, "as": 2062, "over": 104, "under": 32, "partial": 1990.0, "pf": 5, "levels": [{"n": 1500, "acc": 4, "as": 4, "partial": 4.0}, {"n": 1500, "acc": 525, "as": 525, "partial": 525.0}, {"n": 1500, "acc": 810, "as": 810, "partial": 810.0}, {"n": 1500, "acc": 214, "as": 238, "partial": 214.0}, {"n": 1500, "acc": 437, "as": 485, "partial": 437.0}]}, {"n": 7500, "acc": 1715, "as": 1319, "over": 63, "under": 459, "partial": 1715.0, "pf": 1443, "levels": [{"n": 1500, "acc": 223, "as": 223, "partial": 223.0}, {"n": 1500, "acc": 415, "as": 417, "partial": 415.0}, {"n": 1500, "acc": 364, "as": 364, "partial": 364.0}, {"n": 1500, "acc": 240, "as": 277, "partial": 240.0}, {"n": 1500, "acc": 473, "as": 38, "partial": 473.0}]}], "base": {"o": 0.086, "l": [0.14733333333333334, 0.25733333333333336, 0.3446666666666667, 0.18266666666666667, 0.326], "top": "D"}, "const": []}, {"k": "compass_bearing", "f": 6, "per": [{"n": 7500, "acc": 2888, "as": 3015, "over": 127, "under": 0, "partial": 3152.0, "pf": 0, "levels": [{"n": 1500, "acc": 1466, "as": 1466, "partial": 1466.0}, {"n": 1500, "acc": 1292, "as": 1292, "partial": 1292.0}, {"n": 1500, "acc": 130, "as": 256, "partial": 130.0}, {"n": 1500, "acc": 0, "as": 1, "partial": 0.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 264.0}]}, {"n": 7500, "acc": 2171, "as": 2189, "over": 19, "under": 1, "partial": 2345.0, "pf": 101, "levels": [{"n": 1500, "acc": 1184, "as": 1184, "partial": 1184.0}, {"n": 1500, "acc": 932, "as": 932, "partial": 932.0}, {"n": 1500, "acc": 55, "as": 73, "partial": 55.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 0.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 174.0}]}], "base": {"o": 0.1012, "l": [0.506, 0.452, 0.042, 0.010666666666666666, 0.0013333333333333333], "top": "3"}, "const": []}, {"k": "coordinate_geometry", "f": 6, "per": [{"n": 7500, "acc": 1022, "as": 1391, "over": 379, "under": 10, "partial": 1022.0, "pf": 0, "levels": [{"n": 1500, "acc": 33, "as": 99, "partial": 33.0}, {"n": 1500, "acc": 89, "as": 242, "partial": 89.0}, {"n": 1500, "acc": 25, "as": 25, "partial": 25.0}, {"n": 1500, "acc": 816, "as": 816, "partial": 816.0}, {"n": 1500, "acc": 59, "as": 209, "partial": 59.0}]}, {"n": 7500, "acc": 880, "as": 1074, "over": 325, "under": 131, "partial": 880.0, "pf": 524, "levels": [{"n": 1500, "acc": 168, "as": 63, "partial": 168.0}, {"n": 1500, "acc": 99, "as": 286, "partial": 99.0}, {"n": 1500, "acc": 25, "as": 24, "partial": 25.0}, {"n": 1500, "acc": 533, "as": 533, "partial": 533.0}, {"n": 1500, "acc": 55, "as": 168, "partial": 55.0}]}], "base": {"o": 0.06533333333333333, "l": [0.008666666666666666, 0.05466666666666667, 0.32666666666666666, 0.22733333333333333, 0.03933333333333333], "top": "A and B"}, "const": []}, {"k": "cube_net", "f": 1, "per": [{"n": 7500, "acc": 4867, "as": 4867, "over": 0, "under": 0, "partial": 4867.0, "pf": 0, "levels": [{"n": 1500, "acc": 1497, "as": 1497, "partial": 1497.0}, {"n": 1500, "acc": 934, "as": 934, "partial": 934.0}, {"n": 1500, "acc": 691, "as": 691, "partial": 691.0}, {"n": 1500, "acc": 840, "as": 840, "partial": 840.0}, {"n": 1500, "acc": 905, "as": 905, "partial": 905.0}]}, {"n": 7500, "acc": 3988, "as": 4422, "over": 434, "under": 0, "partial": 3988.0, "pf": 1129, "levels": [{"n": 1500, "acc": 1035, "as": 1035, "partial": 1035.0}, {"n": 1500, "acc": 652, "as": 1051, "partial": 652.0}, {"n": 1500, "acc": 384, "as": 419, "partial": 384.0}, {"n": 1500, "acc": 777, "as": 777, "partial": 777.0}, {"n": 1500, "acc": 1140, "as": 1140, "partial": 1140.0}]}], "base": {"o": 0.2, "l": [1.0, 0.17933333333333334, 0.16533333333333333, 0.504, 0.7846666666666666], "top": "6"}, "const": [0]}, {"k": "cube_structure", "f": 1, "per": [{"n": 7500, "acc": 1691, "as": 1698, "over": 7, "under": 0, "partial": 1691.0, "pf": 0, "levels": [{"n": 1500, "acc": 226, "as": 233, "partial": 226.0}, {"n": 1500, "acc": 290, "as": 290, "partial": 290.0}, {"n": 1500, "acc": 1017, "as": 1017, "partial": 1017.0}, {"n": 1500, "acc": 120, "as": 120, "partial": 120.0}, {"n": 1500, "acc": 38, "as": 38, "partial": 38.0}]}, {"n": 7500, "acc": 1016, "as": 1046, "over": 30, "under": 0, "partial": 1016.0, "pf": 1421, "levels": [{"n": 1500, "acc": 284, "as": 288, "partial": 284.0}, {"n": 1500, "acc": 179, "as": 179, "partial": 179.0}, {"n": 1500, "acc": 183, "as": 191, "partial": 183.0}, {"n": 1500, "acc": 303, "as": 305, "partial": 303.0}, {"n": 1500, "acc": 67, "as": 83, "partial": 67.0}]}], "base": {"o": 0.23013333333333333, "l": [0.16466666666666666, 0.17666666666666667, 0.49733333333333335, 0.3466666666666667, 0.3466666666666667], "top": "1"}, "const": []}, {"k": "depth_height", "f": 1, "per": [{"n": 7500, "acc": 4361, "as": 3921, "over": 90, "under": 530, "partial": 4979.5, "pf": 0, "levels": [{"n": 1500, "acc": 1477, "as": 1477, "partial": 1477.0}, {"n": 1500, "acc": 1167, "as": 1167, "partial": 1167.0}, {"n": 1500, "acc": 530, "as": 0, "partial": 1148.5}, {"n": 1500, "acc": 217, "as": 307, "partial": 217.0}, {"n": 1500, "acc": 970, "as": 970, "partial": 970.0}]}, {"n": 7500, "acc": 2530, "as": 2223, "over": 84, "under": 391, "partial": 3151.7, "pf": 333, "levels": [{"n": 1500, "acc": 521, "as": 521, "partial": 521.0}, {"n": 1500, "acc": 919, "as": 919, "partial": 919.0}, {"n": 1500, "acc": 391, "as": 0, "partial": 1012.7}, {"n": 1500, "acc": 81, "as": 165, "partial": 81.0}, {"n": 1500, "acc": 618, "as": 618, "partial": 618.0}]}], "base": {"o": 0.08586666666666666, "l": [0.35, 0.20533333333333334, 0.021333333333333333, 0.05266666666666667, 0.354], "top": "3"}, "const": []}, {"k": "embedded_figures", "f": 2, "per": [{"n": 7500, "acc": 877, "as": 877, "over": 0, "under": 0, "partial": 877.0, "pf": 0, "levels": [{"n": 1500, "acc": 0, "as": 0, "partial": 0.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 0.0}, {"n": 1500, "acc": 603, "as": 603, "partial": 603.0}, {"n": 1500, "acc": 259, "as": 259, "partial": 259.0}, {"n": 1500, "acc": 15, "as": 15, "partial": 15.0}]}, {"n": 7500, "acc": 1260, "as": 1268, "over": 8, "under": 0, "partial": 1260.0, "pf": 458, "levels": [{"n": 1500, "acc": 98, "as": 98, "partial": 98.0}, {"n": 1500, "acc": 41, "as": 41, "partial": 41.0}, {"n": 1500, "acc": 605, "as": 613, "partial": 605.0}, {"n": 1500, "acc": 286, "as": 286, "partial": 286.0}, {"n": 1500, "acc": 230, "as": 230, "partial": 230.0}]}], "base": {"o": 0.13533333333333333, "l": [0.24666666666666667, 0.258, 0.258, 0.172, 0.6766666666666666], "top": "open"}, "const": []}, {"k": "fbd", "f": 3, "per": [{"n": 7500, "acc": 3164, "as": 2551, "over": 6, "under": 619, "partial": 3812.4, "pf": 1274, "levels": [{"n": 1500, "acc": 1258, "as": 1258, "partial": 1258.0}, {"n": 1500, "acc": 1053, "as": 1048, "partial": 1170.5}, {"n": 1500, "acc": 117, "as": 0, "partial": 386.0}, {"n": 1500, "acc": 491, "as": 0, "partial": 752.9}, {"n": 1500, "acc": 245, "as": 245, "partial": 245.0}]}, {"n": 7500, "acc": 1556, "as": 1543, "over": 446, "under": 459, "partial": 2195.7, "pf": 2965, "levels": [{"n": 1500, "acc": 0, "as": 224, "partial": 0.0}, {"n": 1500, "acc": 1101, "as": 1129, "partial": 1187.0}, {"n": 1500, "acc": 90, "as": 0, "partial": 384.0}, {"n": 1500, "acc": 175, "as": 0, "partial": 434.7}, {"n": 1500, "acc": 190, "as": 190, "partial": 190.0}]}], "base": {"o": 0.1008, "l": [0.38, 0.2826666666666667, 0.07933333333333334, 0.012666666666666666, 0.504], "top": "downward (270 degrees; 0=right, 90=up)"}, "const": []}, {"k": "fold_punch", "f": 2, "per": [{"n": 7500, "acc": 2091, "as": 2091, "over": 0, "under": 0, "partial": 2091.0, "pf": 0, "levels": [{"n": 1500, "acc": 1171, "as": 1171, "partial": 1171.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 0.0}, {"n": 1500, "acc": 439, "as": 439, "partial": 439.0}, {"n": 1500, "acc": 435, "as": 435, "partial": 435.0}, {"n": 1500, "acc": 46, "as": 46, "partial": 46.0}]}, {"n": 7500, "acc": 2497, "as": 2662, "over": 165, "under": 0, "partial": 2497.0, "pf": 2306, "levels": [{"n": 1500, "acc": 986, "as": 986, "partial": 986.0}, {"n": 1500, "acc": 314, "as": 315, "partial": 314.0}, {"n": 1500, "acc": 379, "as": 379, "partial": 379.0}, {"n": 1500, "acc": 533, "as": 692, "partial": 533.0}, {"n": 1500, "acc": 285, "as": 290, "partial": 285.0}]}], "base": {"o": 0.17746666666666666, "l": [0.5006666666666667, 0.5006666666666667, 0.26066666666666666, 0.30933333333333335, 0.38666666666666666], "top": "8"}, "const": []}, {"k": "gauge_reading", "f": 3, "per": [{"n": 7500, "acc": 3877, "as": 4070, "over": 193, "under": 0, "partial": 4586.5, "pf": 0, "levels": [{"n": 1500, "acc": 1409, "as": 1409, "partial": 1409.0}, {"n": 1500, "acc": 1385, "as": 1385, "partial": 1385.0}, {"n": 1500, "acc": 690, "as": 883, "partial": 690.0}, {"n": 1500, "acc": 393, "as": 393, "partial": 472.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 630.5}]}, {"n": 7500, "acc": 3481, "as": 3868, "over": 394, "under": 7, "partial": 4054.5, "pf": 1436, "levels": [{"n": 1500, "acc": 1431, "as": 1431, "partial": 1431.0}, {"n": 1500, "acc": 1258, "as": 1258, "partial": 1258.0}, {"n": 1500, "acc": 564, "as": 765, "partial": 564.0}, {"n": 1500, "acc": 228, "as": 414, "partial": 232.5}, {"n": 1500, "acc": 0, "as": 0, "partial": 569.0}]}], "base": {"o": 0.16293333333333335, "l": [0.7993333333333333, 0.5106666666666667, 0.05733333333333333, 0.596, 0.036], "top": "0"}, "const": []}, {"k": "gear_train", "f": 3, "per": [{"n": 7500, "acc": 4305, "as": 4582, "over": 277, "under": 0, "partial": 4668.5, "pf": 0, "levels": [{"n": 1500, "acc": 1444, "as": 1444, "partial": 1444.0}, {"n": 1500, "acc": 1500, "as": 1500, "partial": 1500.0}, {"n": 1500, "acc": 863, "as": 863, "partial": 863.0}, {"n": 1500, "acc": 498, "as": 775, "partial": 498.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 363.5}]}, {"n": 7500, "acc": 1469, "as": 1630, "over": 161, "under": 0, "partial": 1623.5, "pf": 432, "levels": [{"n": 1500, "acc": 0, "as": 17, "partial": 0.0}, {"n": 1500, "acc": 644, "as": 644, "partial": 644.0}, {"n": 1500, "acc": 702, "as": 793, "partial": 702.0}, {"n": 1500, "acc": 123, "as": 176, "partial": 123.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 154.5}]}], "base": {"o": 0.2, "l": [0.386, 1.0, 0.27066666666666667, 0.008, 0.3426666666666667], "top": "opposite"}, "const": [1]}, {"k": "hex_pathfinding", "f": 4, "per": [{"n": 7500, "acc": 729, "as": 730, "over": 1, "under": 0, "partial": 729.0, "pf": 13, "levels": [{"n": 1500, "acc": 17, "as": 18, "partial": 17.0}, {"n": 1500, "acc": 693, "as": 693, "partial": 693.0}, {"n": 1500, "acc": 16, "as": 16, "partial": 16.0}, {"n": 1500, "acc": 3, "as": 3, "partial": 3.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 0.0}]}, {"n": 7500, "acc": 1287, "as": 1289, "over": 2, "under": 0, "partial": 1287.0, "pf": 364, "levels": [{"n": 1500, "acc": 98, "as": 98, "partial": 98.0}, {"n": 1500, "acc": 921, "as": 921, "partial": 921.0}, {"n": 1500, "acc": 200, "as": 200, "partial": 200.0}, {"n": 1500, "acc": 68, "as": 70, "partial": 68.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 0.0}]}], "base": {"o": 0.1028, "l": [0.118, 0.514, 0.21466666666666667, 0.21933333333333332, 0.32866666666666666], "top": "hole"}, "const": []}, {"k": "impossible_object", "f": 7, "per": [{"n": 7500, "acc": 1323, "as": 1469, "over": 146, "under": 0, "partial": 1323.0, "pf": 0, "levels": [{"n": 1500, "acc": 0, "as": 0, "partial": 0.0}, {"n": 1500, "acc": 761, "as": 761, "partial": 761.0}, {"n": 1500, "acc": 360, "as": 360, "partial": 360.0}, {"n": 1500, "acc": 2, "as": 2, "partial": 2.0}, {"n": 1500, "acc": 200, "as": 346, "partial": 200.0}]}, {"n": 7500, "acc": 2016, "as": 2436, "over": 420, "under": 0, "partial": 2016.0, "pf": 562, "levels": [{"n": 1500, "acc": 356, "as": 357, "partial": 356.0}, {"n": 1500, "acc": 746, "as": 746, "partial": 746.0}, {"n": 1500, "acc": 338, "as": 392, "partial": 338.0}, {"n": 1500, "acc": 18, "as": 18, "partial": 18.0}, {"n": 1500, "acc": 558, "as": 923, "partial": 558.0}]}], "base": {"o": 0.15053333333333332, "l": [0.5106666666666667, 0.5026666666666667, 0.204, 0.26866666666666666, 0.5026666666666667], "top": "6"}, "const": []}, {"k": "laser_mirror", "f": 3, "per": [{"n": 7500, "acc": 2588, "as": 2661, "over": 73, "under": 0, "partial": 3131.5, "pf": 136, "levels": [{"n": 1500, "acc": 1301, "as": 1301, "partial": 1301.0}, {"n": 1500, "acc": 1126, "as": 1126, "partial": 1126.0}, {"n": 1500, "acc": 161, "as": 161, "partial": 161.0}, {"n": 1500, "acc": 0, "as": 73, "partial": 0.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 543.5}]}, {"n": 7500, "acc": 2184, "as": 2204, "over": 20, "under": 0, "partial": 2367.5, "pf": 1427, "levels": [{"n": 1500, "acc": 865, "as": 865, "partial": 865.0}, {"n": 1500, "acc": 1134, "as": 1134, "partial": 1134.0}, {"n": 1500, "acc": 185, "as": 186, "partial": 185.0}, {"n": 1500, "acc": 0, "as": 19, "partial": 0.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 183.5}]}], "base": {"o": 0.1512, "l": [0.2653333333333333, 0.756, 0.53, 0.048, 0.03866666666666667], "top": "yes"}, "const": []}, {"k": "line_intersection", "f": 0, "per": [{"n": 7500, "acc": 3322, "as": 3326, "over": 4, "under": 0, "partial": 3322.0, "pf": 0, "levels": [{"n": 1500, "acc": 694, "as": 694, "partial": 694.0}, {"n": 1500, "acc": 585, "as": 585, "partial": 585.0}, {"n": 1500, "acc": 1121, "as": 1121, "partial": 1121.0}, {"n": 1500, "acc": 508, "as": 512, "partial": 508.0}, {"n": 1500, "acc": 414, "as": 414, "partial": 414.0}]}, {"n": 7500, "acc": 2498, "as": 2584, "over": 86, "under": 0, "partial": 2498.0, "pf": 649, "levels": [{"n": 1500, "acc": 311, "as": 312, "partial": 311.0}, {"n": 1500, "acc": 452, "as": 452, "partial": 452.0}, {"n": 1500, "acc": 1253, "as": 1253, "partial": 1253.0}, {"n": 1500, "acc": 297, "as": 328, "partial": 297.0}, {"n": 1500, "acc": 185, "as": 239, "partial": 185.0}]}], "base": {"o": 0.1744, "l": [0.4046666666666667, 0.2813333333333333, 0.20666666666666667, 0.20066666666666666, 0.5073333333333333], "top": "2"}, "const": []}, {"k": "nested_hexagons", "f": 0, "per": [{"n": 7500, "acc": 1941, "as": 1988, "over": 47, "under": 0, "partial": 1941.0, "pf": 0, "levels": [{"n": 1500, "acc": 343, "as": 343, "partial": 343.0}, {"n": 1500, "acc": 785, "as": 785, "partial": 785.0}, {"n": 1500, "acc": 3, "as": 13, "partial": 3.0}, {"n": 1500, "acc": 48, "as": 85, "partial": 48.0}, {"n": 1500, "acc": 762, "as": 762, "partial": 762.0}]}, {"n": 7500, "acc": 1835, "as": 1899, "over": 64, "under": 0, "partial": 1835.0, "pf": 2471, "levels": [{"n": 1500, "acc": 268, "as": 268, "partial": 268.0}, {"n": 1500, "acc": 752, "as": 752, "partial": 752.0}, {"n": 1500, "acc": 0, "as": 2, "partial": 0.0}, {"n": 1500, "acc": 67, "as": 129, "partial": 67.0}, {"n": 1500, "acc": 748, "as": 748, "partial": 748.0}]}], "base": {"o": 0.1012, "l": [0.11666666666666667, 0.506, 0.05, 0.14866666666666667, 0.5013333333333333], "top": "constant"}, "const": []}, {"k": "nested_squares", "f": 0, "per": [{"n": 7500, "acc": 1805, "as": 1890, "over": 85, "under": 0, "partial": 1805.0, "pf": 0, "levels": [{"n": 1500, "acc": 269, "as": 269, "partial": 269.0}, {"n": 1500, "acc": 765, "as": 765, "partial": 765.0}, {"n": 1500, "acc": 3, "as": 11, "partial": 3.0}, {"n": 1500, "acc": 25, "as": 102, "partial": 25.0}, {"n": 1500, "acc": 743, "as": 743, "partial": 743.0}]}, {"n": 7500, "acc": 2204, "as": 2291, "over": 87, "under": 0, "partial": 2204.0, "pf": 2293, "levels": [{"n": 1500, "acc": 634, "as": 635, "partial": 634.0}, {"n": 1500, "acc": 792, "as": 792, "partial": 792.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 0.0}, {"n": 1500, "acc": 25, "as": 111, "partial": 25.0}, {"n": 1500, "acc": 753, "as": 753, "partial": 753.0}]}], "base": {"o": 0.10386666666666666, "l": [0.11866666666666667, 0.5193333333333333, 0.052, 0.15, 0.502], "top": "changing"}, "const": []}, {"k": "nested_triangles", "f": 0, "per": [{"n": 7500, "acc": 1670, "as": 1818, "over": 148, "under": 0, "partial": 1670.0, "pf": 0, "levels": [{"n": 1500, "acc": 153, "as": 153, "partial": 153.0}, {"n": 1500, "acc": 743, "as": 743, "partial": 743.0}, {"n": 1500, "acc": 8, "as": 97, "partial": 8.0}, {"n": 1500, "acc": 27, "as": 86, "partial": 27.0}, {"n": 1500, "acc": 739, "as": 739, "partial": 739.0}]}, {"n": 7500, "acc": 1890, "as": 2059, "over": 169, "under": 0, "partial": 1890.0, "pf": 2630, "levels": [{"n": 1500, "acc": 352, "as": 352, "partial": 352.0}, {"n": 1500, "acc": 754, "as": 754, "partial": 754.0}, {"n": 1500, "acc": 12, "as": 124, "partial": 12.0}, {"n": 1500, "acc": 14, "as": 71, "partial": 14.0}, {"n": 1500, "acc": 758, "as": 758, "partial": 758.0}]}], "base": {"o": 0.10106666666666667, "l": [0.12133333333333333, 0.5013333333333333, 0.052, 0.15266666666666667, 0.5053333333333333], "top": "no"}, "const": []}, {"k": "occluded_pattern", "f": 5, "per": [{"n": 7500, "acc": 1400, "as": 1418, "over": 18, "under": 0, "partial": 1400.0, "pf": 1, "levels": [{"n": 1500, "acc": 575, "as": 585, "partial": 575.0}, {"n": 1500, "acc": 133, "as": 139, "partial": 133.0}, {"n": 1500, "acc": 542, "as": 542, "partial": 542.0}, {"n": 1500, "acc": 140, "as": 140, "partial": 140.0}, {"n": 1500, "acc": 10, "as": 12, "partial": 10.0}]}, {"n": 7500, "acc": 1638, "as": 1667, "over": 29, "under": 0, "partial": 1638.0, "pf": 648, "levels": [{"n": 1500, "acc": 745, "as": 755, "partial": 745.0}, {"n": 1500, "acc": 145, "as": 154, "partial": 145.0}, {"n": 1500, "acc": 660, "as": 667, "partial": 660.0}, {"n": 1500, "acc": 82, "as": 84, "partial": 82.0}, {"n": 1500, "acc": 6, "as": 7, "partial": 6.0}]}], "base": {"o": 0.07373333333333333, "l": [0.146, 0.16533333333333333, 0.34933333333333333, 0.36866666666666664, 0.16533333333333333], "top": "2"}, "const": []}, {"k": "optical_illusion", "f": 7, "per": [{"n": 7500, "acc": 3182, "as": 3402, "over": 220, "under": 0, "partial": 3447.0, "pf": 0, "levels": [{"n": 1500, "acc": 1494, "as": 1494, "partial": 1494.0}, {"n": 1500, "acc": 885, "as": 885, "partial": 885.0}, {"n": 1500, "acc": 683, "as": 903, "partial": 683.0}, {"n": 1500, "acc": 120, "as": 120, "partial": 120.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 265.0}]}, {"n": 7500, "acc": 2578, "as": 2815, "over": 237, "under": 0, "partial": 2753.5, "pf": 952, "levels": [{"n": 1500, "acc": 659, "as": 659, "partial": 659.0}, {"n": 1500, "acc": 924, "as": 924, "partial": 924.0}, {"n": 1500, "acc": 725, "as": 919, "partial": 725.0}, {"n": 1500, "acc": 270, "as": 313, "partial": 270.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 175.5}]}], "base": {"o": 0.2, "l": [1.0, 0.5066666666666667, 0.49733333333333335, 0.49733333333333335, 0.49733333333333335], "top": "2"}, "const": [0]}, {"k": "orthographic", "f": 1, "per": [{"n": 7500, "acc": 2762, "as": 2762, "over": 0, "under": 0, "partial": 2762.0, "pf": 1, "levels": [{"n": 1500, "acc": 574, "as": 574, "partial": 574.0}, {"n": 1500, "acc": 307, "as": 307, "partial": 307.0}, {"n": 1500, "acc": 851, "as": 851, "partial": 851.0}, {"n": 1500, "acc": 838, "as": 838, "partial": 838.0}, {"n": 1500, "acc": 192, "as": 192, "partial": 192.0}]}, {"n": 7500, "acc": 3177, "as": 3184, "over": 7, "under": 0, "partial": 3177.0, "pf": 1385, "levels": [{"n": 1500, "acc": 588, "as": 588, "partial": 588.0}, {"n": 1500, "acc": 139, "as": 145, "partial": 139.0}, {"n": 1500, "acc": 923, "as": 923, "partial": 923.0}, {"n": 1500, "acc": 1227, "as": 1228, "partial": 1227.0}, {"n": 1500, "acc": 300, "as": 300, "partial": 300.0}]}], "base": {"o": 0.2, "l": [0.232, 0.18333333333333332, 0.328, 0.4613333333333333, 1.0], "top": "front and side"}, "const": [4]}, {"k": "overlap_circles", "f": 2, "per": [{"n": 7500, "acc": 2059, "as": 2076, "over": 17, "under": 0, "partial": 2059.0, "pf": 1, "levels": [{"n": 1500, "acc": 484, "as": 484, "partial": 484.0}, {"n": 1500, "acc": 728, "as": 730, "partial": 728.0}, {"n": 1500, "acc": 449, "as": 449, "partial": 449.0}, {"n": 1500, "acc": 231, "as": 245, "partial": 231.0}, {"n": 1500, "acc": 167, "as": 168, "partial": 167.0}]}, {"n": 7500, "acc": 1979, "as": 1983, "over": 4, "under": 0, "partial": 1979.0, "pf": 162, "levels": [{"n": 1500, "acc": 572, "as": 572, "partial": 572.0}, {"n": 1500, "acc": 570, "as": 572, "partial": 570.0}, {"n": 1500, "acc": 599, "as": 599, "partial": 599.0}, {"n": 1500, "acc": 122, "as": 124, "partial": 122.0}, {"n": 1500, "acc": 116, "as": 116, "partial": 116.0}]}], "base": {"o": 0.0752, "l": [0.14266666666666666, 0.366, 0.20733333333333334, 0.20866666666666667, 0.092], "top": "4"}, "const": []}, {"k": "physical_stability", "f": 3, "per": [{"n": 7500, "acc": 3054, "as": 3076, "over": 22, "under": 0, "partial": 3467.5, "pf": 5, "levels": [{"n": 1500, "acc": 1500, "as": 1500, "partial": 1500.0}, {"n": 1500, "acc": 415, "as": 415, "partial": 415.0}, {"n": 1500, "acc": 871, "as": 871, "partial": 871.0}, {"n": 1500, "acc": 268, "as": 290, "partial": 268.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 413.5}]}, {"n": 7500, "acc": 2358, "as": 2780, "over": 422, "under": 0, "partial": 2852.5, "pf": 1232, "levels": [{"n": 1500, "acc": 702, "as": 702, "partial": 702.0}, {"n": 1500, "acc": 377, "as": 377, "partial": 377.0}, {"n": 1500, "acc": 1087, "as": 1108, "partial": 1087.0}, {"n": 1500, "acc": 192, "as": 593, "partial": 192.0}, {"n": 1500, "acc": 0, "as": 0, "partial": 494.5}]}], "base": {"o": 0.1216, "l": [0.30666666666666664, 0.608, 0.312, 0.51, 0.15533333333333332], "top": "right"}, "const": []}, {"k": "polyhedron", "f": 1, "per": [{"n": 7500, "acc": 4675, "as": 4675, "over": 0, "under": 0, "partial": 4675.0, "pf": 0, "levels": [{"n": 1500, "acc": 479, "as": 479, "partial": 479.0}, {"n": 1500, "acc": 1484, "as": 1484, "partial": 1484.0}, {"n": 1500, "acc": 332, "as": 332, "partial": 332.0}, {"n": 1500, "acc": 887, "as": 887, "partial": 887.0}, {"n": 1500, "acc": 1493, "as": 1493, "partial": 1493.0}]}, {"n": 7500, "acc": 4056, "as": 4058, "over": 2, "under": 0, "partial": 4056.0, "pf": 436, "levels": [{"n": 1500, "acc": 153, "as": 155, "partial": 153.0}, {"n": 1500, "acc": 1410, "as": 1410, "partial": 1410.0}, {"n": 1500, "acc": 321, "as": 321, "partial": 321.0}, {"n": 1500, "acc": 672, "as": 672, "partial": 672.0}, {"n": 1500, "acc": 1500, "as": 1500, "partial": 1500.0}]}], "base": {"o": 0.2552, "l": [0.21866666666666668, 0.8993333333333333, 0.12666666666666668, 0.276, 1.0], "top": "no"}, "const": [4]}, {"k": "projectile_motion", "f": 3, "per": [{"n": 5000, "acc": 4259, "as": 3520, "over": 100, "under": 839, "partial": 4468.0, "pf": 21, "levels": [{"n": 1000, "acc": 999, "as": 999, "partial": 999.0}, {"n": 1000, "acc": 993, "as": 993, "partial": 993.0}, {"n": 1000, "acc": 777, "as": 844, "partial": 777.0}, {"n": 1000, "acc": 809, "as": 0, "partial": 890.5}, {"n": 1000, "acc": 681, "as": 684, "partial": 808.5}]}, {"n": 5000, "acc": 2204, "as": 2207, "over": 15, "under": 12, "partial": 2302.5, "pf": 438, "levels": [{"n": 1000, "acc": 1000, "as": 1000, "partial": 1000.0}, {"n": 1000, "acc": 654, "as": 654, "partial": 654.0}, {"n": 1000, "acc": 6, "as": 19, "partial": 6.0}, {"n": 1000, "acc": 12, "as": 0, "partial": 74.5}, {"n": 1000, "acc": 532, "as": 534, "partial": 568.0}]}], "base": {"o": 0.1376, "l": [0.028, 0.654, 0.01, 0.004, 0.688], "top": "increase"}, "const": []}, {"k": "rotation_matching", "f": 2, "per": [{"n": 7500, "acc": 2960, "as": 2960, "over": 0, "under": 0, "partial": 2960.0, "pf": 0, "levels": [{"n": 1500, "acc": 674, "as": 674, "partial": 674.0}, {"n": 1500, "acc": 360, "as": 360, "partial": 360.0}, {"n": 1500, "acc": 198, "as": 198, "partial": 198.0}, {"n": 1500, "acc": 332, "as": 332, "partial": 332.0}, {"n": 1500, "acc": 1396, "as": 1396, "partial": 1396.0}]}, {"n": 7500, "acc": 1924, "as": 1987, "over": 63, "under": 0, "partial": 1924.0, "pf": 105, "levels": [{"n": 1500, "acc": 67, "as": 67, "partial": 67.0}, {"n": 1500, "acc": 367, "as": 430, "partial": 367.0}, {"n": 1500, "acc": 237, "as": 237, "partial": 237.0}, {"n": 1500, "acc": 361, "as": 361, "partial": 361.0}, {"n": 1500, "acc": 892, "as": 892, "partial": 892.0}]}], "base": {"o": 0.10093333333333333, "l": [0.262, 0.25733333333333336, 0.156, 0.2613333333333333, 0.15866666666666668], "top": "D"}, "const": []}, {"k": "route", "f": 4, "per": [{"n": 7500, "acc": 1325, "as": 1288, "over": 0, "under": 37, "partial": 1438.5, "pf": 4, "levels": [{"n": 1500, "acc": 605, "as": 605, "partial": 605.0}, {"n": 1500, "acc": 69, "as": 69, "partial": 69.0}, {"n": 1500, "acc": 195, "as": 195, "partial": 195.0}, {"n": 1500, "acc": 66, "as": 29, "partial": 179.5}, {"n": 1500, "acc": 390, "as": 390, "partial": 390.0}]}, {"n": 7500, "acc": 1703, "as": 1730, "over": 123, "under": 96, "partial": 1710.4, "pf": 1387, "levels": [{"n": 1500, "acc": 243, "as": 243, "partial": 243.0}, {"n": 1500, "acc": 774, "as": 774, "partial": 774.0}, {"n": 1500, "acc": 265, "as": 388, "partial": 265.0}, {"n": 1500, "acc": 125, "as": 29, "partial": 132.4}, {"n": 1500, "acc": 296, "as": 296, "partial": 296.0}]}], "base": {"o": 0.11213333333333333, "l": [0.24333333333333335, 0.518, 0.118, 0.038, 0.268], "top": "1"}, "const": []}, {"k": "rpm", "f": 8, "per": [{"n": 7500, "acc": 2614, "as": 2614, "over": 0, "under": 0, "partial": 2614.0, "pf": 0, "levels": [{"n": 1500, "acc": 1239, "as": 1239, "partial": 1239.0}, {"n": 1500, "acc": 592, "as": 592, "partial": 592.0}, {"n": 1500, "acc": 497, "as": 497, "partial": 497.0}, {"n": 1500, "acc": 98, "as": 98, "partial": 98.0}, {"n": 1500, "acc": 188, "as": 188, "partial": 188.0}]}, {"n": 7500, "acc": 1846, "as": 1851, "over": 5, "under": 0, "partial": 1846.0, "pf": 405, "levels": [{"n": 1500, "acc": 881, "as": 882, "partial": 881.0}, {"n": 1500, "acc": 422, "as": 422, "partial": 422.0}, {"n": 1500, "acc": 329, "as": 330, "partial": 329.0}, {"n": 1500, "acc": 132, "as": 135, "partial": 132.0}, {"n": 1500, "acc": 82, "as": 82, "partial": 82.0}]}], "base": {"o": 0.13173333333333334, "l": [0.42133333333333334, 0.14066666666666666, 0.38466666666666666, 0.218, 0.656], "top": "3"}, "const": []}, {"k": "shadow_inference", "f": 5, "per": [{"n": 7500, "acc": 4121, "as": 4122, "over": 1, "under": 0, "partial": 4121.0, "pf": 0, "levels": [{"n": 1500, "acc": 1435, "as": 1435, "partial": 1435.0}, {"n": 1500, "acc": 515, "as": 515, "partial": 515.0}, {"n": 1500, "acc": 816, "as": 817, "partial": 816.0}, {"n": 1500, "acc": 440, "as": 440, "partial": 440.0}, {"n": 1500, "acc": 915, "as": 915, "partial": 915.0}]}, {"n": 7500, "acc": 2593, "as": 2600, "over": 7, "under": 0, "partial": 2593.0, "pf": 3295, "levels": [{"n": 1500, "acc": 448, "as": 448, "partial": 448.0}, {"n": 1500, "acc": 340, "as": 340, "partial": 340.0}, {"n": 1500, "acc": 953, "as": 960, "partial": 953.0}, {"n": 1500, "acc": 527, "as": 527, "partial": 527.0}, {"n": 1500, "acc": 325, "as": 325, "partial": 325.0}]}], "base": {"o": 0.17746666666666666, "l": [0.37533333333333335, 0.368, 0.30533333333333335, 0.3953333333333333, 0.508], "top": "same"}, "const": []}, {"k": "surface_topology", "f": 4, "per": [{"n": 7500, "acc": 4412, "as": 4369, "over": 0, "under": 43, "partial": 4705.0, "pf": 0, "levels": [{"n": 1500, "acc": 936, "as": 936, "partial": 936.0}, {"n": 1500, "acc": 1435, "as": 1435, "partial": 1435.0}, {"n": 1500, "acc": 784, "as": 784, "partial": 784.0}, {"n": 1500, "acc": 624, "as": 581, "partial": 917.0}, {"n": 1500, "acc": 633, "as": 633, "partial": 633.0}]}, {"n": 7500, "acc": 3109, "as": 3022, "over": 0, "under": 87, "partial": 3625.5, "pf": 499, "levels": [{"n": 1500, "acc": 975, "as": 975, "partial": 975.0}, {"n": 1500, "acc": 1264, "as": 1264, "partial": 1264.0}, {"n": 1500, "acc": 459, "as": 459, "partial": 459.0}, {"n": 1500, "acc": 278, "as": 191, "partial": 794.5}, {"n": 1500, "acc": 133, "as": 133, "partial": 133.0}]}], "base": {"o": 0.1552, "l": [0.2806666666666667, 0.7393333333333333, 0.5213333333333333, 0.2673333333333333, 0.528], "top": "0"}, "const": []}, {"k": "symmetry_pattern", "f": 2, "per": [{"n": 7500, "acc": 4245, "as": 4245, "over": 0, "under": 0, "partial": 4245.0, "pf": 0, "levels": [{"n": 1500, "acc": 993, "as": 993, "partial": 993.0}, {"n": 1500, "acc": 831, "as": 831, "partial": 831.0}, {"n": 1500, "acc": 665, "as": 665, "partial": 665.0}, {"n": 1500, "acc": 260, "as": 260, "partial": 260.0}, {"n": 1500, "acc": 1496, "as": 1496, "partial": 1496.0}]}, {"n": 7500, "acc": 2878, "as": 2881, "over": 3, "under": 0, "partial": 2878.0, "pf": 2315, "levels": [{"n": 1500, "acc": 1098, "as": 1098, "partial": 1098.0}, {"n": 1500, "acc": 834, "as": 836, "partial": 834.0}, {"n": 1500, "acc": 639, "as": 640, "partial": 639.0}, {"n": 1500, "acc": 276, "as": 276, "partial": 276.0}, {"n": 1500, "acc": 31, "as": 31, "partial": 31.0}]}], "base": {"o": 0.2, "l": [0.5593333333333333, 0.5073333333333333, 0.2853333333333333, 0.2826666666666667, 1.0], "top": "yes"}, "const": [4]}], "audit": {"zeroLevels": [{"dom": "hex_pathfinding", "lv": 5, "n": 1500, "cat": "Genuinely wrong on both models", "ivl": 0, "ds": 0, "ivl_p": 0.0, "ds_p": 0.0}, {"dom": "compass_bearing", "lv": 5, "n": 1500, "cat": "Multi-part ground truth \u2014 one part answered", "ivl": 0, "ds": 0, "ivl_p": 17.6, "ds_p": 11.6}, {"dom": "gauge_reading", "lv": 5, "n": 1500, "cat": "Multi-part ground truth \u2014 one part answered", "ivl": 0, "ds": 0, "ivl_p": 42.0, "ds_p": 37.9}, {"dom": "gear_train", "lv": 5, "n": 1500, "cat": "Multi-part ground truth \u2014 one part answered", "ivl": 0, "ds": 0, "ivl_p": 24.2, "ds_p": 10.3}, {"dom": "laser_mirror", "lv": 5, "n": 1500, "cat": "Multi-part ground truth \u2014 one part answered", "ivl": 0, "ds": 0, "ivl_p": 36.2, "ds_p": 12.2}, {"dom": "optical_illusion", "lv": 5, "n": 1500, "cat": "Multi-part ground truth \u2014 one part answered", "ivl": 0, "ds": 0, "ivl_p": 17.7, "ds_p": 11.7}, {"dom": "physical_stability", "lv": 5, "n": 1500, "cat": "Multi-part ground truth \u2014 one part answered", "ivl": 0, "ds": 0, "ivl_p": 27.6, "ds_p": 33.0}, {"dom": "depth_height", "lv": 3, "n": 1500, "cat": "Structured ground truth \u2014 recovered by the grader", "ivl": 530, "ds": 391, "ivl_p": 76.6, "ds_p": 67.5}, {"dom": "fbd", "lv": 3, "n": 1500, "cat": "Structured ground truth \u2014 recovered by the grader", "ivl": 117, "ds": 90, "ivl_p": 25.7, "ds_p": 25.6}, {"dom": "fbd", "lv": 4, "n": 1500, "cat": "Structured ground truth \u2014 recovered by the grader", "ivl": 491, "ds": 175, "ivl_p": 50.2, "ds_p": 29.0}, {"dom": "projectile_motion", "lv": 4, "n": 1000, "cat": "Structured ground truth \u2014 recovered by the grader", "ivl": 809, "ds": 12, "ivl_p": 89.0, "ds_p": 7.4}], "classes": {"internvl3_5-8b": {"near-miss number accepted": 1594, "other": 789, "under: text/number matched after normalisation": 72, "text fragment match": 597, "under: structured answer recovered": 1995, "under: multi-part answer fully matched": 43}, "deepseek-vl2-small": {"near-miss number accepted": 1497, "text fragment match": 3133, "other": 396, "under: text/number matched after normalisation": 602, "right number, wrong final answer": 13, "under: structured answer recovered": 954, "under: multi-part answer fully matched": 87}}, "examples": {"internvl3_5-8b": {"near-miss number accepted": [["angle_estimation", 4, "68", "67"], ["angle_estimation", 4, "70", "67"], ["angle_estimation", 4, "139", "135"]], "other": [["clock_reading", 3, "10:26", "10:25"], ["clock_reading", 3, "09:44", "09:45"], ["clock_reading", 3, "09:33", "09:30"]], "under: text/number matched after normalisation": [["combination3d", 5, "same shape, different angle", "the same shape, different angle"], ["combination3d", 5, "same shape, different angle", "the same shape, different angle"], ["combination3d", 5, "same shape, different angle", "the same shape, different angle"]], "text fragment match": [["combination3d", 4, "B", "The candidate who has the correct cube count and pie"], ["combination3d", 4, "B", "The candidate that has the correct cube count and pi"], ["combination3d", 4, "C", "Option D correctly matches the total number of cubes"]], "under: structured answer recovered": [["depth_height", 3, "['blue', 'purple']", "Blue, Purple"], ["depth_height", 3, "['orange', 'teal', 'purple']", "orange triangle, purple square, teal circle"], ["depth_height", 3, "['purple', 'blue']", "Purple, Blue"]], "under: multi-part answer fully matched": [["surface_topology", 4, "2; orientable", "2;orientable"], ["surface_topology", 4, "2; orientable", "2;orientable"], ["surface_topology", 4, "2; orientable", "2;orientable"]]}, "deepseek-vl2-small": {"near-miss number accepted": [["angle_estimation", 4, "118", "120"], ["angle_estimation", 4, "126", "120"], ["angle_estimation", 4, "124", "120"]], "text fragment match": [["angle_estimation", 3, "A", "Cannot be determined from the given information"], ["combination3d", 4, "B", "The correct answer is A because it does not match th"], ["combination3d", 2, "D", "Explanation: The target structure consists of a cube"]], "other": [["clock_reading", 3, "10:26", "10:30"], ["clock_reading", 3, "08:27", "08:00"], ["clock_reading", 3, "10:06", "10:45"]], "under: text/number matched after normalisation": [["combination3d", 5, "same shape, different angle", "The same shape, different angle"], ["combination3d", 5, "same shape, different angle", "The same shape, different angle"], ["combination3d", 5, "same shape, different angle", "The same shape, different angle"]], "right number, wrong final answer": [["cube_structure", 3, "4", "The structure has 4 levels of height. The first leve"], ["cube_structure", 3, "4", "The structure has 4 levels of height. The first leve"], ["cube_structure", 3, "3", "The structure has 4 levels of height. The top layer "]], "under: structured answer recovered": [["depth_height", 3, "['orange', 'teal', 'purple']", "Orange Triangle, Purple Square, Teal Circle"], ["depth_height", 3, "['purple', 'blue']", "Purple, Blue"], ["depth_height", 3, "['teal', 'orange']", "Orange, Teal, Black"]], "under: multi-part answer fully matched": [["surface_topology", 4, "0; orientable", "The given shape appears to be a torus (a doughnut-sh"], ["surface_topology", 4, "-2; orientable", "-2; non-orientable"], ["surface_topology", 4, "2; orientable", "The object shown has two handles on one side of the "]]}}, "bands": {"internvl3_5-8b": {"<=2%": 305, "<=5%": 858, "<=10%": 212, ">10%": 219}, "deepseek-vl2-small": {"<=2%": 129, "<=5%": 522, "<=10%": 219, ">10%": 627}}, "movers": [{"k": "projectile_motion", "ivl": 70.4, "ivl2": 85.2, "ds": 44.1, "ds2": 44.1}, {"k": "depth_height", "ivl": 52.3, "ivl2": 58.1, "ds": 29.6, "ds2": 33.7}, {"k": "fbd", "ivl": 34.0, "ivl2": 42.2, "ds": 20.6, "ds2": 20.7}, {"k": "combination3d", "ivl": 27.5, "ivl2": 26.5, "ds": 17.6, "ds2": 22.9}, {"k": "surface_topology", "ivl": 58.3, "ivl2": 58.8, "ds": 40.3, "ds2": 41.5}], "droppers": [{"k": "clock_reading", "ivl": 35.2, "ivl2": 25.9, "ds": 22.1, "ds2": 17.6}, {"k": "combination", "ivl": 38.5, "ivl2": 35.9, "ds": 40.4, "ds2": 30.0}, {"k": "gauge_reading", "ivl": 54.3, "ivl2": 51.7, "ds": 51.6, "ds2": 46.4}, {"k": "impossible_object", "ivl": 19.6, "ivl2": 17.6, "ds": 32.5, "ds2": 26.9}, {"k": "coordinate_geometry", "ivl": 18.5, "ivl2": 13.6, "ds": 14.3, "ds2": 11.7}]}, "integrity": {"imagesPerModel": 50501, "questionsPerModel": 252505, "oracleOverall": 0.13757747371339182, "constantLevels": [{"dom": "cube_net", "lv": 1, "top": "6", "base": 1.0}, {"dom": "gear_train", "lv": 2, "top": "opposite", "base": 1.0}, {"dom": "optical_illusion", "lv": 1, "top": "2", "base": 1.0}, {"dom": "orthographic", "lv": 5, "top": "front and side", "base": 1.0}, {"dom": "polyhedron", "lv": 5, "top": "no", "base": 1.0}, {"dom": "symmetry_pattern", "lv": 5, "top": "yes", "base": 1.0}], "dupIds": 0, "errorRecords": 0, "nominal": 3000, "evalPerDomain": 1500}, "family_base": [{"o": 0.11086521797093721, "l": [0.2242367684308759, 0.3980802559658712, 0.1302493000933209, 0.17704306092520997, 0.462071723770164]}, {"o": 0.1762, "l": [0.3521111111111111, 0.3168888888888889, 0.24722222222222223, 0.3038888888888889, 0.6352222222222222]}, {"o": 0.13675555555555555, "l": [0.32055555555555554, 0.35733333333333334, 0.24833333333333332, 0.25022222222222223, 0.49033333333333334]}, {"o": 0.13944, "l": [0.3373, 0.615, 0.1892, 0.1781, 0.2321]}, {"o": 0.12337777777777778, "l": [0.214, 0.5904444444444444, 0.2846666666666667, 0.1748888888888889, 0.3748888888888889]}, {"o": 0.1256, "l": [0.26066666666666666, 0.26666666666666666, 0.3273333333333333, 0.382, 0.33666666666666667]}, {"o": 0.08326666666666667, "l": [0.25733333333333336, 0.25333333333333335, 0.18433333333333332, 0.119, 0.02033333333333333]}, {"o": 0.17526666666666665, "l": [0.7553333333333333, 0.5046666666666667, 0.3506666666666667, 0.383, 0.5]}, {"o": 0.13173333333333334, "l": [0.42133333333333334, 0.14066666666666666, 0.38466666666666666, 0.218, 0.656]}]}</script>
+<script>
+(function(){
+  var D = JSON.parse(document.getElementById('payload').textContent);
+  var MODELS = D.models, DOMS = D.domains, FAMS = D.families, FBASE = D.family_base;
+  var state = { view:'domain', fam:new Set(FAMS), q:'', sort:{ key:null, dir:-1 } };
+  function pct(c,n){ return n ? (c/n*100) : 0; }
+  function fmt(v){ return v.toFixed(1) + '%'; }
+  function num(v){ return v.toLocaleString('en-US'); }
+  function esc(s){ return String(s).replace(/[&<>"]/g, function(c){ return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c]; }); }
+  function acc(p){ return pct(p.acc, p.n); }
+  function partial(p){ return pct(p.partial, p.n); }
+  function heat(v, max){ var t = Math.max(0, Math.min(1, v/(max||72)));
+    return 'oklch(' + (97 - 42*t).toFixed(1) + '% ' + (0.018 + 0.07*t).toFixed(3) + ' ' + (40 + 140*t).toFixed(0) + ')'; }
+  function heatInk(v, max){ return (v/(max||72)) > 0.62 ? 'oklch(99% 0 0)' : 'var(--ink)'; }
+  function cell(p, extra){
+    return '<td class="acc" style="background:' + heat(acc(p)) + ';color:' + heatInk(acc(p)) + '" title="' + esc(extra) + '">' + fmt(acc(p)) + '</td>';
+  }
+  function tip(p, label, basePct){
+    return label + ' | n=' + num(p.n) + ' | correct=' + num(p.acc) + ' | pipeline=' + fmt(pct(p.as || 0, p.n)) +
+           ' | partial=' + fmt(partial(p)) + (basePct !== undefined ? ' | oracle=' + basePct : '');
+  }
+  function aggregate(list, mi){
+    var a = { n:0, acc:0, as:0, partial:0, pf:0, over:0, under:0, levels:[] };
+    for (var i=0;i<5;i++) a.levels.push({ n:0, acc:0, partial:0 });
+    list.forEach(function(d){
+      var p = d.per[mi];
+      a.n += p.n; a.acc += p.acc; a.as += p.as; a.partial += p.partial; a.pf += p.pf;
+      a.over += p.over || 0; a.under += p.under || 0;
+      for (var i=0;i<5;i++){ var l = p.levels[i]; a.levels[i].n += l.n; a.levels[i].acc += l.acc; a.levels[i].partial += l.partial; }
+    });
+    return a;
+  }
+  function filtered(){
+    var q = state.q.trim().toLowerCase();
+    return DOMS.filter(function(d){
+      if (!state.fam.has(FAMS[d.f])) return false;
+      if (!q) return true;
+      return d.k.toLowerCase().indexOf(q) >= 0 || FAMS[d.f].toLowerCase().indexOf(q) >= 0;
+    });
+  }
+  function rowsOf(list){
+    var levelView = state.view === 'level';
+    if (state.view === 'domain') return list.map(function(d){
+      return { label:d.k, fam:FAMS[d.f], per:d.per, baseO:d.base.o, baseL:d.base.l.slice(), const:d.const };
+    });
+    return FAMS.map(function(f, i){
+      var sub = list.filter(function(d){ return d.f === i; });
+      if (!sub.length) return null;
+      var consts = [];
+      sub.forEach(function(d){ d.const.forEach(function(l){ consts.push(d.k + ' L' + (l+1)); }); });
+      return { label:f, fam:sub.length + (sub.length===1?' domain':' domains'), per:[aggregate(sub,0), aggregate(sub,1)],
+               baseO:FBASE[i].o, baseL:FBASE[i].l, const:consts };
+    }).filter(Boolean);
+  }
+  function columns(){
+    var levelView = state.view === 'level', cols = [];
+    cols.push({ id:'base', label: levelView ? 'Oracle (all)' : 'Oracle', kind:'base',
+                sort:function(r){ return r.baseO*100; }, get:function(r){ return { r:r }; } });
+    MODELS.forEach(function(m, mi){
+      if (!levelView) cols.push({ id:'m'+mi+'-all', group:mi, label:'Accuracy', kind:'acc',
+        sort:function(r){ return acc(r.per[mi]); },
+        get:function(r){ return { p:r.per[mi], label:r.label+' | '+m.label, base:fmt(r.baseO*100) }; } });
+      for (var l=0;l<5;l++){ (function(l){
+        cols.push({ id:'m'+mi+'-l'+(l+1), group:mi, label:'L'+(l+1), kind:'acc',
+          sort:function(r){ return acc(r.per[mi].levels[l]); },
+          get:function(r){ return { p:r.per[mi].levels[l], label:r.label+' L'+(l+1)+' | '+m.label, base:fmt(r.baseL[l]*100) }; } });
+      })(l); }
+    });
+    cols.push({ id:'gap', group:-1, label: levelView ? 'Gap (all)' : 'Gap', kind:'gap',
+                sort:function(r){ return acc(r.per[0]) - acc(r.per[1]); }, get:function(r){ return { r:r }; } });
+    cols.push({ id:'part', group:-1, label:'Partial', kind:'part',
+                sort:function(r){ return Math.max(partial(r.per[0]), partial(r.per[1])); }, get:function(r){ return { r:r }; } });
+    cols.push({ id:'pf', group:-1, label:'Unparsed', kind:'pf',
+                sort:function(r){ return -Math.max(pct(r.per[0].pf,r.per[0].n), pct(r.per[1].pf,r.per[1].n)); }, get:function(r){ return { r:r }; } });
+    return cols;
+  }
+  function marker(r){
+    if (!r.const || !r.const.length) return '';
+    var t = typeof r.const[0] === 'string' ? r.const.join(', ') : r.const.map(function(l){ return 'L'+(l+1); }).join(', ');
+    return '<span class="mk" title="Single-answer level: ' + esc(t) + '">&#9670;</span>';
+  }
+  function render(){
+    var cols = columns(), list = filtered(), rows = rowsOf(list);
+    if (state.sort.key) {
+      if (state.sort.key === 'label') rows.sort(function(a,b){ return state.sort.dir * (a.label < b.label ? -1 : a.label > b.label ? 1 : 0); });
+      else { var sc = null; cols.forEach(function(x){ if (x.id === state.sort.key) sc = x; });
+        if (sc && sc.sort) rows.sort(function(a,b){ return state.sort.dir * (sc.sort(a) - sc.sort(b)); }); }
+    }
+    var head = '<thead><tr class="groups"><th class="first">' + (state.view === 'level' ? 'Reasoning family' : 'Domain') + '</th>';
+    head += '<th rowspan="2">Oracle</th>';
+    MODELS.forEach(function(m, mi){
+      head += '<th colspan="' + (state.view === 'level' ? 5 : 6) + '" style="text-align:center"><span class="gd"><i class="dot" style="background:var(--' + (mi===0?'ivl':'ds') + ')"></i>' + esc(m.label) + '</span></th>';
+    });
+    head += '<th colspan="3" style="text-align:center">Diagnostics</th></tr><tr class="cols">';
+    head += '<th class="first" data-sort="label">' + (state.view === 'level' ? 'Reasoning family' : 'Domain') + '</th>';
+    cols.forEach(function(c){
+      var cls = state.sort.key === c.id ? 'sorted' + (state.sort.dir === 1 ? ' asc' : '') : '';
+      head += '<th class="' + cls + '" data-sort="' + c.id + '" tabindex="0" scope="col">' + c.label + '</th>';
+    });
+    head += '</tr></thead>';
+    var body = '';
+    if (!rows.length) body = '<tbody><tr><td class="empty" colspan="' + (cols.length+1) + '">No domains match the current filters.</td></tr></tbody>';
+    else rows.forEach(function(r){
+      body += '<tr><td class="first"><span class="nm">' + esc(r.label) + marker(r) + '</span><span class="famtag">' + esc(r.fam) + '</span></td>';
+      cols.forEach(function(c){
+        var o = c.get(r);
+        if (c.kind === 'acc') body += cell(o.p, tip(o.p, o.label, o.base));
+        else if (c.kind === 'base') body += '<td class="baseCell" title="Majority-answer oracle for this row">' + fmt(r.baseO*100) + '</td>';
+        else if (c.kind === 'gap') { var d = acc(r.per[0]) - acc(r.per[1]);
+          body += '<td class="delta"><span class="' + (d>=0?'up':'down') + '">' + (d>=0?'+':'\u2212') + Math.abs(d).toFixed(1) + '</span></td>'; }
+        else if (c.kind === 'part') { body += '<td class="partial" title="Mean share of answer parts correct">' + partial(r.per[0]).toFixed(1) + ' / ' + partial(r.per[1]).toFixed(1) + '</td>'; }
+        else { var a2 = pct(r.per[0].pf, r.per[0].n), b2 = pct(r.per[1].pf, r.per[1].n);
+          body += '<td class="pf"><span class="' + (a2>5?'hi':'') + '">I ' + a2.toFixed(1) + '%</span> <span class="' + (b2>5?'hi':'') + '">D ' + b2.toFixed(1) + '%</span></td>'; }
+      });
+      body += '</tr>';
+    });
+    var t0 = aggregate(rows, 0), t1 = aggregate(rows, 1);
+    var foot = '<tfoot><tr><td class="first"><span class="nm">Filtered total</span><span class="famtag">' + num(t0.n) + ' questions</span></td>';
+    foot += '<td class="baseCell" title="A group oracle is not the average of row oracles.">\u2014</td>';
+    cols.forEach(function(c){
+      if (c.kind === 'acc') { var bucket = c.id.indexOf('m0') === 0 ? t0 : t1;
+        var p = c.label === 'Accuracy' ? bucket : bucket.levels[parseInt(c.label.slice(1),10)-1];
+        foot += cell(p, tip(p, 'Filtered total | ' + c.label)); }
+      else if (c.kind === 'gap') { var d = pct(t0.acc,t0.n) - pct(t1.acc,t1.n);
+        foot += '<td class="delta"><span class="' + (d>=0?'up':'down') + '">' + (d>=0?'+':'\u2212') + Math.abs(d).toFixed(1) + '</span></td>'; }
+      else if (c.kind === 'part') { foot += '<td class="partial">' + partial(t0).toFixed(1) + ' / ' + partial(t1).toFixed(1) + '</td>'; }
+      else { foot += '<td class="pf">I ' + pct(t0.pf,t0.n).toFixed(1) + '% D ' + pct(t1.pf,t1.n).toFixed(1) + '%</td>'; }
+    });
+    foot += '</tr></tfoot>';
+    document.getElementById('tbl').innerHTML = head + '<tbody>' + body + '</tbody>' + foot;
+    Array.prototype.forEach.call(document.querySelectorAll('#tbl th[data-sort]'), function(th){
+      th.addEventListener('click', function(){ toggleSort(th.getAttribute('data-sort')); });
+      th.addEventListener('keydown', function(e){ if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleSort(th.getAttribute('data-sort')); } });
+    });
+    document.getElementById('count').textContent = rows.length + ' rows | ' + num(t0.n) + ' questions';
+    renderCharts(list);
+  }
+  function toggleSort(id){
+    if (state.sort.key === id) state.sort.dir *= -1;
+    else state.sort = { key:id, dir: id === 'label' ? 1 : -1 };
+    render();
+  }
+  function renderMatrix(){
+    var html = '';
+    MODELS.forEach(function(m, mi){
+      html += '<div class="panel"><header class="ph"><i class="dot ' + (mi===0?'ivl':'ds') + '"></i>' + esc(m.label) + '</header><table><thead><tr>' +
+              '<th class="d">Domain</th><th>L1</th><th>L2</th><th>L3</th><th>L4</th><th>L5</th><th>All</th></tr></thead><tbody>';
+      FAMS.forEach(function(f, fi){
+        html += '<tr class="grp"><td colspan="7">' + esc(f) + '</td></tr>';
+        DOMS.filter(function(d){ return d.f === fi; }).forEach(function(d){
+          html += '<tr><td class="d">' + esc(d.k) + '</td>';
+          for (var l=0;l<5;l++){ var x = d.per[mi].levels[l], v = acc(x);
+            html += '<td class="h" style="background:' + heat(v) + ';color:' + heatInk(v) + '" title="' +
+                    esc(d.k+' L'+(l+1)+' | n='+num(x.n)+' | correct='+num(x.acc)+' | partial='+fmt(partial(x))+' | oracle='+fmt(d.base.l[l]*100)) + '">' + v.toFixed(0) + '</td>'; }
+          var p = d.per[mi];
+          html += '<td class="all" style="background:' + heat(acc(p)) + ';color:' + heatInk(acc(p)) + '" title="' +
+                  esc(d.k+' | all levels | n='+num(p.n)+' | correct='+num(p.acc)+' | oracle='+fmt(d.base.o*100)) + '">' + acc(p).toFixed(0) + '</td></tr>';
+        });
+      });
+      html += '</tbody></table></div>';
+    });
+    document.getElementById('matrix').innerHTML = html;
+  }
+  function renderCharts(list){
+    var famRows = FAMS.map(function(f,i){
+      var sub = list.filter(function(d){ return d.f === i; });
+      if (!sub.length) return null;
+      return { f:f, per:[aggregate(sub,0), aggregate(sub,1)], base:FBASE[i].o*100 };
+    }).filter(Boolean);
+    famRows.sort(function(a,b){ return acc(b.per[0]) - acc(a.per[0]); });
+    var mx = Math.max(1, Math.max.apply(null, famRows.map(function(r){ return Math.max(acc(r.per[0]), acc(r.per[1]), r.base); })));
+    var html = '';
+    famRows.forEach(function(r){
+      html += '<div class="hrow"><div class="lbl">' + esc(r.f) + '</div><div class="bars">';
+      [['fill-base', r.base], ['fill-ivl', acc(r.per[0])], ['fill-ds', acc(r.per[1])]].forEach(function(sv){
+        var w = (sv[1]/mx*100).toFixed(1);
+        html += '<div class="btrack"><i class="' + sv[0] + '" style="width:' + w + '%"></i><b style="left:calc(' + w + '% + 6px)">' + fmt(sv[1]) + '</b></div>';
+      });
+      html += '</div></div>';
+    });
+    document.getElementById('famChart').innerHTML = html;
+    var a0 = aggregate(list, 0), a1 = aggregate(list, 1);
+    var lv = [0,1,2,3,4].map(function(l){
+      var bn = 0, bc = 0;
+      list.forEach(function(d){ bn += d.per[0].levels[l].n; bc += d.base.l[l]*d.per[0].levels[l].n; });
+      return [a0.levels[l], a1.levels[l], bc/(bn||1)*100];
+    });
+    var maxL = Math.max(1, Math.max.apply(null, lv.map(function(x){ return Math.max(acc(x[0]), acc(x[1]), x[2]); })));
+    var vh = '';
+    lv.forEach(function(tri){
+      vh += '<div class="vgrp"><div class="vcol bs"><b>' + tri[2].toFixed(0) + '</b><i style="height:' + (tri[2]/maxL*100).toFixed(1) + '%"></i></div>';
+      [0,1].forEach(function(mi){ var v = acc(tri[mi]);
+        vh += '<div class="vcol ' + (mi===1?'ds':'') + '"><b>' + v.toFixed(0) + '</b><i style="height:' + (v/maxL*100).toFixed(1) + '%"></i></div>'; });
+      vh += '</div>';
+    });
+    document.getElementById('lvlChart').innerHTML = vh;
+    var all = list.map(function(d){ return { k:d.k, gap: acc(d.per[0]) - acc(d.per[1]) }; });
+    var pick = all.slice().sort(function(a,b){ return b.gap-a.gap; }).slice(0,12).concat(all.slice().sort(function(a,b){ return a.gap-b.gap; }).slice(0,10));
+    var seen = {}, uniq = [];
+    pick.forEach(function(x){ if (!seen[x.k]) { seen[x.k]=1; uniq.push(x); } });
+    uniq.sort(function(a,b){ return b.gap-a.gap; });
+    var mg = Math.max(1, Math.max.apply(null, uniq.map(function(x){ return Math.abs(x.gap); })));
+    var dh = '';
+    uniq.forEach(function(x){
+      var w = (Math.abs(x.gap)/mg*50).toFixed(1);
+      dh += '<div class="drow"><div class="lbl">' + esc(x.k) + '</div><div class="dtrack"><span class="zero"></span>' +
+            (x.gap>=0 ? '<i class="pos" style="width:'+w+'%"></i>' : '<i class="neg" style="width:'+w+'%"></i>') + '</div>' +
+            '<b style="color:' + (x.gap>=0?'var(--ivl)':'var(--ds)') + '">' + (x.gap>=0?'+':'\u2212') + Math.abs(x.gap).toFixed(1) + '</b></div>';
+    });
+    document.getElementById('divChart').innerHTML = dh;
+  }
+  function renderKpis(){
+    var h = '';
+    MODELS.forEach(function(m, mi){
+      var cls = mi===0?'ivl':'ds', v = pct(m.acc, m.n);
+      h += '<div class="kpi ' + cls + '"><div class="who"><i class="dot ' + cls + '"></i>' + esc(m.label) + '</div>' +
+           '<div class="big">' + fmt(v) + '</div><div class="cap">accuracy under the frozen rule</div>' +
+           '<dl><dt>Correct</dt><dd>' + num(m.acc) + ' / ' + num(m.n) + '</dd>' +
+           '<dt>Pipeline score</dt><dd>' + fmt(pct(m.as,m.n)) + '</dd>' +
+           '<dt>Partial credit</dt><dd>' + fmt(pct(m.partial,m.n)) + '</dd>' +
+           '<dt>Unparsed output</dt><dd>' + fmt(pct(m.pf,m.n)) + '</dd></dl>' +
+           '<div class="rail"><i style="width:' + (v/60*100).toFixed(1) + '%"></i></div></div>';
+    });
+    var orc = D.integrity.oracleOverall*100;
+    var ag0 = (1 - (D.models[0].over + D.models[0].under)/D.models[0].n)*100;
+    var ag1 = (1 - (D.models[1].over + D.models[1].under)/D.models[1].n)*100;
+    h += '<div class="kpi base"><div class="who"><i class="dot base"></i>Majority-answer oracle</div>' +
+         '<div class="big">' + fmt(orc) + '</div><div class="cap">the floor a model must clear</div>' +
+         '<dl><dt>InternVL lift</dt><dd>+' + (pct(D.models[0].acc, D.models[0].n) - orc).toFixed(1) + '</dd>' +
+         '<dt>DeepSeek lift</dt><dd>+' + (pct(D.models[1].acc, D.models[1].n) - orc).toFixed(1) + '</dd>' +
+         '<dt>Family floors</dt><dd>' + Math.min.apply(null, FBASE.map(function(f){ return f.o*100; })).toFixed(1) + '–' +
+         Math.max.apply(null, FBASE.map(function(f){ return f.o*100; })).toFixed(1) + '%</dd>' +
+         '<dt>Single-answer levels</dt><dd>' + D.integrity.constantLevels.length + '</dd></dl>' +
+         '<div class="rail"><i style="width:' + (orc/60*100).toFixed(1) + '%"></i></div></div>';
+    h += '<div class="kpi ok"><div class="who"><i class="dot ok"></i>Pipeline grader agreement</div>' +
+         '<div class="big">' + fmt((ag0+ag1)/2) + '</div><div class="cap">mean agreement with this report</div>' +
+         '<dl><dt>InternVL</dt><dd>' + fmt(ag0) + '</dd><dt>DeepSeek</dt><dd>' + fmt(ag1) + '</dd>' +
+         '<dt>Over-credited</dt><dd>' + num(D.models[0].over + D.models[1].over) + '</dd>' +
+         '<dt>Under-credited</dt><dd>' + num(D.models[0].under + D.models[1].under) + '</dd></dl>' +
+         '<div class="rail"><i style="width:' + ((ag0+ag1)/2).toFixed(1) + '%"></i></div></div>';
+    document.getElementById('kpis').innerHTML = h;
+  }
+  function plain(headers, rows){
+    var h = '<table class="plain"><thead><tr>' + headers.map(function(x,i){ return '<th' + (i? ' class="n"':'') + '>' + x + '</th>'; }).join('') + '</tr></thead><tbody>';
+    rows.forEach(function(r){ h += '<tr>' + r.map(function(c,i){ return '<td class="' + (i? 'n':'') + '">' + c + '</td>'; }).join('') + '</tr>'; });
+    return h + '</tbody></table>';
+  }
+  function renderAudit(){
+    var labels = {
+      'near-miss number accepted':'Numeric near-miss accepted (outside the 1% tolerance)',
+      'text fragment match':'Ground truth matched inside a longer word',
+      'right number, wrong final answer':'Right number appears, but the committed answer is wrong',
+      'other':'Other looseness',
+      'under: structured answer recovered':'Under-credited: dict/list answer the grader could not read',
+      'under: multi-part answer fully matched':'Under-credited: multi-part answer with every part present',
+      'under: text/number matched after normalisation':'Under-credited: matched once spacing and case are normalised'
+    };
+    var keys = {};
+    [D.audit.classes['internvl3_5-8b'], D.audit.classes['deepseek-vl2-small']].forEach(function(c){ Object.keys(c).forEach(function(k){ keys[k]=1; }); });
+    var rows = Object.keys(keys).sort(function(a,b){
+      var va = (D.audit.classes['internvl3_5-8b'][a]||0) + (D.audit.classes['deepseek-vl2-small'][a]||0);
+      var vb = (D.audit.classes['internvl3_5-8b'][b]||0) + (D.audit.classes['deepseek-vl2-small'][b]||0);
+      return vb - va;
+    }).map(function(k){
+      var exs = (D.audit.examples['internvl3_5-8b'][k] || D.audit.examples['deepseek-vl2-small'][k] || []).slice(0,2)
+        .map(function(e){ return '<span class="ex">' + esc(e[0]) + ' L' + e[1] + ' · gt ' + esc(e[2]) + ' → answer ' + esc(e[3]) + '</span>'; }).join('');
+      return [labels[k] || k, num((D.audit.classes['internvl3_5-8b'][k]||0) + (D.audit.classes['deepseek-vl2-small'][k]||0)), exs];
+    });
+    document.getElementById('classTbl').innerHTML = plain(['Disagreement class','Questions','Examples (domain, level, ground truth → answer)'], rows);
+    document.getElementById('zeroTbl').innerHTML = plain(
+      ['Domain / level','Problem','Questions','InternVL: pipeline → this report (parts present)','DeepSeek: pipeline → this report (parts present)'],
+      D.audit.zeroLevels.map(function(z){
+        return [esc(z.dom) + ' L' + z.lv, esc(z.cat.split('—')[0]), num(z.n),
+          '0.0% → ' + fmt(z.ivl/z.n*100) + '<span class="ex">' + z.ivl_p.toFixed(1) + '% of parts</span>',
+          '0.0% → ' + fmt(z.ds/z.n*100) + '<span class="ex">' + z.ds_p.toFixed(1) + '% of parts</span>'];
+      }));
+    document.getElementById('moveTbl').innerHTML = plain(['Domain (InternVL)','Pipeline','This report'],
+      D.audit.movers.slice(0,5).map(function(m){ return [esc(m.k), fmt(m.ivl), '<b>' + fmt(m.ivl2) + '</b>']; }));
+    document.getElementById('dropTbl').innerHTML = plain(['Domain (InternVL)','Pipeline','This report'],
+      D.audit.droppers.slice(0,5).map(function(m){ return [esc(m.k), fmt(m.ivl), '<b>' + fmt(m.ivl2) + '</b>']; }));
+    document.getElementById('constTbl').innerHTML = plain(['Domain / level','Ground truth'],
+      D.integrity.constantLevels.map(function(c){ return [esc(c.dom) + ' L' + c.lv, '<code>' + esc(c.top) + '</code> × 1,500']; }));
+  }
+  var famBox = document.getElementById('fams');
+  FAMS.forEach(function(f){
+    var b = document.createElement('button');
+    b.className='fam'; b.type='button'; b.textContent=f; b.setAttribute('aria-pressed','true');
+    b.addEventListener('click', function(){
+      if (state.fam.has(f)) state.fam.delete(f); else state.fam.add(f);
+      if (!state.fam.size) FAMS.forEach(function(x){ state.fam.add(x); });
+      b.setAttribute('aria-pressed', state.fam.has(f) ? 'true':'false');
+      render();
+    });
+    famBox.appendChild(b);
+  });
+  document.getElementById('viewSeg').addEventListener('click', function(e){
+    var b = e.target.closest('button'); if (!b) return;
+    state.view = b.getAttribute('data-view');
+    Array.prototype.forEach.call(this.querySelectorAll('button'), function(x){ x.setAttribute('aria-pressed', x===b ? 'true':'false'); });
+    render();
+  });
+  document.getElementById('q').addEventListener('input', function(){ state.q = this.value; render(); });
+  document.getElementById('reset').addEventListener('click', function(){
+    state.fam = new Set(FAMS); state.q=''; document.getElementById('q').value=''; state.sort={ key:null, dir:-1 };
+    Array.prototype.forEach.call(famBox.querySelectorAll('.fam'), function(b){ b.setAttribute('aria-pressed','true'); });
+    render();
+  });
+  renderKpis(); render(); renderMatrix(); renderAudit();
+  document.getElementById('foot').textContent =
+    'rev 3 — 2 models × 34 domains × 252,505 paired questions | ' + num(D.integrity.imagesPerModel) +
+    ' images per model (1,500 per domain of a nominal 3,000; projectile_motion 1,000) | raw counts independently recounted (94,121 and 78,098 of 252,505 correct) | 0 duplicate ids | 0 error records | ' +
+    'accuracy = correct under the frozen rule in section 06, counted per question; partial credit is a diagnostic share, not an accuracy.';
+})();
+</script>
+</body>
+</html>

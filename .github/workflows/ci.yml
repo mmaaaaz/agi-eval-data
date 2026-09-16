@@ -47,3 +47,11 @@ jobs:
         run: bunx turbo run build --filter=@metro/web
         env:
           VITE_REPO_METRO: ${{ github.repository }}
+
+      - name: Build grip (includes the open-models report)
+        run: |
+          python scripts/open_models_public.py
+          bunx turbo run build --filter=@grip/web
+
+      - name: Test grip (report invariants + page render probes)
+        run: cd apps/grip-web && bunx vitest run
