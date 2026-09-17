@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useFocus, useOM } from "./open-models";
 import { AccValue, Bar, Chip, Dot, ModeBadge, Panel, RankPill, Section, Tile, TileGrid } from "../components/open-models/ui";
 import { FamilyMatrix, LevelSlope, WinnerGrid, shortName } from "../components/open-models/charts";
-import { METRICS, type Metric, accOf, fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
+import { METRICS, type Metric, accOf, fmtInt, mean, pct, ranked, signed } from "../lib/openModelsFmt";
 import type { Domain } from "../lib/openModelsTypes";
 
 export const Route = createFileRoute("/open-models/")({ component: Overview });
@@ -69,6 +69,10 @@ export function Overview() {
 
   const byAcc = [...a.domains].sort((x, y) => (accOf(y, lead?.id ?? "") ?? 0) - (accOf(x, lead?.id ?? "") ?? 0));
 
+  const fieldAcc = mean(a.models.map((m) => m.totals.acc ?? 0));
+  const fieldGuess = mean(a.models.map((m) => m.totals.headroom ?? 0));
+  const fieldPf = mean(a.models.map((m) => m.totals.pfRate ?? 0));
+
   return (
     <div>
       {/* ------------------------------------------------------------ hero --- */}
@@ -105,10 +109,10 @@ export function Overview() {
             />
             <Tile label="benchmark" value={a.domains.length + " × 5"} sub={a.benchmark.families.length + " reasoning families"} />
             <Tile
-              label="best accuracy"
+              label="accuracy"
               value={pct(lead?.totals.acc ?? null, 2)}
               accent={lead?.accent}
-              sub={(lead ? shortName(lead) : "") + " · +" + (gap * 100).toFixed(1) + " over " + (second ? shortName(second) : "")}
+              sub={"best: " + (lead ? shortName(lead) : "") + " · field mean " + pct(fieldAcc, 2) + " · worst " + pct(trailing?.totals.acc ?? null, 1)}
             />
           </TileGrid>
 
@@ -141,7 +145,7 @@ export function Overview() {
       <Section
         eyebrow="01 league"
         title={"All " + a.models.length + " runs, ranked"}
-        hint="Accuracy is per question under the frozen rule over the full evaluated set — nothing is excluded from the denominator. The whisker is the 95% Wilson interval; the bar shows how each run sits against the majority-answer baseline."
+        hint="Accuracy is right answers ÷ all answers under the one published rule — nothing is excluded from the denominator. The whisker is the 95% interval; the bar shows how far each run sits above what guessing the most common answer scores."
       >
         <Panel>
           <div className="overflow-x-auto">
@@ -151,13 +155,13 @@ export function Overview() {
                   <th className="px-3 py-2.5 font-normal">#</th>
                   <th className="px-3 py-2.5 font-normal">run</th>
                   <th className="px-3 py-2.5 font-normal">accuracy</th>
-                  <th className="px-3 py-2.5 text-right font-normal">vs best</th>
-                  <th className="px-3 py-2.5 text-right font-normal">own score</th>
-                  <th className="px-3 py-2.5 text-right font-normal">partial</th>
-                  <th className="px-3 py-2.5 text-right font-normal">unparsed</th>
-                  <th className="px-3 py-2.5 text-right font-normal">scorer agreement</th>
-                  <th className="px-3 py-2.5 text-right font-normal">over baseline</th>
-                  <th className="px-3 py-2.5 font-normal">share</th>
+                  <th className="px-3 py-2.5 text-right font-normal" title="accuracy minus what guessing the most common answer scores">
+                    vs guessing
+                  </th>
+                  <th className="px-3 py-2.5 text-right font-normal" title="share of answers with no usable, committed answer">
+                    no usable answer
+                  </th>
+                  <th className="px-3 py-2.5 font-normal" title="accuracy against the guessing baseline" />
                 </tr>
               </thead>
               <tbody>
@@ -182,33 +186,67 @@ export function Overview() {
                     </td>
                     <td className="px-3 py-3">
                       <AccValue value={m.totals.acc} ci={m.totals.ci} color={m.accent} width={64} />
+                      <span className="mt-0.5 block font-mono text-[9px] text-[#555]">
+                        {i === 0 ? "best" : signed((m.totals.acc ?? 0) - (lead.totals.acc ?? 0), 1) + " vs best"}
+                      </span>
                     </td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">
-                      {i === 0 ? "—" : signed((m.totals.acc ?? 0) - (lead.totals.acc ?? 0), 1)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{pct(m.totals.as, 1)}</td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{pct(m.totals.partial, 1)}</td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums" style={{ color: (m.totals.pfRate ?? 0) > 0.1 ? "#f0a5a5" : "#a1a1a1" }}>
-                      {pct(m.totals.pfRate, 2)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{pct(m.totals.agreement, 2)}</td>
                     <td className="px-3 py-3 text-right font-mono text-xs tabular-nums" style={{ color: m.accent }}>
                       {signed(m.totals.headroom, 1)}
                     </td>
-                    <td className="w-[120px] px-3 py-3">
+                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums" style={{ color: (m.totals.pfRate ?? 0) > 0.1 ? "#f0a5a5" : "#a1a1a1" }}>
+                      {pct(m.totals.pfRate, 1)}
+                    </td>
+                    <td className="w-[140px] px-3 py-3">
                       <Bar value={m.totals.acc} oracle={m.totals.oracle} color={m.accent} height={6} />
                     </td>
                   </tr>
                 ))}
+                <tr className="border-t-2 border-[#333] bg-[#0f0f0f] font-mono text-[11px]">
+                  <td />
+                  <td className="px-3 py-3 text-[#a1a1a1]">
+                    field mean
+                    <span className="ml-2 text-[9px] text-[#555]">{a.models.length} runs, equal weight</span>
+                  </td>
+                  <td className="px-3 py-3">
+                    <span className="t-num font-semibold tabular-nums text-[#ededed]">{pct(fieldAcc, 2)}</span>
+                    <span className="mt-0.5 block font-mono text-[9px] text-[#555]">
+                      best {pct(lead.totals.acc, 1)} · worst {pct(trailing.totals.acc, 1)}
+                    </span>
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums text-[#a1a1a1]">{signed(fieldGuess, 1)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums text-[#a1a1a1]">{pct(fieldPf, 1)}</td>
+                  <td className="px-3 py-3">
+                    <div className="relative h-[6px] w-full overflow-hidden rounded-sm bg-[#141414]">
+                      <span className="absolute inset-y-0 left-0 rounded-sm bg-[#6b6b6b]" style={{ width: (fieldAcc ?? 0) * 100 + "%" }} />
+                      <span className="absolute top-0 h-full w-px bg-[#8a8a8a]" style={{ left: (a.models[0].totals.oracle ?? 0) * 100 + "%" }} />
+                    </div>
+                  </td>
+                </tr>
               </tbody>
             </table>
           </div>
         </Panel>
-        <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#666]">
-          vs best = accuracy − the leader · own score = what the run's own harness reported · unparsed = share of answers the extractor
-          could not read (empty or over-long) · over baseline = accuracy − {pct(a.models[0].totals.oracle, 2)} (always answering the most
-          common ground truth) · share bar sits inside that baseline tick.
-        </p>
+
+        <details className="group mt-2">
+          <summary className="cursor-pointer list-none font-mono text-[10px] text-[#666] transition-colors hover:text-[#a1a1a1]">
+            ▸ what do these numbers mean?
+          </summary>
+          <dl className="mt-2 grid gap-x-8 gap-y-1.5 rounded-lg border border-[#1c1c1c] bg-[#080808] p-3.5 lg:grid-cols-2">
+            {[
+              ["accuracy", "Right answers ÷ all answers, under the one published grading rule. One number per run — the headline."],
+              ["vs guessing", "Accuracy minus " + pct(a.models[0].totals.oracle, 2) + ", which is what you score by always writing the most common answer. It answers “is it really looking at the image?”."],
+              ["no usable answer", "The share of answers that were blank, or so long no final answer could be read. They may have reasoned correctly — nobody can mark them."],
+              ["the run's own scorer", "The mark the run's own harness gave the same answers. A cross-check on our rule, kept on the audit page — not a second ability."],
+              ["partly right", "Half marks: the mean share of answer parts matched, e.g. “2; orientable” answered as “2”. Shown on domain and level pages."],
+              ["markers agree", "How often our rule and the run's own scorer reached the same verdict (96–98%). High agreement is why the ranking can be trusted."],
+            ].map(([term, meaning]) => (
+              <div key={term} className="flex gap-3">
+                <dt className="w-[130px] flex-none font-mono text-[10px] text-[#a1a1a1]">{term}</dt>
+                <dd className="text-[11.5px] leading-relaxed text-[#666]">{meaning}</dd>
+              </div>
+            ))}
+          </dl>
+        </details>
       </Section>
 
       {/* ------------------------------------------------------- findings --- */}
@@ -263,7 +301,8 @@ export function Overview() {
               <b>{overWorst?.label}</b> at <b>{fmtInt(overWorst?.totals.over)}</b> questions.
             </p>
             <p>
-              Formatting is the other axis: {pfWorst?.label} leaves <b>{pct(pfWorst?.totals.pfRate ?? null, 1)}</b> of answers unparsed
+              Formatting is the other axis: {pfWorst?.label} leaves <b>{pct(pfWorst?.totals.pfRate ?? null, 1)}</b> of answers with no usable
+              answer
               against {pct(pfBest?.totals.pfRate ?? null, 2)} for {pfBest?.label}. A model that cannot format its answer loses questions it
               may have reasoned correctly.
             </p>
@@ -352,7 +391,9 @@ export function Overview() {
                 </div>
                 <p className="mt-1 text-[12px] leading-relaxed text-[#a1a1a1]">{lv.desc}</p>
                 <p className="mt-2 font-mono text-[9px] text-[#555]">
-                  best: {best ? shortName(best.m) : "—"} · baseline {pct(a.models[0].totals.levels[lv.n - 1]?.oracle ?? null, 1)}
+                  best {best ? shortName(best.m) + " " + pct(best.v, 1) : "—"} ·{" "}
+                  <span className="text-[#9a9a9a]">field mean {pct(mean(order.map((m) => m.totals.levels[lv.n - 1]?.acc ?? 0)), 1)}</span> · guessing{" "}
+                  {pct(a.models[0].totals.levels[lv.n - 1]?.oracle ?? null, 1)}
                 </p>
               </div>
             );

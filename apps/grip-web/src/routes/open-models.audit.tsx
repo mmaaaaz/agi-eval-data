@@ -50,9 +50,9 @@ export function Audit() {
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="py-1.5 pr-3 font-normal">run</th>
                   <th className="px-2 py-1.5 text-right font-normal">agreement</th>
-                  <th className="px-2 py-1.5 text-right font-normal">credits what the rule rejects</th>
-                  <th className="px-2 py-1.5 text-right font-normal">rejects what the rule accepts</th>
-                  <th className="px-2 py-1.5 text-right font-normal">own score → frozen</th>
+                  <th className="px-2 py-1.5 text-right font-normal" title="the run's own scorer accepted, our rule rejects">credited wrongly</th>
+                  <th className="px-2 py-1.5 text-right font-normal" title="the run's own scorer rejected, our rule accepts">rejected wrongly</th>
+                  <th className="px-2 py-1.5 text-right font-normal">own scorer → accuracy</th>
                   <th className="px-2 py-1.5 font-normal">disagreement volume</th>
                 </tr>
               </thead>
@@ -91,7 +91,7 @@ export function Audit() {
       <Section
         eyebrow="02 classes"
         title="Every disagreement, classified"
-        hint="Each question where the two scorers disagree is categorised straight from the data. “credits” means the run's harness scored an answer the frozen rule rejects; “rejects” is the reverse."
+        hint="Each question where the two scorers disagree is categorised straight from the data. “Credited wrongly” means the run's own scorer accepted an answer the published rule rejects; “rejected wrongly” is the reverse."
       >
         <Panel className="p-0">
           <div className="overflow-x-auto">
@@ -252,7 +252,7 @@ export function Audit() {
                   <Link to="/open-models/domains/$slug" params={{ slug: z.domain }} className="text-[12.5px] text-[#ededed] hover:text-accent">
                     {z.label} · L{z.level}
                   </Link>
-                  <span className="font-mono text-[10px] text-[#666]">baseline {pct(z.oracle, 1)}</span>
+                  <span className="font-mono text-[10px] text-[#666]">guessing {pct(z.oracle, 1)}</span>
                 </li>
               ))}
             </ul>
@@ -303,7 +303,7 @@ export function Audit() {
       <Section
         eyebrow="04 movement"
         title="Where the frozen rule moves a score most"
-        hint="Mean difference per domain across the field (frozen rule minus the run's own score). Negative means the harness was over-crediting."
+        hint="Mean difference per domain across the field (accuracy minus the run's own scorer). Negative means the harness was over-crediting."
       >
         <div className="grid gap-3 lg:grid-cols-2">
           <MoverList title="Under-scored by the runs' own harnesses" rows={a.audit.underCredited} tone="#9fd8b4" />

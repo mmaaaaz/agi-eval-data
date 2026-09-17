@@ -93,7 +93,7 @@ export function MatrixPage() {
         title={mode === "values" ? "Level totals for " + model.label : "Cells won per level"}
         hint={
           mode === "values"
-            ? "How the chosen run accumulates across the ladder, with the baseline for scale and how far ahead of it the run sits."
+            ? "How the chosen run accumulates across the ladder, with the guessing floor for scale and how far ahead of it the run sits."
             : "Across the 34 domains in each level, how many cells each run leads."
         }
       >
@@ -105,14 +105,14 @@ export function MatrixPage() {
                 label={"L" + p.lv.n + " · " + p.lv.task}
                 value={pct(p.acc, 2)}
                 accent={model.accent}
-                sub={"baseline " + pct(p.oracle, 1) + " · n=" + fmtInt(p.n) + " · " + signed((p.acc ?? 0) - (p.oracle ?? 0), 1) + " over baseline"}
+                sub={"guessing " + pct(p.oracle, 1) + " · n=" + fmtInt(p.n) + " · " + signed((p.acc ?? 0) - (p.oracle ?? 0), 1) + " vs guessing"}
               />
             ))}
             <Tile
               label="all levels"
               value={pct(model.totals.acc, 2)}
               accent={model.accent}
-              sub={"baseline " + pct(model.totals.oracle, 1) + " · " + signed(model.totals.headroom, 1) + " over baseline"}
+              sub={"guessing " + pct(model.totals.oracle, 1) + " · " + signed(model.totals.headroom, 1) + " vs guessing"}
             />
           </TileGrid>
         ) : (

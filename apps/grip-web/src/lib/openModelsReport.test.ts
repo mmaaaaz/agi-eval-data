@@ -10,7 +10,7 @@ import { createElement } from "react";
 import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Artifact } from "./openModelsTypes";
-import { accOf, metricValue, pct, ramp, rowFor } from "./openModelsFmt";
+import { METRICS, accOf, metricValue, pct, ramp, rowFor } from "./openModelsFmt";
 import { DivergeBars, FamilyMatrix, HeatGrid, LevelSlope, LevelTable, Scatter, WinnerGrid } from "../components/open-models/charts";
 
 const artifact = JSON.parse(
@@ -151,6 +151,14 @@ describe("derived helpers", () => {
     expect(pct(null)).toBe("—");
   });
 
+  it("uses one name per idea, and only one of them is an accuracy", () => {
+    const shorts = METRICS.map((m) => m.short);
+    expect(shorts).toEqual(["accuracy", "own scorer", "partly right", "vs guessing"]);
+    expect(new Set(shorts).size).toBe(4);
+    // "own scorer" is the only cross-check that reports a score; the rest are context or diagnostics
+    expect(METRICS.filter((m) => /accuracy/.test(m.short)).length).toBe(1);
+  });
+
   it("has a monotone colour ramp", () => {
     expect(ramp(0)).not.toBe(ramp(1));
     expect(ramp(0.5)).toMatch(/^rgb\(/);
@@ -165,6 +173,16 @@ describe("renders without a router", () => {
     for (const m of artifact.models) expect(out, m.id).toContain(m.meta.short!);
     expect(out).toContain("L1");
     expect(out).toContain("52.2");
+  });
+
+  it("shows the field mean alongside the runs", () => {
+    const matrix = html(createElement(FamilyMatrix, { models: artifact.models, focus: null }));
+    expect(matrix).toContain("Solid Geometry");
+    expect(matrix).toContain(">field<");
+    expect(matrix).toContain(">guess<");
+
+    const curve = html(createElement(LevelSlope, { models: artifact.models, levels: artifact.benchmark.levels, metric: "acc", focus: null }));
+    expect(curve).toContain("field mean");
   });
 
   it("renders the family matrix and the level table", () => {
