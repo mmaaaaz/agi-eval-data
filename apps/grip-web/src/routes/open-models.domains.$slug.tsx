@@ -1,8 +1,8 @@
 import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useOM } from "./open-models";
 import { AccValue, Dot, Legend, Panel, Section, Tile, TileGrid } from "../components/open-models/ui";
-import { LevelTable } from "../components/open-models/charts";
-import { fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
+import { LevelTable, shortName } from "../components/open-models/charts";
+import { fmtInt, pct, ranked } from "../lib/openModelsFmt";
 import type { Domain } from "../lib/openModelsTypes";
 
 export const Route = createFileRoute("/open-models/domains/$slug")({
@@ -16,16 +16,17 @@ export function DomainPage() {
   const d = a.domains.find((x) => x.key === slug);
   if (!d) throw notFound();
 
-  const order = ranked(a.models);
+  const order = ranked(a.models).sort((x, y) => (d.per.find((p) => p.model === y.id)?.acc ?? 0) - (d.per.find((p) => p.model === x.id)?.acc ?? 0));
   const siblings = a.domains.filter((x) => x.family === d.family && x.key !== d.key);
   const constLevels = new Set(d.const.map((c) => c.level));
   const constN = d.per[0]?.levels[(d.const[0]?.level ?? 1) - 1]?.n ?? 0;
-  const examplesByDomain = a.models.map((m) => ({
-    m,
-    classes: m.classes
-      .map((c) => ({ name: c.name, n: c.n, ex: (m.examples[c.name] ?? []).filter((e) => e.domain === d.key) }))
-      .filter((c) => c.ex.length > 0),
-  }));
+  const graded = order.filter((m) => d.per.find((p) => p.model === m.id));
+  const noisy = [...graded].sort(
+    (x, y) =>
+      (d.per.find((p) => p.model === y.id)?.over ?? 0) + (d.per.find((p) => p.model === y.id)?.under ?? 0) -
+      ((d.per.find((p) => p.model === x.id)?.over ?? 0) + (d.per.find((p) => p.model === x.id)?.under ?? 0)),
+  );
+  const fieldBest = Math.max(...d.per.map((p) => p.acc ?? 0));
 
   return (
     <div>
@@ -42,64 +43,64 @@ export function DomainPage() {
         hint={
           <>
             {fmtInt(d.n)} questions · {fmtInt(d.per[0]?.images ?? 0)} images · {fmtInt(d.distinctAnswers ?? 0)} distinct ground truths ·
-            majority answer <span className="text-[#ededed]">“{d.oracleTop}”</span> scores {pct(d.oracle, 1)} blind.
+            majority answer <span className="text-[#ededed]">“{d.oracleTop}”</span> scores {pct(d.oracle, 1)} on its own · best run{" "}
+            <span className="text-[#ededed]">{pct(fieldBest, 2)}</span>
           </>
         }
       >
-        <TileGrid cols={4}>
-          {order.map((m) => {
-            const r = d.per.find((p) => p.model === m.id);
+        <TileGrid cols={3}>
+          {graded.map((m) => {
+            const r = d.per.find((p) => p.model === m.id)!;
             return (
               <Tile
                 key={m.id}
                 label={m.label}
-                value={<AccValue value={r?.acc ?? null} ci={r?.ci} color={m.accent} size="md" width={54} />}
+                value={<AccValue value={r.acc} ci={r.ci} color={m.accent} size="md" width={54} />}
                 accent={m.accent}
-                sub={"self-score " + pct(r?.as ?? null, 1) + " · partial " + pct(r?.partial ?? null, 1)}
+                sub={"own score " + pct(r.as, 1) + " · partial " + pct(r.partial, 1) + " · " + pct((r.acc ?? 0) - (d.oracle ?? 0), 1) + " over baseline"}
               />
             );
           })}
-          <Tile
-            label="headroom vs oracle"
-            value={order.map((m) => signed((d.per.find((p) => p.model === m.id)?.acc ?? 0) - (d.oracle ?? 0), 1)).join(" / ")}
-            sub="accuracy − majority-answer baseline"
-          />
         </TileGrid>
       </Section>
 
-      <Section eyebrow="01 levels" title="Difficulty ladder" hint="Bars are frozen-rule accuracy; the tick inside each track is that level's majority-answer oracle."
-        right={
-          <Legend items={[...order.map((m) => ({ color: m.accent, label: m.label })), { color: "#666", label: "oracle", dash: true }]} />
-        }
+      <Section
+        eyebrow="01 levels"
+        title="Difficulty ladder"
+        hint="Frozen-rule accuracy per level. The baseline tick is drawn once, in the first track — every run is measured against the same floor."
+        right={<Legend items={[...graded.map((m) => ({ color: m.accent, label: shortName(m) })), { color: "#666", label: "baseline", dash: true }]} />}
       >
         <Panel>
-          <LevelTable
-            levels={a.benchmark.levels}
-            series={order.map((m) => ({
-              label: m.label,
-              accent: m.accent,
-              cells: (d.per.find((p) => p.model === m.id)?.levels ?? []).map((l) => ({
-                acc: l.acc,
-                partial: l.partial,
-                n: l.n,
-                pf: l.pf,
-                oracle: l.oracle,
-              })),
-            }))}
-          />
+          <div className="max-h-[70vh] overflow-auto">
+            <LevelTable
+              levels={a.benchmark.levels}
+              series={graded.map((m) => ({
+                id: m.id,
+                label: shortName(m) + " · " + m.label,
+                accent: m.accent,
+                cells: (d.per.find((p) => p.model === m.id)?.levels ?? []).map((l) => ({
+                  acc: l.acc,
+                  partial: l.partial,
+                  n: l.n,
+                  pf: l.pf,
+                  oracle: l.oracle,
+                })),
+              }))}
+            />
+          </div>
         </Panel>
         {d.const.length > 0 && (
           <p className="mt-2 rounded border border-[#3a2626] bg-[#150f0f] px-3 py-2 font-mono text-[10px] leading-relaxed text-[#f0a5a5]">
-            ◆ single-answer {d.const.map((c) => "L" + c.level + ' is always "' + c.top + '"').join(" · ")} for all{" "}
-            {fmtInt(constN)} images — guessing scores 100% on {d.const.length > 1 ? "those levels" : "that level"}.
+            ◆ single-answer {d.const.map((c) => "L" + c.level + ' is always "' + c.top + '"').join(" · ")} for all {fmtInt(constN)} images —
+            guessing scores 100% on {d.const.length > 1 ? "those levels" : "that level"}.
           </p>
         )}
       </Section>
 
       <Section
         eyebrow="02 question format"
-        title="What the model is actually asked"
-        hint="Templates and one real question per level, taken from the upstream dataset bank. The bank has since been regenerated, so the example's answer need not match the graded draw."
+        title="What the models are actually asked"
+        hint="Templates and one real question per level, taken from the upstream dataset bank. The bank has since been regenerated, so an example's answer need not match the graded draw."
       >
         <div className="grid gap-3 lg:grid-cols-5">
           {a.benchmark.levels.map((lv) => {
@@ -136,54 +137,96 @@ export function DomainPage() {
       </Section>
 
       <Section
-        eyebrow="03 grading detail"
-        title="Where the frozen rule and the runs' scorer part ways here"
-        hint="Disagreements sampled from this domain; the audit page carries the full taxonomy."
+        eyebrow="03 grading"
+        title="Where each run's own scorer parted ways here"
+        hint="Aggregate counts for this domain, then sampled questions from the two runs with the most disagreements."
       >
-        <div className="grid gap-3 lg:grid-cols-2">
-          {examplesByDomain.map(({ m, classes }) =>
-            classes.length === 0 ? (
-              <Panel key={m.id} className="p-3.5">
-                <div className="flex items-center gap-2">
-                  <Dot color={m.accent} size={6} />
-                  <span className="text-[13px] text-[#ededed]">{m.label}</span>
-                </div>
-                <p className="mt-2 font-mono text-[10px] text-[#666]">No sampled disagreements on this domain.</p>
-              </Panel>
-            ) : (
-              <Panel key={m.id} className="p-3.5">
+        <Panel className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[760px] text-left">
+              <thead>
+                <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
+                  <th className="px-3 py-2 font-normal">run</th>
+                  <th className="px-3 py-2 text-right font-normal">accuracy</th>
+                  <th className="px-3 py-2 text-right font-normal">own score</th>
+                  <th className="px-3 py-2 text-right font-normal">credits what the rule rejects</th>
+                  <th className="px-3 py-2 text-right font-normal">rejects what the rule accepts</th>
+                  <th className="px-3 py-2 text-right font-normal">unparsed</th>
+                  <th className="px-3 py-2 font-normal">classes</th>
+                </tr>
+              </thead>
+              <tbody>
+                {graded.map((m) => {
+                  const r = d.per.find((p) => p.model === m.id)!;
+                  const ex = m.classes.filter((c) => (m.examples[c.name] ?? []).some((e) => e.domain === d.key));
+                  return (
+                    <tr key={m.id} className="border-t border-[#141414]">
+                      <th scope="row" className="px-3 py-2 text-left font-normal">
+                        <Link to="/open-models/models/$id" params={{ id: m.id }} className="inline-flex items-center gap-2 text-[12.5px] text-[#ededed] hover:text-accent">
+                          <Dot color={m.accent} size={6} />
+                          {m.label}
+                        </Link>
+                      </th>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums" style={{ color: m.accent }}>
+                        {pct(r.acc, 1)}
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{pct(r.as, 1)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{fmtInt(r.over)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{fmtInt(r.under)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{pct(r.pfRate, 2)}</td>
+                      <td className="px-3 py-2 font-mono text-[9.5px] text-[#555]">
+                        {ex.map((c) => c.name).join(" · ") || "—"}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {noisy.slice(0, 2).map((m) => {
+            const r = d.per.find((p) => p.model === m.id)!;
+            const classes = m.classes.filter((c) => (m.examples[c.name] ?? []).some((e) => e.domain === d.key));
+            return (
+              <Panel key={m.id} className="p-4">
                 <div className="flex items-center justify-between">
                   <span className="flex items-center gap-2 text-[13px] text-[#ededed]">
                     <Dot color={m.accent} size={6} />
                     {m.label}
                   </span>
                   <span className="font-mono text-[9px] text-[#555]">
-                    {fmtInt(d.per.find((p) => p.model === m.id)?.over ?? 0)} over-credit ·{" "}
-                    {fmtInt(d.per.find((p) => p.model === m.id)?.under ?? 0)} under-credit
+                    {fmtInt(r.over)} over · {fmtInt(r.under)} under
                   </span>
                 </div>
-                <ul className="mt-3 space-y-3">
-                  {classes.map((c) => (
-                    <li key={c.name}>
-                      <p className="font-mono text-[10px]" style={{ color: m.accent }}>
-                        {c.name}
-                      </p>
-                      {c.ex.map((e, i) => (
-                        <p key={i} className="mt-1 grid grid-cols-[26px_1fr] gap-x-2 font-mono text-[10.5px] leading-relaxed">
-                          <span className="text-[#555]">L{e.level}</span>
-                          <span>
-                            <span className="text-[#666]">truth</span> <span className="text-[#ededed]">{e.gt}</span>
-                            <br />
-                            <span className="text-[#666]">answer</span> <span className="text-[#a1a1a1]">{e.pred}</span>
-                          </span>
+                {classes.length === 0 ? (
+                  <p className="mt-2 font-mono text-[10px] text-[#666]">No sampled disagreements on this domain.</p>
+                ) : (
+                  <ul className="mt-3 space-y-3">
+                    {classes.map((c) => (
+                      <li key={c.name}>
+                        <p className="font-mono text-[10px]" style={{ color: m.accent }}>
+                          {c.name}
                         </p>
-                      ))}
-                    </li>
-                  ))}
-                </ul>
+                        {(m.examples[c.name] ?? [])
+                          .filter((e) => e.domain === d.key)
+                          .map((e, i) => (
+                            <p key={i} className="mt-1 grid grid-cols-[26px_1fr] gap-x-2 font-mono text-[10.5px] leading-relaxed">
+                              <span className="text-[#555]">L{e.level}</span>
+                              <span>
+                                <span className="text-[#666]">truth</span> <span className="text-[#ededed]">{e.gt}</span>
+                                <br />
+                                <span className="text-[#666]">answer</span> <span className="text-[#a1a1a1]">{e.pred}</span>
+                              </span>
+                            </p>
+                          ))}
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </Panel>
-            ),
-          )}
+            );
+          })}
         </div>
       </Section>
 
@@ -191,7 +234,12 @@ export function DomainPage() {
         <Section eyebrow="04 neighbours" title={"More in " + (d.familyName ?? "")}>
           <div className="flex flex-wrap gap-2">
             {siblings.map((s) => (
-              <Link key={s.key} to="/open-models/domains/$slug" params={{ slug: s.key }} className="rounded-full border border-[#262626] px-3 py-1.5 font-mono text-[10px] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white">
+              <Link
+                key={s.key}
+                to="/open-models/domains/$slug"
+                params={{ slug: s.key }}
+                className="rounded-full border border-[#262626] px-3 py-1.5 font-mono text-[10px] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white"
+              >
                 {s.label} · {pct(bestOf(s), 1)}
               </Link>
             ))}

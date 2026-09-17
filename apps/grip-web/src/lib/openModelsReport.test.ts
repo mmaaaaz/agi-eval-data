@@ -1,9 +1,9 @@
 /**
- * Regression + render tests for the open-models report.
+ * Regression + render tests for the open-model report.
  *
- * The artifact numbers are cross-checked against the figures the original
- * standalone report published, so a change in the grader or the bake cannot
- * silently move the headline.
+ * The two original runs are pinned against the figures the standalone report
+ * published, so a change in the grader or the bake cannot silently move the
+ * headline. Everything else is checked as an invariant over the whole field.
  */
 import { readFileSync } from "node:fs";
 import { createElement } from "react";
@@ -11,7 +11,7 @@ import { renderToStaticMarkup } from "react-dom/server";
 import { describe, expect, it } from "vitest";
 import type { Artifact } from "./openModelsTypes";
 import { accOf, metricValue, pct, ramp, rowFor } from "./openModelsFmt";
-import { DivergeBars, FamilyBars, HeatGrid, LevelCurve, LevelTable, Scatter } from "../components/open-models/charts";
+import { DivergeBars, FamilyMatrix, HeatGrid, LevelSlope, LevelTable, Scatter, WinnerGrid } from "../components/open-models/charts";
 
 const artifact = JSON.parse(
   readFileSync(new URL("../../public/data/open-models.json", import.meta.url), "utf-8"),
@@ -23,13 +23,19 @@ const round = (x: number, d = 4) => Number(x.toFixed(d));
 describe("artifact shape", () => {
   it("has one row per model on every domain", () => {
     expect(artifact.schema).toBe(1);
-    expect(artifact.models.length).toBeGreaterThan(0);
+    expect(artifact.models.length).toBeGreaterThan(1);
     for (const d of artifact.domains) {
       expect(d.per.length, d.key).toBe(artifact.models.length);
       expect(new Set(d.per.map((p) => p.model)).size).toBe(artifact.models.length);
       expect(d.family).toBeGreaterThanOrEqual(0);
       expect(d.family).toBeLessThan(artifact.benchmark.families.length);
     }
+  });
+
+  it("gives every run a unique, compact name for dense visuals", () => {
+    const shorts = artifact.models.map((m) => m.meta.short);
+    for (const s of shorts) expect(typeof s, "short name").toBe("string");
+    expect(new Set(shorts).size).toBe(artifact.models.length);
   });
 
   it("keeps level questions balanced and equal to the domain totals", () => {
@@ -46,13 +52,22 @@ describe("artifact shape", () => {
       expect(Math.abs(rebuilt - (m.totals.acc ?? 0) * m.totals.n)).toBeLessThan(artifact.domains.length);
     }
   });
+
+  it("agrees between the stored level totals and the domain rows", () => {
+    for (const m of artifact.models) {
+      for (let i = 0; i < 5; i++) {
+        const fromDomains = artifact.domains.reduce((s, d) => s + (rowFor(d, m.id)?.levels[i]?.n ?? 0), 0);
+        expect(fromDomains, m.id + " L" + (i + 1)).toBe(m.totals.levels[i].n);
+      }
+    }
+  });
 });
 
 describe("figures match the published report", () => {
   const ivl = byId("internvl3_5-8b");
   const ds = byId("deepseek-vl2-small");
 
-  it("holds the two headline accuracies", () => {
+  it("holds the two original headline accuracies", () => {
     expect(round(ivl.totals.acc!)).toBe(0.3693);
     expect(round(ds.totals.acc!)).toBe(0.2958);
     expect(round(ivl.totals.as!)).toBe(0.3727);
@@ -61,34 +76,42 @@ describe("figures match the published report", () => {
     expect(round(ds.totals.partial!)).toBe(0.3103);
   });
 
-  it("holds the grader-agreement and parse-failure rates", () => {
+  it("holds the grader-agreement and unparsed-answer rates", () => {
     expect(round(ivl.totals.agreement!)).toBe(0.9798);
     expect(round(ds.totals.agreement!)).toBe(0.9735);
     expect(round(ivl.totals.pfRate!)).toBe(0.0058);
     expect(round(ds.totals.pfRate!)).toBe(0.1545);
     expect(ivl.totals.over).toBe(2980);
-    expect(ds.totals.over - 5039).toBe(0);
+    expect(ds.totals.over).toBe(5039);
   });
 
   it("holds the structural findings", () => {
-    expect(artifact.audit.zeroHarness.length).toBe(11);
-    expect(artifact.audit.constantLevels.length).toBe(6);
     expect(artifact.domains.length).toBe(34);
-    expect(artifact.benchmark.questionsPerModel).toBe(252505);
+    expect(artifact.audit.constantLevels.length).toBe(6);
+    // levels every run scored 0 on with its own harness
+    expect(artifact.audit.zeroHarness.length).toBe(10);
     for (const c of artifact.audit.constantLevels) expect(c.oracle).toBeGreaterThanOrEqual(0.9);
   });
 
-  it("keeps the majority-answer baseline identical for every model", () => {
-    const oracles = artifact.models.map((m) => round(m.totals.oracle!, 3));
-    expect(new Set(oracles).size).toBe(1);
-    expect(oracles[0]).toBe(0.138);
+  it("finds no run clears the L5 majority-answer baseline", () => {
+    const l5 = artifact.models[0].totals.levels[4].oracle ?? 0;
+    for (const m of artifact.models) expect(m.totals.levels[4].acc ?? 0, m.id).toBeLessThan(l5);
   });
 
+  it("ranks the same way the site does", () => {
+    const order = [...artifact.models].sort((a, b) => (b.totals.acc ?? 0) - (a.totals.acc ?? 0));
+    expect(order[0].id).toBe("qwen3-vl-8b-instruct");
+    expect(order[order.length - 1].id).toBe("deepseek-vl2-small");
+  });
+});
+
+describe("integrity", () => {
   it("keeps the comparison paired: every run shares one ground truth", () => {
     const p = artifact.integrity.gtPairing;
+    const comparable = artifact.models.slice(1).reduce((s, m) => s + m.totals.n, 0);
     expect(p.mismatch).toBe(0);
     expect(p.missing).toBe(0);
-    expect(p.checked).toBe((artifact.models.length - 1) * artifact.benchmark.questionsPerModel);
+    expect(p.checked).toBe(comparable);
     for (const m of artifact.models.slice(1)) {
       expect(m.gtPairing.mismatch, m.id).toBe(0);
       expect(m.gtPairing.missing, m.id).toBe(0);
@@ -100,6 +123,18 @@ describe("figures match the published report", () => {
     expect(d.mismatch).toBeGreaterThan(0);
     expect(d.mismatch).toBeLessThan(d.checked);
     expect(artifact.integrity.dupIds).toBe(0);
+  });
+
+  it("keeps the majority-answer baseline identical across runs", () => {
+    const oracles = artifact.models.map((m) => round(m.totals.oracle!, 3));
+    expect(new Set(oracles).size).toBe(1);
+  });
+
+  it("reports the spread of run sizes instead of assuming they are equal", () => {
+    const [lo, hi] = artifact.benchmark.questionsRange;
+    expect(lo).toBeLessThanOrEqual(hi);
+    expect(lo).toBe(Math.min(...artifact.models.map((m) => m.totals.n)));
+    expect(hi).toBe(Math.max(...artifact.models.map((m) => m.totals.n)));
   });
 });
 
@@ -124,21 +159,21 @@ describe("derived helpers", () => {
 
 describe("renders without a router", () => {
   const html = (el: Parameters<typeof renderToStaticMarkup>[0]) => renderToStaticMarkup(el);
-  const lead = artifact.models.reduce((a, b) => ((a.totals.acc ?? 0) > (b.totals.acc ?? 0) ? a : b));
 
-  it("renders the level curve with both models", () => {
-    const out = html(createElement(LevelCurve, { models: artifact.models, levels: artifact.benchmark.levels, metric: "acc" }));
-    expect(out).toContain(byId("internvl3_5-8b").label);
+  it("renders the difficulty curve for every run", () => {
+    const out = html(createElement(LevelSlope, { models: artifact.models, levels: artifact.benchmark.levels, metric: "acc", focus: null }));
+    for (const m of artifact.models) expect(out, m.id).toContain(m.meta.short!);
     expect(out).toContain("L1");
     expect(out).toContain("52.2");
   });
 
-  it("renders the family bars and the level table", () => {
-    expect(html(createElement(FamilyBars, { models: artifact.models, metric: "acc" }))).toContain("Solid Geometry");
+  it("renders the family matrix and the level table", () => {
+    expect(html(createElement(FamilyMatrix, { models: artifact.models, focus: null }))).toContain("Solid Geometry");
     const table = html(
       createElement(LevelTable, {
         levels: artifact.benchmark.levels,
         series: artifact.models.map((m) => ({
+          id: m.id,
           label: m.label,
           accent: m.accent,
           cells: m.totals.levels.map((l) => ({ acc: l.acc, partial: l.partial, n: l.n, pf: l.pf, oracle: l.oracle ?? null })),
@@ -148,17 +183,30 @@ describe("renders without a router", () => {
     expect(table).toContain("Extrapolative/Counterfactual Reasoning");
   });
 
-  it("renders the heat grid, divergence chart and scatter", () => {
+  it("renders the heat grid, winner map, divergence chart and scatter", () => {
     const grid = html(
       createElement(HeatGrid, {
         domains: artifact.domains,
         levels: artifact.benchmark.levels,
-        model: lead,
+        model: artifact.models[0],
         metric: "acc",
         families: artifact.benchmark.families,
       }),
     );
     expect(grid).toContain("Hex pathfinding");
+
+    const winners = html(
+      createElement(WinnerGrid, {
+        domains: artifact.domains,
+        levels: artifact.benchmark.levels,
+        models: artifact.models,
+        families: artifact.benchmark.families,
+        focus: null,
+      }),
+    );
+    expect(winners).toContain("Projectile motion");
+    expect(winners).toContain("Qwen-I");
+
     const div = html(createElement(DivergeBars, { domains: artifact.domains, a: artifact.models[0], b: artifact.models[1], limit: 4 }));
     expect(div).toContain(artifact.models[1].label);
     const scatter = html(createElement(Scatter, { domains: artifact.domains, a: artifact.models[0], b: artifact.models[1] }));

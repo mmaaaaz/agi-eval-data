@@ -17,10 +17,13 @@ function openModelsDesc() {
     const a = JSON.parse(readFileSync(join(root, "data", "open-models", "models.json"), "utf-8"));
     const ranked = [...a.models].sort((x, y) => (y.totals.acc ?? 0) - (x.totals.acc ?? 0));
     const fmtPct = (v) => (v * 100).toFixed(1) + "%";
+    const lead = ranked[0];
+    const last = ranked[ranked.length - 1];
+    // keep it inside a social-card description: who leads, who trails, what it covers
     return (
-      ranked.map((m) => m.label + " " + fmtPct(m.totals.acc)).join(" vs ") +
-      " on " + fmt(a.benchmark.questionsPerModel) + " GRIP questions each — " +
-      a.domains.length + " domains x 5 levels, every answer re-graded by one frozen rule."
+      ranked.length + " open VLMs re-graded on GRIP: " + lead.label + " leads at " + fmtPct(lead.totals.acc) +
+      (ranked.length > 1 ? ", " + last.label + " trails at " + fmtPct(last.totals.acc) : "") +
+      " — " + a.domains.length + " domains x 5 levels, one frozen rule, " + fmt(a.benchmark.questionsPerModel) + " questions each."
     );
   } catch {
     return "Open vision-language models re-graded on the GRIP benchmark under one frozen rule — per-domain, per-level, fully sortable.";

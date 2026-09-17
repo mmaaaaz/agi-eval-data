@@ -956,8 +956,18 @@ def main() -> int:
             "families": FAMILIES,
             "levels": LEVELS,
             "domains": len(domains_out),
+            # runs are not perfectly equal in size: the first two evaluated 1,501
+            # images in angle_estimation, the rest 1,500. Report both ends.
             "questionsPerModel": model_out[0]["totals"]["n"],
             "imagesPerModel": model_out[0]["totals"]["images"],
+            "questionsRange": [
+                min(m["totals"]["n"] for m in model_out),
+                max(m["totals"]["n"] for m in model_out),
+            ],
+            "imagesRange": [
+                min(m["totals"]["images"] for m in model_out),
+                max(m["totals"]["images"] for m in model_out),
+            ],
             "grader": {
                 "version": "frozen v3",
                 "rules": [

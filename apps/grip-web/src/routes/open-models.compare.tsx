@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useOM } from "./open-models";
-import { AccValue, Bar, Dot, Legend, Panel, Section, Seg, Tile, TileGrid } from "../components/open-models/ui";
-import { DivergeBars, LevelSpark, Scatter } from "../components/open-models/charts";
+import { AccValue, Bar, Dot, Legend, ModelSelect, Panel, Section, Tile, TileGrid } from "../components/open-models/ui";
+import { DivergeBars, LevelSpark, Scatter, shortName } from "../components/open-models/charts";
 import { accOf, fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
 
 export const Route = createFileRoute("/open-models/compare")({ component: Compare });
@@ -39,8 +39,19 @@ export function Compare() {
         hint="Same questions, same ground truth, same grading rule — the difference is the model."
         right={
           <div className="flex flex-wrap items-center gap-2">
-            <Seg label="A" value={aId} onChange={setAId} options={a.models.map((m) => ({ id: m.id, label: m.label }))} />
-            <Seg label="B" value={bId} onChange={setBId} options={a.models.map((m) => ({ id: m.id, label: m.label }))} />
+            <ModelSelect label="A" models={order} value={aId} onChange={setAId} />
+            <span className="font-mono text-[10px] text-[#555]">vs</span>
+            <ModelSelect label="B" models={order} value={bId} onChange={setBId} />
+            <button
+              type="button"
+              onClick={() => {
+                setAId(bId);
+                setBId(aId);
+              }}
+              className="rounded border border-[#262626] px-2 py-1 font-mono text-[10px] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white"
+            >
+              swap
+            </button>
           </div>
         }
       >
@@ -96,8 +107,8 @@ export function Compare() {
               <thead>
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="py-1.5 pr-2 font-normal">family</th>
-                  <th className="px-2 py-1.5 text-right font-normal">{A.label.slice(0, 10)}</th>
-                  <th className="px-2 py-1.5 text-right font-normal">{B.label.slice(0, 10)}</th>
+                  <th className="px-2 py-1.5 text-right font-normal">{shortName(A)}</th>
+                  <th className="px-2 py-1.5 text-right font-normal">{shortName(B)}</th>
                   <th className="px-2 py-1.5 text-right font-normal">Δ</th>
                   <th className="py-1.5 pl-2 font-normal">gap</th>
                 </tr>
@@ -140,8 +151,8 @@ export function Compare() {
               <thead>
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="py-1.5 pr-2 font-normal">level</th>
-                  <th className="px-2 py-1.5 font-normal">{A.label.slice(0, 10)}</th>
-                  <th className="px-2 py-1.5 font-normal">{B.label.slice(0, 10)}</th>
+                  <th className="px-2 py-1.5 font-normal">{shortName(A)}</th>
+                  <th className="px-2 py-1.5 font-normal">{shortName(B)}</th>
                   <th className="px-2 py-1.5 text-right font-normal">Δ</th>
                   <th className="py-1.5 pl-2 text-right font-normal">oracle</th>
                 </tr>

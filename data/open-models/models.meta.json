@@ -1,21 +1,6 @@
 {
-  "_comment": "Hand-maintained model card fields for the open-model report. Baked into data/open-models/models.json by scripts/open_models_bake.py; the UI hides any field left null. The bake seeds an entry automatically when a new run appears in data/open-model-analysis/.",
-  "_fieldSource": "params / license / released read from the official Hugging Face model cards (checked 2026-09-16); 'activated parameters' only where the card itself states it.",
-  "internvl3_5-8b": {
-    "label": "InternVL3.5-8B",
-    "org": "OpenGVLab",
-    "params": "8.5B",
-    "activeParams": null,
-    "license": "Apache-2.0",
-    "released": "2025-08",
-    "context": null,
-    "accent": "#8b5cf6",
-    "links": {
-      "huggingface": "https://huggingface.co/OpenGVLab/InternVL3_5-8B",
-      "paper": "https://arxiv.org/abs/2508.18265"
-    },
-    "notes": "Dense vision-language model (InternVLChatModel, bf16, 8,528,318,464 parameters). Apache-2.0 per the official Hugging Face card."
-  },
+  "_comment": "Hand-maintained model card fields for the open-model report. Baked into data/open-models/models.json by scripts/open_models_bake.py; the UI hides any field left null. The bake seeds an entry automatically when a new run appears in data/open-model-analysis/ - fill in label / org / params / license / links, then re-bake.",
+  "_fieldSource": "params / license / released read from the official Hugging Face model cards (checked 2026-09-16); 'activated parameters' only where the card itself states it. 'mode' is set only where the model name states it.",
   "deepseek-vl2-small": {
     "label": "DeepSeek-VL2-Small",
     "org": "DeepSeek",
@@ -24,11 +9,98 @@
     "license": "DeepSeek Model License (custom)",
     "released": "2024-12",
     "context": null,
+    "mode": null,
     "accent": "#38bdf8",
     "links": {
       "huggingface": "https://huggingface.co/deepseek-ai/deepseek-vl2-small",
       "paper": "https://arxiv.org/abs/2412.10302"
     },
-    "notes": "Mixture-of-experts VLM built on DeepSeekMoE-16B (16,148,349,504 parameters); the model card states 2.8B activated parameters. Weights carry a custom DeepSeek licence, not an OSI one."
+    "notes": "Mixture-of-experts VLM built on DeepSeekMoE-16B (16,148,349,504 parameters); the model card states 2.8B activated parameters. Weights carry a custom DeepSeek licence, not an OSI one.",
+    "short": "DeepSeek"
+  },
+  "internvl3_5-8b": {
+    "label": "InternVL3.5-8B",
+    "org": "OpenGVLab",
+    "params": "8.5B",
+    "activeParams": null,
+    "license": "Apache-2.0",
+    "released": "2025-08",
+    "context": null,
+    "mode": null,
+    "accent": "#8b5cf6",
+    "links": {
+      "huggingface": "https://huggingface.co/OpenGVLab/InternVL3_5-8B",
+      "paper": "https://arxiv.org/abs/2508.18265"
+    },
+    "notes": "Dense vision-language model (InternVLChatModel, bf16, 8,528,318,464 parameters). Apache-2.0 per the official Hugging Face card.",
+    "short": "InternVL"
+  },
+  "kimi-vl-a3b-thinking": {
+    "label": "Kimi-VL-A3B-Thinking",
+    "org": "Moonshot AI",
+    "params": "16.4B total",
+    "activeParams": "2.8B activated",
+    "license": "MIT",
+    "released": "2025-04",
+    "context": null,
+    "mode": "thinking",
+    "accent": "#f59e0b",
+    "links": {
+      "huggingface": "https://huggingface.co/moonshotai/Kimi-VL-A3B-Thinking",
+      "paper": "https://arxiv.org/abs/2504.07491"
+    },
+    "notes": "Mixture-of-experts VLM; the card states the language decoder activates 2.8B parameters (16,407,657,776 total). This run is the original Thinking release, not the newer 2506 checkpoint.",
+    "short": "Kimi"
+  },
+  "molmo2-8b": {
+    "label": "Molmo2-8B",
+    "org": "Ai2",
+    "params": "8.7B",
+    "activeParams": null,
+    "license": "Apache-2.0",
+    "released": "2025-12",
+    "context": null,
+    "mode": null,
+    "accent": "#10b981",
+    "links": {
+      "huggingface": "https://huggingface.co/allenai/Molmo2-8B",
+      "paper": null
+    },
+    "notes": "Dense open vision-language model (8,661,703,120 parameters), Apache-2.0. Its model card links no paper.",
+    "short": "Molmo2"
+  },
+  "qwen3-vl-8b-instruct": {
+    "label": "Qwen3-VL-8B-Instruct",
+    "org": "Qwen",
+    "params": "8.8B",
+    "activeParams": null,
+    "license": "Apache-2.0",
+    "released": "2025-10",
+    "context": null,
+    "mode": "instruct",
+    "accent": "#f43f5e",
+    "links": {
+      "huggingface": "https://huggingface.co/Qwen/Qwen3-VL-8B-Instruct",
+      "paper": "https://arxiv.org/abs/2505.09388"
+    },
+    "notes": "Dense 8B vision-language model (8,767,123,696 parameters). Instruction mode: it answers directly, with no visible reasoning trace.",
+    "short": "Qwen-I"
+  },
+  "qwen3-vl-8b-thinking": {
+    "label": "Qwen3-VL-8B-Thinking",
+    "org": "Qwen",
+    "params": "8.8B",
+    "activeParams": null,
+    "license": "Apache-2.0",
+    "released": "2025-10",
+    "context": null,
+    "mode": "thinking",
+    "accent": "#e879f9",
+    "links": {
+      "huggingface": "https://huggingface.co/Qwen/Qwen3-VL-8B-Thinking",
+      "paper": "https://arxiv.org/abs/2505.09388"
+    },
+    "notes": "The same weights as the Instruct checkpoint, run in thinking mode: it emits a reasoning trace before its answer, which shows up in its parse-failure rate and its own scorer.",
+    "short": "Qwen-T"
   }
 }

@@ -149,6 +149,36 @@ export function Seg<T extends string>({
   );
 }
 
+/** Compact model picker — the Seg control runs out of room with a large field. */
+export function ModelSelect({
+  models,
+  value,
+  onChange,
+  label,
+}: {
+  models: { id: string; label: string; accent: string; totals: { acc: number | null } }[];
+  value: string;
+  onChange: (id: string) => void;
+  label?: string;
+}) {
+  return (
+    <div className="flex items-center gap-2">
+      {label && <span className="font-mono text-[9px] uppercase tracking-widest text-[#666]">{label}</span>}
+      <select
+        value={value}
+        onChange={(e) => onChange(e.target.value)}
+        className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1 font-mono text-[11px] text-[#ededed] outline-none transition-colors hover:border-[#404040] focus:border-[#404040]"
+      >
+        {models.map((m) => (
+          <option key={m.id} value={m.id}>
+            {m.label} · {m.totals.acc == null ? "—" : (m.totals.acc * 100).toFixed(1) + "%"}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
 export function TextInput({
   value,
   onChange,
@@ -166,6 +196,48 @@ export function TextInput({
       aria-label={placeholder}
       className="w-44 rounded-md border border-[#262626] bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-[11px] text-white outline-none transition-colors placeholder:text-[#555] focus:border-[#404040] sm:w-56"
     />
+  );
+}
+
+export function ModeBadge({ mode }: { mode?: string | null }) {
+  if (!mode) return null;
+  const thinking = mode === "thinking";
+  return (
+    <span
+      title={
+        thinking
+          ? "Runs in thinking mode: it emits a reasoning trace before its answer"
+          : "Runs in instruct mode: answers directly, with no visible reasoning trace"
+      }
+      className={
+        "rounded-full border px-1.5 py-[1px] font-mono text-[8.5px] uppercase tracking-wider " +
+        (thinking ? "border-[#4a3a1f] text-[#f0c98a]" : "border-[#262626] text-[#8f8f8f]")
+      }
+    >
+      {mode}
+    </span>
+  );
+}
+
+export function RankPill({ rank, accent }: { rank: number; accent?: string }) {
+  return (
+    <span
+      className="inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[4px] font-mono text-[10px] font-semibold tabular-nums"
+      style={{ background: rank === 1 ? accent ?? "#8b5cf6" : "#1a1a1a", color: rank === 1 ? "#0a0a0a" : "#a1a1a1" }}
+    >
+      {rank}
+    </span>
+  );
+}
+
+export function KeyValue({ label, value, hint }: { label: string; value: ReactNode; hint?: string }) {
+  return (
+    <div className="flex items-baseline justify-between gap-3 border-b border-[#141414] pb-1.5 last:border-0">
+      <dt className="font-mono text-[10px] uppercase tracking-wider text-[#666]">{label}</dt>
+      <dd className="text-right font-mono text-[11px] text-[#ededed]" title={hint}>
+        {value}
+      </dd>
+    </div>
   );
 }
 
