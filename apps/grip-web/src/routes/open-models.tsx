@@ -4,11 +4,13 @@
  * Owns the artifact fetch and hands it to every child route through context, so
  * navigating between report pages never refetches.
  */
-import { createContext, useContext } from "react";
+import { createContext, useContext, useState } from "react";
 import { createFileRoute, Link, Outlet, useRouterState } from "@tanstack/react-router";
 import { useOpenModels } from "../lib/openModels";
 import type { Artifact } from "../lib/openModelsTypes";
 import { Dot } from "../components/open-models/ui";
+import { FieldNote, ModelChips } from "../components/open-models/field";
+import { shortName } from "../components/open-models/charts";
 
 const TABS = [
   { to: "/open-models", label: "overview" },
@@ -28,6 +30,15 @@ export function useOM(): Artifact {
   return a;
 }
 
+/** The isolated model (null = the whole field), shared by every report page. */
+export function useFocus(): { focus: string | null; setFocus: (id: string | null) => void } {
+  const f = useContext(FocusCtx);
+  if (!f) throw new Error("useFocus outside the open-models layout");
+  return f;
+}
+
+const FocusCtx = createContext<{ focus: string | null; setFocus: (id: string | null) => void } | null>(null);
+
 export const Route = createFileRoute("/open-models")({
   component: OpenModelsLayout,
 });
@@ -35,6 +46,7 @@ export const Route = createFileRoute("/open-models")({
 function OpenModelsLayout() {
   const { data, loading, error, source, reload } = useOpenModels();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const [focus, setFocus] = useState<string | null>(null);
 
   if (loading && !data) {
     return (
@@ -104,7 +116,9 @@ function OpenModelsLayout() {
               {source === "local" ? "deployed copy" : source === "cache" ? "cached" : source ?? "—"}
             </span>
             <span className="hidden font-mono text-[9px] text-[#555] sm:inline">
-              {totalAnswers.toLocaleString("en-US")} graded answers
+              {data.models.length} runs · {totalAnswers.toLocaleString("en-US")} graded answers · best {shortName(
+                data.models.reduce((a, b) => ((a.totals.acc ?? 0) > (b.totals.acc ?? 0) ? a : b)),
+              )}
             </span>
             <button
               type="button"
@@ -116,9 +130,16 @@ function OpenModelsLayout() {
           </div>
         </div>
 
-        <div className="pt-7" key={pathname}>
-          <Outlet />
-        </div>
+        <FocusCtx value={{ focus, setFocus }}>
+          <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-[#1c1c1c] py-3">
+            <ModelChips models={data.models} focus={focus} onFocus={setFocus} />
+            <FieldNote models={data.models} focus={focus} />
+          </div>
+
+          <div className="pt-7" key={pathname}>
+            <Outlet />
+          </div>
+        </FocusCtx>
       </div>
     </Ctx>
   );

@@ -1,6 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useOM } from "./open-models";
-import { Dot, Panel, Section, Tile, TileGrid, Legend } from "../components/open-models/ui";
+import { Dot, Panel, Section, Tile, TileGrid } from "../components/open-models/ui";
+import { shortName } from "../components/open-models/charts";
 import { fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
 
 export const Route = createFileRoute("/open-models/audit")({ component: Audit });
@@ -9,16 +10,28 @@ export function Audit() {
   const a = useOM();
   const order = ranked(a.models);
   const drift = a.integrity.gtDrift;
+  const pair = a.integrity.gtPairing;
+  const paired = pair.mismatch === 0 && pair.missing === 0;
+
   const driftRows = Object.entries(drift.byDomain)
     .map(([k, v]) => ({ key: k, label: a.domains.find((d) => d.key === k)?.label ?? k, ...v }))
     .sort((x, y) => y.mismatch - x.mismatch);
 
+  // every class name any run produced, ordered by how much it happens overall
+  const classNames = [...new Set(a.models.flatMap((m) => m.classes.map((c) => c.name)))].sort((x, y) => {
+    const tot = (n: string) => a.models.reduce((s, m) => s + (m.classes.find((c) => c.name === n)?.n ?? 0), 0);
+    return tot(y) - tot(x);
+  });
+  const classTotal = (n: string) => a.models.reduce((s, m) => s + (m.classes.find((c) => c.name === n)?.n ?? 0), 0);
+  const bandNames = ["<=2%", "<=5%", "<=10%", ">10%"];
+  const zeroRecovered = a.audit.zeroHarness.filter((z) => z.per.some((p) => (p.acc ?? 0) > 0)).length;
+
   return (
     <div>
       <Section
-        eyebrow="01 grader"
+        eyebrow="01 graders"
         title="Two scorers, one of which is published"
-        hint="Every answer was scored twice: by the run's own harness, and by the frozen rule below. Everything on this site reports the frozen rule; the harness is kept as a quality check."
+        hint="Every answer is scored twice: by the run's own harness and by the frozen rule below. Every page of this report uses the frozen rule; each harness is kept as a quality check."
       >
         <Panel className="p-4">
           <ol className="grid gap-x-8 gap-y-2.5 lg:grid-cols-2">
@@ -31,73 +44,113 @@ export function Audit() {
           </ol>
         </Panel>
         <div className="mt-3">
-          <TileGrid cols={3}>
-            {order.map((m) => (
-              <Tile
-                key={m.id}
-                label={m.label + " — agreement"}
-                value={pct(m.totals.agreement, 2)}
-                accent={m.accent}
-                sub={
-                  "credits " + fmtInt(m.totals.over) + " answers the rule rejects · rejects " + fmtInt(m.totals.under) + " it accepts"
-                }
-              />
-            ))}
-            <Tile
-              label="net effect on the headline"
-              value={order.map((m) => pct(m.totals.as, 1) + " → " + pct(m.totals.acc, 1)).join("  ·  ")}
-              sub="run's own score → frozen rule"
-            />
-          </TileGrid>
+          <Panel className="p-4">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
+                  <th className="py-1.5 pr-3 font-normal">run</th>
+                  <th className="px-2 py-1.5 text-right font-normal">agreement</th>
+                  <th className="px-2 py-1.5 text-right font-normal">credits what the rule rejects</th>
+                  <th className="px-2 py-1.5 text-right font-normal">rejects what the rule accepts</th>
+                  <th className="px-2 py-1.5 text-right font-normal">own score → frozen</th>
+                  <th className="px-2 py-1.5 font-normal">disagreement volume</th>
+                </tr>
+              </thead>
+              <tbody>
+                {order.map((m) => {
+                  const total = m.totals.over + m.totals.under;
+                  const max = Math.max(...a.models.map((x) => x.totals.over + x.totals.under));
+                  return (
+                    <tr key={m.id} className="border-t border-[#141414]">
+                      <th scope="row" className="py-2 pr-3 text-left font-normal">
+                        <Link to="/open-models/models/$id" params={{ id: m.id }} className="inline-flex items-center gap-2 text-[12.5px] text-[#ededed] hover:text-accent">
+                          <Dot color={m.accent} size={6} />
+                          {m.label}
+                        </Link>
+                      </th>
+                      <td className="px-2 py-2 text-right font-mono text-[11px] tabular-nums text-[#ededed]">{pct(m.totals.agreement, 2)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{fmtInt(m.totals.over)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{fmtInt(m.totals.under)}</td>
+                      <td className="px-2 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">
+                        {pct(m.totals.as, 1)} → {pct(m.totals.acc, 1)}
+                      </td>
+                      <td className="px-2 py-2">
+                        <div className="h-[6px] w-full rounded-sm bg-[#141414]">
+                          <div className="h-full rounded-sm" style={{ width: (total / max) * 100 + "%", background: m.accent }} />
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </Panel>
         </div>
       </Section>
 
       <Section
         eyebrow="02 classes"
         title="Every disagreement, classified"
-        hint="Each question where the two scorers disagree is categorised straight from the data, with samples."
+        hint="Each question where the two scorers disagree is categorised straight from the data. “credits” means the run's harness scored an answer the frozen rule rejects; “rejects” is the reverse."
       >
-        <div className="grid gap-3 lg:grid-cols-2">
-          {order.map((m) => {
-            const total = m.classes.reduce((s, c) => s + c.n, 0);
-            return (
-              <Panel key={m.id} className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2 text-[13px] text-[#ededed]">
-                    <Dot color={m.accent} size={6} />
-                    {m.label}
-                  </span>
-                  <span className="font-mono text-[10px] text-[#666]">{fmtInt(total)} disagreements</span>
-                </div>
-                <table className="mt-3 w-full text-left">
-                  <tbody>
-                    {m.classes.map((c) => (
-                      <tr key={c.name} className="border-t border-[#141414] align-top">
-                        <th scope="row" className="w-[45%] py-2 pr-3 text-left text-[12px] font-normal text-[#a1a1a1]">
-                          {c.name}
-                        </th>
-                        <td className="py-2 pr-3 text-right font-mono text-[11px] tabular-nums text-[#ededed]">{fmtInt(c.n)}</td>
-                        <td className="py-2">
-                          <div className="h-[5px] w-full rounded-sm bg-[#141414]">
-                            <div className="h-full rounded-sm" style={{ width: pct(c.n / Math.max(1, total), 1), background: m.accent }} />
-                          </div>
+        <Panel className="p-0">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[860px] text-left">
+              <thead>
+                <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
+                  <th className="px-3 py-2 font-normal">class</th>
+                  {order.map((m) => (
+                    <th key={m.id} className="px-3 py-2 text-right font-normal">
+                      <span style={{ color: m.accent }}>{shortName(m)}</span>
+                    </th>
+                  ))}
+                  <th className="px-3 py-2 text-right font-normal">total</th>
+                </tr>
+              </thead>
+              <tbody>
+                {classNames.map((name) => (
+                  <tr key={name} className="border-t border-[#141414]">
+                    <th scope="row" className="px-3 py-2 text-left text-[12.5px] font-normal text-[#c9c9c9]">
+                      {name}
+                    </th>
+                    {order.map((m) => {
+                      const n = m.classes.find((c) => c.name === name)?.n ?? 0;
+                      const share = n / Math.max(1, m.totals.over + m.totals.under);
+                      return (
+                        <td key={m.id} className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
+                          <span style={{ color: n ? "#ededed" : "#3a3a3a" }}>{fmtInt(n)}</span>
+                          {n > 0 && <span className="ml-1.5 text-[9px] text-[#555]">{(share * 100).toFixed(0)}%</span>}
                         </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-                <div className="mt-3 space-y-2 border-t border-[#1c1c1c] pt-3">
-                  {m.classes.slice(0, 3).map((c) =>
-                    (m.examples[c.name] ?? []).slice(0, 2).map((e, i) => (
-                      <p key={c.name + i} className="font-mono text-[10.5px] leading-relaxed">
-                        <span className="text-[#555]">{c.name.slice(0, 26)} · {e.domain} L{e.level}</span>
-                        <br />
-                        <span className="text-[#666]">truth</span> <span className="text-[#ededed]">{e.gt}</span>{" "}
-                        <span className="text-[#666]">answer</span> <span className="text-[#a1a1a1]">{e.pred}</span>
-                      </p>
-                    )),
-                  )}
-                </div>
+                      );
+                    })}
+                    <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{fmtInt(classTotal(name))}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Panel>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {classNames.slice(0, 2).map((name) => {
+            const sample = a.models.flatMap((m) => (m.examples[name] ?? []).slice(0, 2).map((e) => ({ m, e }))).slice(0, 4);
+            if (!sample.length) return null;
+            return (
+              <Panel key={name} className="p-4">
+                <p className="font-mono text-[10px]" style={{ color: sample[0].m.accent }}>
+                  {name}
+                </p>
+                <ul className="mt-2 space-y-2">
+                  {sample.map(({ m, e }, i) => (
+                    <li key={i} className="font-mono text-[10.5px] leading-relaxed">
+                      <span className="text-[#555]">
+                        <span style={{ color: m.accent }}>{shortName(m)}</span> · {e.domain} L{e.level}
+                      </span>
+                      <br />
+                      <span className="text-[#666]">truth</span> <span className="text-[#ededed]">{e.gt}</span>{" "}
+                      <span className="text-[#666]">· answer</span> <span className="text-[#a1a1a1]">{e.pred}</span>
+                    </li>
+                  ))}
+                </ul>
               </Panel>
             );
           })}
@@ -105,48 +158,46 @@ export function Audit() {
         <Panel className="mt-3 p-4">
           <p className="font-mono text-[9px] uppercase tracking-widest text-[#666]">how far off were the accepted numbers?</p>
           <p className="mt-1.5 text-[12.5px] leading-relaxed text-[#a1a1a1]">
-            “Near-miss number accepted” is the run's scorer crediting a numeric answer outside the frozen 1% / 0.05 tolerance. Distance from
-            the ground truth:
+            “Near-miss number accepted” is a harness crediting a numeric answer outside the frozen 1% / 0.05 tolerance. Distance from the
+            ground truth, per run:
           </p>
-          <div className="mt-3 space-y-2">
-            {a.models.map((m) => {
-              const total = m.bands.reduce((s, b) => s + b.n, 0) || 1;
-              return (
-                <div key={m.id} className="flex items-center gap-3">
-                  <span className="w-32 flex-none font-mono text-[10px]" style={{ color: m.accent }}>
-                    {m.label}
-                  </span>
-                  <div className="flex h-[16px] flex-1 overflow-hidden rounded-sm bg-[#141414]">
-                    {m.bands.map((b, i) => (
-                      <span
-                        key={b.name}
-                        title={b.name + " · " + fmtInt(b.n)}
-                        className="h-full border-r border-black last:border-0"
-                        style={{ width: (b.n / total) * 100 + "%", background: m.accent, opacity: 1 - i * 0.2 }}
-                      />
-                    ))}
-                  </div>
-                  <span className="w-40 flex-none text-right font-mono text-[10px] text-[#666]">
-                    {m.bands.map((b) => b.name + " " + fmtInt(b.n)).join(" · ")}
-                  </span>
-                </div>
-              );
-            })}
-          </div>
-          <div className="mt-3">
-            <Legend items={a.models[0].bands.map((b, i) => ({ color: "rgba(139,92,246," + (1 - i * 0.2) + ")", label: b.name }))} />
-          </div>
+          <table className="mt-3 w-full text-left">
+            <thead>
+              <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
+                <th className="py-1.5 pr-3 font-normal">distance</th>
+                {order.map((m) => (
+                  <th key={m.id} className="px-2 py-1.5 text-right font-normal">
+                    <span style={{ color: m.accent }}>{shortName(m)}</span>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {bandNames.map((b) => (
+                <tr key={b} className="border-t border-[#141414]">
+                  <th scope="row" className="py-1.5 pr-3 text-left font-mono text-[11px] font-normal text-[#a1a1a1]">
+                    {b}
+                  </th>
+                  {order.map((m) => (
+                    <td key={m.id} className="px-2 py-1.5 text-right font-mono text-[11px] tabular-nums text-[#ededed]">
+                      {fmtInt(m.bands.find((x) => x.name === b)?.n ?? 0)}
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </Panel>
       </Section>
 
       <Section
         eyebrow="03 zeros"
-        title={a.audit.zeroHarness.length + " levels the run's scorer gave 0.0% to both models"}
-        hint="Each one is either a grader failure the frozen rule repairs, a multi-part answer where one part is present, or a genuinely unsolved level."
+        title={"Levels where every one of the " + a.models.length + " runs scored 0.0% on its own harness"}
+        hint={"Each level is one of three things: structured ground truth the frozen rule can read, a multi-part answer where one part is present, or a slice nobody solves. " + zeroRecovered + " of " + a.audit.zeroHarness.length + " are recovered by the frozen rule."}
       >
-        <Panel>
+        <Panel className="p-0">
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left">
+            <table className="w-full min-w-[940px] text-left">
               <thead>
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="px-3 py-2 font-normal">domain</th>
@@ -154,11 +205,10 @@ export function Audit() {
                   <th className="px-3 py-2 font-normal">why it read as zero</th>
                   {order.map((m) => (
                     <th key={m.id} className="px-3 py-2 text-right font-normal">
-                      <span style={{ color: m.accent }}>{m.label}</span>
+                      <span style={{ color: m.accent }}>{shortName(m)}</span>
                       <span className="block text-[8px] normal-case tracking-normal text-[#555]">frozen / partial</span>
                     </th>
                   ))}
-                  <th className="px-3 py-2 text-right font-normal">oracle</th>
                 </tr>
               </thead>
               <tbody>
@@ -171,116 +221,109 @@ export function Audit() {
                       <span className="mt-0.5 block font-mono text-[9px] text-[#555]">{z.familyName}</span>
                     </th>
                     <td className="px-3 py-2 font-mono text-[11px] text-white">
-                      L{z.level}
-                      <span className="ml-1.5 text-[9px] text-[#666]">{a.benchmark.levels[z.level - 1]?.short}</span>
+                      L{z.level} <span className="text-[9px] text-[#666]">{a.benchmark.levels[z.level - 1]?.short}</span>
                     </td>
-                    <td className="px-3 py-2">
-                      <span
-                        className="font-mono text-[10px]"
-                        style={{
-                          color: z.kind === "structured" ? "#9fd8b4" : z.kind === "plain" ? "#f0a5a5" : "#a1a1a1",
-                        }}
-                      >
-                        {z.category}
-                      </span>
+                    <td className="px-3 py-2 font-mono text-[10px]" style={{ color: z.kind === "structured" ? "#9fd8b4" : "#a1a1a1" }}>
+                      {z.category}
                     </td>
                     {order.map((m) => {
                       const p = z.per.find((x) => x.model === m.id);
                       return (
                         <td key={m.id} className="px-3 py-2 text-right font-mono text-[11px] tabular-nums">
-                          <span style={{ color: (p?.acc ?? 0) > 0 ? m.accent : "#555" }}>{pct(p?.acc ?? 0, 1)}</span>
-                          <span className="ml-2 text-[10px] text-[#666]">{pct(p?.partial ?? 0, 1)}</span>
+                          <span style={{ color: (p?.acc ?? 0) > 0 ? m.accent : "#444" }}>{pct(p?.acc ?? 0, 1)}</span>
+                          <span className="ml-1.5 text-[9px] text-[#555]">{pct(p?.partial ?? 0, 0)}</span>
                         </td>
                       );
                     })}
-                    <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#666]">{pct(z.oracle, 1)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
         </Panel>
-        <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#666]">
-          frozen / partial = accuracy and mean share of parts matched under the frozen rule · {a.audit.zeroFrozen.length} further levels score
-          zero for every model under the frozen rule as well:{" "}
-          {a.audit.zeroFrozen.map((z) => z.label + " L" + z.level).join(" · ")}.
-        </p>
-      </Section>
-
-      <Section
-        eyebrow="04 design"
-        title="Levels with one answer for every image"
-        hint="A single ground truth across all 1,500 images means blind answering scores 100%. These levels inflate accuracy and should be excluded or rebalanced."
-      >
-        <Panel>
-          <table className="w-full text-left">
-            <thead>
-              <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
-                <th className="px-3 py-2 font-normal">domain</th>
-                <th className="px-3 py-2 font-normal">level</th>
-                <th className="px-3 py-2 font-normal">the only answer</th>
-                <th className="px-3 py-2 text-right font-normal">oracle</th>
-                <th className="px-3 py-2 text-right font-normal">questions</th>
-                <th className="px-3 py-2 font-normal">models on it</th>
-              </tr>
-            </thead>
-            <tbody>
-              {a.audit.constantLevels.map((c) => (
-                <tr key={c.domain + c.level} className="border-t border-[#141414]">
-                  <th scope="row" className="px-3 py-2 text-left font-normal">
-                    <Link to="/open-models/domains/$slug" params={{ slug: c.domain }} className="text-[12.5px] text-[#ededed] hover:text-accent">
-                      {c.label}
-                    </Link>
-                  </th>
-                  <td className="px-3 py-2 font-mono text-[11px] text-white">
-                    L{c.level} <span className="text-[9px] text-[#666]">{a.benchmark.levels[c.level - 1]?.short}</span>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-[11px] text-[#a1a1a1]">“{c.top}”</td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#f0a5a5]">{pct(c.oracle, 1)}</td>
-                  <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{fmtInt(c.n)}</td>
-                  <td className="px-3 py-2 font-mono text-[11px] tabular-nums">
-                    {order.map((m, i) => {
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          <Panel className="p-4">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-[#f0a5a5]">
+              unsolved by every run under the frozen rule ({a.audit.zeroFrozen.length} cells)
+            </p>
+            <ul className="mt-3 space-y-2">
+              {a.audit.zeroFrozen.map((z) => (
+                <li key={z.domain + z.level} className="flex items-baseline justify-between gap-3 border-b border-[#141414] pb-1.5 last:border-0">
+                  <Link to="/open-models/domains/$slug" params={{ slug: z.domain }} className="text-[12.5px] text-[#ededed] hover:text-accent">
+                    {z.label} · L{z.level}
+                  </Link>
+                  <span className="font-mono text-[10px] text-[#666]">baseline {pct(z.oracle, 1)}</span>
+                </li>
+              ))}
+            </ul>
+          </Panel>
+          <Panel className="p-4">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-[#f0a5a5]">
+              single-answer levels ({a.audit.constantLevels.length}) — 100% by guessing
+            </p>
+            <table className="mt-3 w-full text-left">
+              <thead>
+                <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
+                  <th className="py-1.5 pr-2 font-normal">level</th>
+                  <th className="py-1.5 pr-2 font-normal">the only answer</th>
+                  {order.map((m) => (
+                    <th key={m.id} className="px-1.5 py-1.5 text-right font-normal">
+                      <span style={{ color: m.accent }}>{shortName(m)}</span>
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {a.audit.constantLevels.map((c) => (
+                  <tr key={c.domain + c.level} className="border-t border-[#141414]">
+                    <th scope="row" className="py-1.5 pr-2 text-left font-normal">
+                      <Link to="/open-models/domains/$slug" params={{ slug: c.domain }} className="text-[11.5px] text-[#ededed] hover:text-accent">
+                        {c.label}
+                      </Link>
+                      <span className="ml-1.5 font-mono text-[9px] text-[#555]">L{c.level}</span>
+                    </th>
+                    <td className="py-1.5 pr-2 font-mono text-[11px] text-[#a1a1a1]">“{c.top}”</td>
+                    {order.map((m) => {
                       const d = a.domains.find((x) => x.key === c.domain);
                       const l = d?.per.find((p) => p.model === m.id)?.levels[c.level - 1];
                       return (
-                        <span key={m.id}>
-                          {i > 0 && " · "}
-                          <span style={{ color: m.accent }}>{pct(l?.acc ?? null, 1)}</span>
-                        </span>
+                        <td key={m.id} className="px-1.5 py-1.5 text-right font-mono text-[10.5px] tabular-nums" style={{ color: m.accent }}>
+                          {pct(l?.acc ?? null, 0)}
+                        </td>
                       );
                     })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Panel>
-      </Section>
-
-      <Section
-        eyebrow="05 movement"
-        title="Where the frozen rule moves the score most"
-        hint="Differences are frozen-rule accuracy minus the run's own score, averaged over models per domain."
-      >
-        <div className="grid gap-3 lg:grid-cols-2">
-          <MoverList title="Under-scored by the run's own harness" rows={a.audit.underCredited} tone="#9fd8b4" />
-          <MoverList title="Over-scored by the run's own harness" rows={a.audit.overCredited} tone="#f0a5a5" />
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </Panel>
         </div>
       </Section>
 
       <Section
-        eyebrow="06 provenance"
-        title="Ground-truth drift against the current upstream dataset"
-        hint="Same question ids, same levels — but the upstream ground truth has changed for a share of them, so the dataset was regenerated after these runs. Grading here always uses the ground truth each run recorded, so the comparison stays paired."
+        eyebrow="04 movement"
+        title="Where the frozen rule moves a score most"
+        hint="Mean difference per domain across the field (frozen rule minus the run's own score). Negative means the harness was over-crediting."
+      >
+        <div className="grid gap-3 lg:grid-cols-2">
+          <MoverList title="Under-scored by the runs' own harnesses" rows={a.audit.underCredited} tone="#9fd8b4" />
+          <MoverList title="Over-scored by the runs' own harnesses" rows={a.audit.overCredited} tone="#f0a5a5" />
+        </div>
+      </Section>
+
+      <Section
+        eyebrow="05 provenance"
+        title="Ground truth, pairing and drift"
+        hint="Same question ids, same levels, same ground truth across every run in this report — which is what makes the gaps model differences. Drift is measured against the current upstream dataset snapshot, which has since been regenerated."
       >
         <TileGrid cols={4}>
           <Tile
             label="paired across runs"
-            value={a.integrity.gtPairing.mismatch === 0 && a.integrity.gtPairing.missing === 0 ? "yes" : "no"}
-            accent={a.integrity.gtPairing.mismatch === 0 && a.integrity.gtPairing.missing === 0 ? "#9fd8b4" : "#f0a5a5"}
-            sub={fmtInt(a.integrity.gtPairing.checked) + " questions share one ground truth vs " + (a.integrity.gtPairing.reference ?? "the reference run")}
+            value={paired ? "yes" : "no"}
+            accent={paired ? "#9fd8b4" : "#f0a5a5"}
+            sub={fmtInt(pair.checked) + " questions share one ground truth vs " + (pair.reference ?? "the reference run")}
           />
-          <Tile label="drifted questions" value={fmtInt(drift.mismatch)} sub={"of " + fmtInt(drift.checked) + " · " + pct(drift.mismatch / Math.max(1, drift.checked), 1)} />
+          <Tile label="drifted upstream" value={fmtInt(drift.mismatch)} sub={"of " + fmtInt(drift.checked) + " · " + pct(drift.mismatch / Math.max(1, drift.checked), 1)} />
           <Tile label="missing upstream" value={fmtInt(drift.missing)} sub="ids absent from the current snapshot" />
           <Tile label="duplicate ids / error records" value={fmtInt(a.integrity.dupIds) + " / 0"} sub="checked across every record" />
         </TileGrid>
@@ -309,27 +352,33 @@ export function Audit() {
 
 function MoverList({ title, rows, tone }: { title: string; rows: { domain: string; label: string; delta: number; per: number[] }[]; tone: string }) {
   const a = useOM();
+  const order = ranked(a.models);
   const max = Math.max(0.001, ...rows.map((r) => Math.abs(r.delta)));
   return (
     <Panel className="p-4">
       <p className="font-mono text-[9px] uppercase tracking-widest" style={{ color: tone }}>
         {title}
       </p>
-      <ul className="mt-3 space-y-2">
+      <ul className="mt-3 space-y-2.5">
         {rows.map((r) => (
-          <li key={r.domain} className="grid grid-cols-[150px_1fr_56px] items-center gap-3">
-            <Link to="/open-models/domains/$slug" params={{ slug: r.domain }} className="truncate text-[12px] text-[#ededed] hover:text-accent">
-              {r.label}
-            </Link>
-            <div className="h-[9px] rounded-sm bg-[#141414]">
-              <div className="h-full rounded-sm" style={{ width: (Math.abs(r.delta) / max) * 100 + "%", background: tone }} />
+          <li key={r.domain}>
+            <div className="grid grid-cols-[150px_1fr_56px] items-center gap-3">
+              <Link to="/open-models/domains/$slug" params={{ slug: r.domain }} className="truncate text-[12px] text-[#ededed] hover:text-accent">
+                {r.label}
+              </Link>
+              <div className="h-[9px] rounded-sm bg-[#141414]">
+                <div className="h-full rounded-sm" style={{ width: (Math.abs(r.delta) / max) * 100 + "%", background: tone }} />
+              </div>
+              <span className="text-right font-mono text-[11px] tabular-nums" style={{ color: tone }}>
+                {signed(r.delta, 1)}
+              </span>
             </div>
-            <span className="text-right font-mono text-[11px] tabular-nums" style={{ color: tone }}>
-              {signed(r.delta, 1)}
-            </span>
-            <span className="col-span-3 -mt-1 font-mono text-[9px] text-[#555]">
-              {a.models.map((m, i) => m.label + " " + signed(r.per[i] ?? 0, 1)).join(" · ")}
-            </span>
+            <p className="mt-0.5 font-mono text-[9px] text-[#555]">
+              {order.map((m) => {
+                const i = a.models.findIndex((x) => x.id === m.id);
+                return shortName(m) + " " + signed(r.per[i] ?? 0, 1);
+              }).join(" · ")}
+            </p>
           </li>
         ))}
       </ul>

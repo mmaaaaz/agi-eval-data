@@ -42,7 +42,11 @@ export type FamilyRow = {
 
 export type ModelMeta = {
   label?: string;
+  /** compact name for dense visuals — hand-set so it stays unique across the field */
+  short?: string | null;
   org?: string | null;
+  /** "thinking" | "instruct" — set only where the model name states it */
+  mode?: string | null;
   params?: string | null;
   activeParams?: string | null;
   license?: string | null;
@@ -152,6 +156,9 @@ export type Benchmark = {
   domains: number;
   questionsPerModel: number;
   imagesPerModel: number;
+  /** runs are not identical in size — [min, max] across the field */
+  questionsRange: [number, number];
+  imagesRange: [number, number];
   grader: { version: string; rules: string[] };
 };
 

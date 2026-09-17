@@ -1,122 +1,100 @@
-import { Fragment, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useOM } from "./open-models";
-import { Bar, Chip, Empty, Panel, Section, Seg, TextInput } from "../components/open-models/ui";
-import { LevelSpark } from "../components/open-models/charts";
-import { METRICS, type Metric, metricValue, pct, ranked, signed } from "../lib/openModelsFmt";
-import type { Artifact } from "../lib/openModelsTypes";
+import { useFocus, useOM } from "./open-models";
+import { Bar, Chip, Dot, Empty, Panel, Section, Seg, TextInput } from "../components/open-models/ui";
+import { LevelSpark, shortName } from "../components/open-models/charts";
+import { METRICS, type Metric, fmtInt, metricValue, pct, ranked, signed } from "../lib/openModelsFmt";
+import type { Artifact, ModelEntry } from "../lib/openModelsTypes";
 
 export const Route = createFileRoute("/open-models/domains/")({ component: DomainsPage });
 
 type View = "domain" | "family" | "level";
-type SortKey = "label" | "n" | "spread" | "oracle" | string;
 
-interface RowMetrics {
+interface Cell {
   acc: number | null;
   as: number | null;
   partial: number | null;
   headroom: number | null;
-  oracle: number | null;
   levels: (number | null)[];
   n: number;
   pf: number;
 }
 
-interface Row {
+interface Slice {
   key: string;
   label: string;
+  sub?: string;
   href?: string;
-  family: string | null;
   flags: string[];
-  per: Record<string, RowMetrics>;
-  spread: number | null;
+  n: number;
+  oracle: number | null;
+  cells: Record<string, Cell>;
 }
 
 /* --------------------------------------------------------------- builders --- */
 
-function perFrom(
-  acc: number | null,
-  as: number | null,
-  partial: number | null,
-  oracle: number | null,
-  levels: (number | null)[],
-  n: number,
-  pf: number,
-): RowMetrics {
-  return { acc, as, partial, oracle, headroom: acc != null && oracle != null ? acc - oracle : null, levels, n, pf };
-}
-
-function domainRows(a: Artifact): Row[] {
+function buildRows(a: Artifact, view: View): Slice[] {
+  if (view === "family") {
+    return a.benchmark.families.map((name, fi) => {
+      const cells: Record<string, Cell> = {};
+      for (const m of a.models) {
+        const f = m.families[fi];
+        cells[m.id] = {
+          acc: f.acc,
+          as: f.as,
+          partial: f.partial,
+          headroom: f.acc != null && f.oracle != null ? f.acc - f.oracle : null,
+          levels: f.levels.map((l) => l.acc),
+          n: f.n,
+          pf: Math.round((m.totals.pfRate ?? 0) * f.n),
+        };
+      }
+      const f0 = a.models[0].families[fi];
+      return { key: name, label: name, flags: [], n: f0.n, oracle: f0.oracle, cells };
+    });
+  }
+  if (view === "level") {
+    return a.benchmark.levels.map((lv) => {
+      const cells: Record<string, Cell> = {};
+      for (const m of a.models) {
+        const l = m.totals.levels[lv.n - 1];
+        cells[m.id] = {
+          acc: l.acc,
+          as: l.as,
+          partial: l.partial,
+          headroom: l.acc != null && l.oracle != null ? l.acc - l.oracle : null,
+          levels: [l.acc],
+          n: l.n,
+          pf: l.pf,
+        };
+      }
+      const l0 = a.models[0].totals.levels[lv.n - 1];
+      return { key: String(lv.n), label: "L" + lv.n, sub: lv.task, flags: [], n: l0.n, oracle: l0.oracle ?? null, cells };
+    });
+  }
   return a.domains.map((d) => {
-    const per: Record<string, RowMetrics> = {};
+    const cells: Record<string, Cell> = {};
     for (const m of a.models) {
       const r = d.per.find((p) => p.model === m.id);
-      per[m.id] = perFrom(
-        r?.acc ?? null,
-        r?.as ?? null,
-        r?.partial ?? null,
-        d.oracle,
-        (r?.levels ?? []).map((l) => l.acc ?? null),
-        r?.n ?? 0,
-        r?.pf ?? 0,
-      );
+      cells[m.id] = {
+        acc: r?.acc ?? null,
+        as: r?.as ?? null,
+        partial: r?.partial ?? null,
+        headroom: r?.acc != null && d.oracle != null ? r.acc - d.oracle : null,
+        levels: (r?.levels ?? []).map((l) => l.acc ?? null),
+        n: r?.n ?? 0,
+        pf: r?.pf ?? 0,
+      };
     }
-    const accs = a.models.map((m) => per[m.id].acc).filter((x): x is number => x != null);
     return {
       key: d.key,
       label: d.label,
+      sub: d.familyName ?? undefined,
       href: "/open-models/domains/" + d.key,
-      family: d.familyName,
       flags: d.const.map((c) => "L" + c.level),
-      per,
-      spread: accs.length > 1 ? Math.max(...accs) - Math.min(...accs) : null,
-    };
-  });
-}
-
-function familyRows(a: Artifact): Row[] {
-  const names = a.benchmark.families;
-  return names.map((name, fi) => {
-    const per: Record<string, RowMetrics> = {};
-    for (const m of a.models) {
-      const f = m.families[fi];
-      per[m.id] = perFrom(
-        f.acc,
-        f.as,
-        f.partial,
-        f.oracle,
-        f.levels.map((l) => l.acc),
-        f.n,
-        m.families[fi] ? Math.round((m.totals.pfRate ?? 0) * f.n) : 0,
-      );
-    }
-    const accs = a.models.map((m) => per[m.id].acc).filter((x): x is number => x != null);
-    return {
-      key: name,
-      label: name,
-      family: null,
-      flags: [],
-      per,
-      spread: accs.length > 1 ? Math.max(...accs) - Math.min(...accs) : null,
-    };
-  });
-}
-
-function levelRows(a: Artifact): Row[] {
-  return a.benchmark.levels.map((lv) => {
-    const per: Record<string, RowMetrics> = {};
-    for (const m of a.models) {
-      const l = m.totals.levels[lv.n - 1];
-      per[m.id] = perFrom(l.acc, l.as, l.partial, l.oracle ?? null, [l.acc], l.n, l.pf);
-    }
-    const accs = a.models.map((m) => per[m.id].acc).filter((x): x is number => x != null);
-    return {
-      key: String(lv.n),
-      label: "L" + lv.n + " · " + lv.task,
-      family: lv.short,
-      flags: [],
-      per,
-      spread: accs.length > 1 ? Math.max(...accs) - Math.min(...accs) : null,
+      n: d.n,
+      oracle: d.oracle,
+      cells,
     };
   });
 }
@@ -125,49 +103,54 @@ function levelRows(a: Artifact): Row[] {
 
 export function DomainsPage() {
   const a = useOM();
+  const { focus } = useFocus();
   const order = ranked(a.models);
   const [view, setView] = useState<View>("domain");
   const [metric, setMetric] = useState<Metric>("acc");
   const [query, setQuery] = useState("");
   const [family, setFamily] = useState<string | null>(null);
   const [onlyConst, setOnlyConst] = useState(false);
-  const [sort, setSort] = useState<{ key: SortKey; dir: 1 | -1 }>({ key: "label", dir: 1 });
+  const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "row", dir: 1 });
+  const [shapeFor, setShapeFor] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const all = useMemo(() => (view === "domain" ? domainRows(a) : view === "family" ? familyRows(a) : levelRows(a)), [a, view]);
+  const all = useMemo(() => buildRows(a, view), [a, view]);
 
   const rows = useMemo(() => {
     let out = all;
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      out = out.filter((r) => r.label.toLowerCase().includes(q) || (r.family ?? "").toLowerCase().includes(q));
+      out = out.filter((r) => r.label.toLowerCase().includes(q) || (r.sub ?? "").toLowerCase().includes(q));
     }
-    if (family) out = out.filter((r) => r.family === family);
+    if (family) out = out.filter((r) => r.sub === family);
     if (onlyConst) out = out.filter((r) => r.flags.length > 0);
     const dir = sort.dir;
+    if (sort.key === "row") return out;
     return [...out].sort((x, y) => {
-      if (sort.key === "label") return x.label.localeCompare(y.label) * dir;
-      if (sort.key === "n") return (x.per[order[0].id].n - y.per[order[0].id].n) * dir;
-      if (sort.key === "spread") return ((x.spread ?? 0) - (y.spread ?? 0)) * dir;
-      if (sort.key === "oracle") return ((x.per[order[0].id].oracle ?? 0) - (y.per[order[0].id].oracle ?? 0)) * dir;
-      const xi = metricValue(x.per[sort.key], metric) ?? 0;
-      const yi = metricValue(y.per[sort.key], metric) ?? 0;
-      return (xi - yi) * dir;
+      if (sort.key === "spread") {
+        const sx = spread(x.cells, order);
+        const sy = spread(y.cells, order);
+        return ((sx ?? 0) - (sy ?? 0)) * dir;
+      }
+      const vx = metricValue({ ...x.cells[sort.key], oracle: x.oracle }, metric) ?? 0;
+      const vy = metricValue({ ...y.cells[sort.key], oracle: y.oracle }, metric) ?? 0;
+      return (vx - vy) * dir;
     });
   }, [all, query, family, onlyConst, sort, metric, order]);
 
+  const shapeModel = order.find((m) => m.id === (shapeFor ?? focus)) ?? order[0];
   const constDomains = a.domains.filter((d) => d.const.length > 0);
 
   const copyTsv = () => {
-    const head = ["slice", "n", ...a.models.map((m) => m.label + " " + metric), "oracle", "spread"].join("\t");
+    const head = ["slice", "n", ...order.map((m) => m.label + " " + metric), "baseline", "spread"].join("\t");
     const body = rows
       .map((r) =>
         [
           r.label,
-          r.per[order[0].id].n,
-          ...a.models.map((m) => ((metricValue(r.per[m.id], metric) ?? 0) * 100).toFixed(2)),
-          ((r.per[order[0].id].oracle ?? 0) * 100).toFixed(2),
-          ((r.spread ?? 0) * 100).toFixed(2),
+          r.cells[order[0].id].n,
+          ...order.map((m) => ((metricValue({ ...r.cells[m.id], oracle: r.oracle }, metric) ?? 0) * 100).toFixed(2)),
+          ((r.oracle ?? 0) * 100).toFixed(2),
+          (((spread(r.cells, order) ?? 0) * 100)).toFixed(2),
         ].join("\t"),
       )
       .join("\n");
@@ -180,15 +163,17 @@ export function DomainsPage() {
       .catch(() => setCopied(false));
   };
 
+  const bestPerRow = (r: Slice) => Math.max(...order.map((m) => metricValue({ ...r.cells[m.id], oracle: r.oracle }, metric) ?? 0));
+
   return (
     <div>
       <Section
         eyebrow="01 domain table"
-        title="Every slice, sortable and filterable"
+        title="Every slice, all runs side by side"
         hint={
           <>
-            {a.domains.length} domains · {a.benchmark.families.length} families · 5 levels. Click any column header to sort; the
-            sparkline under each score is that slice's L1–L5 shape.
+            {a.domains.length} domains · {a.benchmark.families.length} families · 5 levels. The best run in each row is tinted; click a
+            column header to sort by that run, or a chip above to isolate it everywhere.
           </>
         }
       >
@@ -198,12 +183,13 @@ export function DomainsPage() {
             value={view}
             onChange={(v) => {
               setView(v);
-              setSort({ key: "label", dir: 1 });
+              setSort({ key: "row", dir: 1 });
+              setFamily(null);
             }}
             options={[
-              { id: "domain", label: "by domain" },
-              { id: "family", label: "by family" },
-              { id: "level", label: "by level" },
+              { id: "domain", label: "domains" },
+              { id: "family", label: "families" },
+              { id: "level", label: "levels" },
             ]}
           />
           <Seg label="metric" value={metric} onChange={setMetric} options={METRICS.map((m) => ({ id: m.id, label: m.short, hint: m.hint }))} />
@@ -211,6 +197,27 @@ export function DomainsPage() {
           <Chip active={onlyConst} onClick={() => setOnlyConst((v) => !v)} title="Only slices with a single-answer level">
             ◆ single-answer ({constDomains.length})
           </Chip>
+          <div className="flex items-center gap-2">
+            <span className="font-mono text-[9px] uppercase tracking-widest text-[#666]">shape for</span>
+            <div className="flex flex-wrap gap-1">
+              {order.map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setShapeFor(shapeModel.id === m.id ? null : m.id)}
+                  aria-pressed={shapeModel.id === m.id}
+                  title={m.label}
+                  className={
+                    "rounded border px-1.5 py-0.5 font-mono text-[9px] transition-colors " +
+                    (shapeModel.id === m.id ? "border-transparent text-[#0a0a0a]" : "border-[#262626] text-[#666] hover:text-white")
+                  }
+                  style={shapeModel.id === m.id ? { background: m.accent } : undefined}
+                >
+                  {shortName(m)}
+                </button>
+              ))}
+            </div>
+          </div>
           <button
             type="button"
             onClick={copyTsv}
@@ -220,142 +227,129 @@ export function DomainsPage() {
           </button>
         </div>
 
-        <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <Chip active={family === null} onClick={() => setFamily(null)}>
-            all families
-          </Chip>
-          {a.benchmark.families.map((f) => (
-            <Chip key={f} active={family === f} onClick={() => setFamily(family === f ? null : f)}>
-              {f}
+        {view === "domain" && (
+          <div className="mb-2 flex flex-wrap items-center gap-1.5">
+            <Chip active={family === null} onClick={() => setFamily(null)}>
+              all families
             </Chip>
-          ))}
-        </div>
+            {a.benchmark.families.map((f) => (
+              <Chip key={f} active={family === f} onClick={() => setFamily(family === f ? null : f)}>
+                {f}
+              </Chip>
+            ))}
+          </div>
+        )}
 
         <Panel>
           <div className="max-h-[74vh] overflow-auto">
-            <table className="w-full min-w-[1000px] border-separate border-spacing-0 text-left text-sm">
+            <table className="w-full border-separate border-spacing-0 text-left text-sm">
               <thead>
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
-                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2 font-normal" rowSpan={2}>
-                    slice
-                  </th>
+                  <th className="sticky top-0 z-20 min-w-[190px] bg-[#0a0a0a] px-3 py-2.5 font-normal">slice</th>
                   {order.map((m) => (
-                    <th key={m.id} colSpan={3} className="sticky top-0 z-20 bg-[#0a0a0a] border-b border-[#262626] px-3 py-1.5 text-left font-normal">
-                      <span style={{ color: m.accent }}>{m.label}</span>
+                    <th key={m.id} className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 font-normal">
+                      <button
+                        type="button"
+                        onClick={() => setSort({ key: m.id, dir: sort.key === m.id && sort.dir === -1 ? 1 : -1 })}
+                        className="inline-flex items-center gap-1.5 transition-colors hover:text-white"
+                        title={"sort by " + m.label + " · " + metric}
+                      >
+                        <Dot color={m.accent} size={6} />
+                        <span style={{ color: focus === m.id ? "#fff" : m.accent }}>{shortName(m)}</span>
+                        {sort.key === m.id ? <span className="text-[#a1a1a1]">{sort.dir === -1 ? "▼" : "▲"}</span> : null}
+                      </button>
                     </th>
                   ))}
-                  <th className="sticky top-0 z-20 bg-[#0a0a0a] border-b border-[#262626] px-3 py-1.5 text-right font-normal" rowSpan={2}>
-                    oracle
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-center font-normal">leads</th>
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">baseline</th>
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">spread</th>
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">
+                    <span style={{ color: shapeModel.accent }}>{shortName(shapeModel)} L1–L5</span>
                   </th>
-                  <th className="sticky top-0 z-20 bg-[#0a0a0a] border-b border-[#262626] px-3 py-1.5 text-right font-normal" rowSpan={2}>
-                    L1–L5 shape
-                  </th>
-                  <th className="sticky top-0 z-20 bg-[#0a0a0a] border-b border-[#262626] px-3 py-1.5 text-right font-normal" rowSpan={2}>
-                    spread
-                  </th>
-                  <th className="sticky top-0 z-20 bg-[#0a0a0a] border-b border-[#262626] px-3 py-1.5 text-right font-normal" rowSpan={2} title="Parse failures: empty or over-long extracted answers">
-                    parse fail
-                  </th>
-                </tr>
-                <tr className="font-mono text-[9px] uppercase tracking-widest text-[#555]">
-                  {order.map((m) => (
-                    <Fragment key={m.id}>
-                      <th className="sticky top-[30px] z-20 bg-[#0a0a0a] px-3 py-1.5 text-left font-normal">
-                        <button type="button" onClick={() => setSort({ key: m.id, dir: sort.key === m.id && sort.dir === -1 ? 1 : -1 })} className="transition-colors hover:text-white">
-                          {metric} {sort.key === m.id ? (sort.dir === -1 ? "▼" : "▲") : ""}
-                        </button>
-                      </th>
-                      <th className="sticky top-[30px] z-20 bg-[#0a0a0a] px-2 py-1.5 text-right font-normal">
-                        partial
-                      </th>
-                      <th className="sticky top-[30px] z-20 bg-[#0a0a0a] px-2 py-1.5 text-right font-normal">
-                        vs oracle
-                      </th>
-                    </Fragment>
-                  ))}
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">n</th>
                 </tr>
               </thead>
               <tbody>
                 <tr className="border-b border-[#262626] bg-[#0f0f0f] font-mono text-[10px] text-[#a1a1a1]">
-                  <td className="px-3 py-2">
-                    <button type="button" onClick={() => setSort({ key: "label", dir: sort.key === "label" && sort.dir === -1 ? 1 : -1 })} className="uppercase tracking-widest transition-colors hover:text-white">
-                      {view} · {rows.length} shown
-                    </button>
+                  <td className="px-3 py-2 uppercase tracking-widest">overall</td>
+                  {order.map((m) => (
+                    <td key={m.id} className="px-3 py-2 font-semibold" style={{ color: m.accent }}>
+                      {pct(metricValue({ acc: m.totals.acc, as: m.totals.as, partial: m.totals.partial, oracle: m.totals.oracle }, metric), 2)}
+                    </td>
+                  ))}
+                  <td className="px-3 py-2 text-center" style={{ color: order[0].accent }}>
+                    {shortName(order[0])}
                   </td>
-                  {order.map((m) => {
-                    const tot = m.totals;
-                    return (
-                      <Fragment key={m.id}>
-                        <td className="px-3 py-2 font-semibold" style={{ color: m.accent }}>
-                          {pct(metric === "headroom" ? tot.headroom : metric === "acc" ? tot.acc : metric === "as" ? tot.as : tot.partial, 2)}
-                        </td>
-                        <td className="px-2 py-2 text-right text-[#666]">{pct(tot.partial, 1)}</td>
-                        <td className="px-2 py-2 text-right text-[#666]">{signed(tot.headroom, 1)}</td>
-                      </Fragment>
-                    );
-                  })}
-                  <td className="px-3 py-2 text-right">{pct(a.models[0]?.totals.oracle ?? null, 1)}</td>
+                  <td className="px-3 py-2 text-right text-[#666]">{pct(a.models[0].totals.oracle, 2)}</td>
+                  <td className="px-3 py-2 text-right text-[#666]">
+                    {signed((order[0].totals.acc ?? 0) - (order[order.length - 1].totals.acc ?? 0), 1)}
+                  </td>
                   <td />
-                  <td className="px-3 py-2 text-right">{pct(order[0] ? order[0].totals.acc : null, 1)}</td>
-                  <td className="px-3 py-2 text-right">{pct(a.models[0]?.totals.pfRate ?? null, 2)}</td>
+                  <td className="px-3 py-2 text-right text-[#666]">{fmtInt(order[0].totals.n)}</td>
                 </tr>
-                {rows.map((r) => (
-                  <tr key={r.key} className="border-b border-[#141414] last:border-0 transition-colors hover:bg-[#101010]">
-                    <th scope="row" className="sticky left-0 z-10 max-w-[230px] bg-[#0a0a0a] px-3 py-2 text-left font-normal">
-                      {r.href ? (
-                        <Link to="/open-models/domains/$slug" params={{ slug: r.key }} className="text-[13px] text-[#ededed] transition-colors hover:text-accent">
-                          {r.label}
-                        </Link>
-                      ) : (
-                        <span className="text-[13px] text-[#ededed]">{r.label}</span>
-                      )}
-                      <span className="mt-0.5 flex items-center gap-2">
-                        {r.family && <span className="font-mono text-[9px] text-[#555]">{r.family}</span>}
-                        {r.flags.length > 0 && (
-                          <span className="font-mono text-[9px] text-[#f0a5a5]" title="single-answer levels — blind answering scores 100%">
-                            ◆ {r.flags.join(", ")}
-                          </span>
+                {rows.map((r) => {
+                  const best = bestPerRow(r);
+                  const leader = order.filter((m) => Math.abs((metricValue({ ...r.cells[m.id], oracle: r.oracle }, metric) ?? 0) - best) < 1e-12);
+                  return (
+                    <tr key={r.key} className="border-b border-[#141414] last:border-0 transition-colors hover:bg-[#101010]">
+                      <th scope="row" className="sticky left-0 z-10 max-w-[250px] bg-[#0a0a0a] px-3 py-2 text-left font-normal">
+                        {r.href ? (
+                          <Link to="/open-models/domains/$slug" params={{ slug: r.key }} className="text-[12.5px] text-[#ededed] transition-colors hover:text-accent">
+                            {r.label}
+                          </Link>
+                        ) : (
+                          <span className="text-[12.5px] text-[#ededed]">{r.label}</span>
                         )}
-                      </span>
-                    </th>
-                    {order.map((m) => {
-                      const v = metricValue(r.per[m.id], metric);
-                      return (
-                        <Fragment key={m.id}>
-                          <td className="px-3 py-2">
+                        <span className="mt-0.5 flex items-center gap-2">
+                          {r.sub && <span className="font-mono text-[9px] text-[#555]">{r.sub}</span>}
+                          {r.flags.length > 0 && (
+                            <span className="font-mono text-[9px] text-[#f0a5a5]" title="single-answer levels — guessing scores 100%">
+                              ◆ {r.flags.join(", ")}
+                            </span>
+                          )}
+                        </span>
+                      </th>
+                      {order.map((m) => {
+                        const c = r.cells[m.id];
+                        const v = metricValue({ ...c, oracle: r.oracle }, metric);
+                        const isBest = v != null && Math.abs(v - best) < 1e-12;
+                        return (
+                          <td
+                            key={m.id}
+                            className="px-3 py-2"
+                            style={{ background: isBest ? m.accent + "14" : undefined, opacity: focus == null || focus === m.id ? 1 : 0.45 }}
+                          >
                             <div className="flex items-center gap-2">
-                              <span className="w-11 flex-none font-mono text-[11px] tabular-nums" style={{ color: m.accent }}>
+                              <span className="w-11 flex-none font-mono text-[11px] tabular-nums" style={{ color: isBest ? m.accent : "#c9c9c9" }}>
                                 {pct(v, 1)}
                               </span>
-                              <Bar value={v} oracle={metric === "headroom" ? null : r.per[m.id].oracle} color={m.accent} height={5} />
+                              <div className="min-w-[46px] flex-1">
+                                <Bar value={v} oracle={metric === "headroom" ? null : r.oracle} color={m.accent} height={5} />
+                              </div>
                             </div>
                           </td>
-                          <td className="px-2 py-2 text-right font-mono text-[10px] tabular-nums text-[#666]">
-                            {pct(r.per[m.id].partial, 1)}
-                          </td>
-                          <td className="px-2 py-2 text-right font-mono text-[10px] tabular-nums" style={{ color: m.accent }}>
-                            {signed(r.per[m.id].headroom, 1)}
-                          </td>
-                        </Fragment>
-                      );
-                    })}
-                    <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#666]">{pct(r.per[order[0].id].oracle, 1)}</td>
-                    <td className="px-3 py-2">
-                      <div className="flex justify-end gap-1.5">
-                        {order.map((m) => (
-                          <LevelSpark key={m.id} values={r.per[m.id].levels} color={m.accent} />
-                        ))}
-                      </div>
-                    </td>
-                    <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#a1a1a1]">{signed(r.spread, 1)}</td>
-                    <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#a1a1a1]">
-                      {r.per[order[0].id].n ? pct(r.per[order[0].id].pf / r.per[order[0].id].n, 2) : "—"}
-                    </td>
-                  </tr>
-                ))}
+                        );
+                      })}
+                      <td className="px-3 py-2 text-center">
+                        <span className="inline-flex items-center gap-1.5 font-mono text-[10px]" style={{ color: leader[0]?.accent }}>
+                          <Dot color={leader[0]?.accent ?? "#666"} size={6} />
+                          {leader.length === 1 ? shortName(leader[0]) : leader.length + "-way tie"}
+                        </span>
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#666]">{pct(r.oracle, 1)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#a1a1a1]">{signed(spread(r.cells, order), 1)}</td>
+                      <td className="px-3 py-2">
+                        <div className="flex justify-end">
+                          <LevelSpark values={r.cells[shapeModel.id].levels} color={shapeModel.accent} />
+                        </div>
+                      </td>
+                      <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#555]">{fmtInt(r.cells[order[0].id].n)}</td>
+                    </tr>
+                  );
+                })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={10}>
+                    <td colSpan={order.length + 5}>
                       <Empty>no slice matches those filters</Empty>
                     </td>
                   </tr>
@@ -366,13 +360,13 @@ export function DomainsPage() {
         </Panel>
 
         <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#666]">
-          spread = best model − worst model on that slice · vs oracle = accuracy − majority-answer baseline · partial = mean share of
-          ground-truth parts matched.
+          baseline = always answering the most common ground truth for that slice · spread = best run − worst run · the tinted cell in each
+          row is the run that leads it{metric === "headroom" ? "" : "; the tick inside each bar is the baseline"}.
         </p>
         {constDomains.length > 0 && (
           <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-[#f0a5a5]">
-            ◆ {constDomains.length} domains carry a level whose ground truth is one value for all 1,500 images — accuracy on those levels is
-            100% by guessing. {constDomains.map((d) => d.label + " L" + d.const.map((c) => c.level).join("/L")).join(" · ")}
+            ◆ {constDomains.length} domains carry a level whose ground truth is one value for all images — accuracy there is 100% by
+            guessing: {constDomains.map((d) => d.label + " L" + d.const.map((c) => c.level).join("/L")).join(" · ")}
           </p>
         )}
       </Section>
@@ -380,3 +374,8 @@ export function DomainsPage() {
   );
 }
 
+function spread(cells: Record<string, Cell>, models: ModelEntry[]): number | null {
+  const vs = models.map((m) => cells[m.id]?.acc).filter((v): v is number => v != null);
+  if (vs.length < 2) return null;
+  return Math.max(...vs) - Math.min(...vs);
+}

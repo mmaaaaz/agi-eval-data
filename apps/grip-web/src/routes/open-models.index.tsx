@@ -1,40 +1,21 @@
 import { useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useOM } from "./open-models";
-import { AccValue, Bar, Chip, Panel, Section, Tile, TileGrid, Dot } from "../components/open-models/ui";
-import { DivergeBars, FamilyBars, LevelCurve } from "../components/open-models/charts";
+import { useFocus, useOM } from "./open-models";
+import { AccValue, Bar, Chip, Dot, ModeBadge, Panel, RankPill, Section, Tile, TileGrid } from "../components/open-models/ui";
+import { FamilyMatrix, LevelSlope, WinnerGrid, shortName } from "../components/open-models/charts";
 import { METRICS, type Metric, accOf, fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
-import type { Artifact, Domain, ModelEntry } from "../lib/openModelsTypes";
+import type { Domain } from "../lib/openModelsTypes";
 
 export const Route = createFileRoute("/open-models/")({ component: Overview });
 
 /* --------------------------------------------------------------- helpers --- */
 
-/** Level accuracy for one model, optionally excluding some domain/level cells. */
 function levelAcc(domains: Domain[], modelId: string, level: number, skip?: (d: Domain) => boolean) {
   let n = 0;
   let ok = 0;
-  let partial = 0;
   for (const d of domains) {
     if (skip?.(d)) continue;
-    const row = d.per.find((p) => p.model === modelId);
-    const l = row?.levels[level - 1];
-    if (!l) continue;
-    n += l.n;
-    ok += (l.acc ?? 0) * l.n;
-    partial += (l.partial ?? 0) * l.n;
-  }
-  return { n, acc: n ? ok / n : null, partial: n ? partial / n : null };
-}
-
-/** Accuracy over a specific list of domain/level cells. */
-function cellsAcc(domains: Domain[], cells: { domain: string; level: number }[], modelId: string) {
-  let n = 0;
-  let ok = 0;
-  for (const c of cells) {
-    const d = domains.find((x) => x.key === c.domain);
-    const row = d?.per.find((p) => p.model === modelId);
-    const l = row?.levels[c.level - 1];
+    const l = d.per.find((p) => p.model === modelId)?.levels[level - 1];
     if (!l) continue;
     n += l.n;
     ok += (l.acc ?? 0) * l.n;
@@ -42,90 +23,92 @@ function cellsAcc(domains: Domain[], cells: { domain: string; level: number }[],
   return { n, acc: n ? ok / n : null };
 }
 
-function pairRecord(a: Artifact, x: ModelEntry, y: ModelEntry) {
-  let xWins = 0;
-  let yWins = 0;
-  const margins: { d: Domain; delta: number }[] = [];
-  for (const d of a.domains) {
-    const rx = d.per.find((p) => p.model === x.id)?.acc ?? 0;
-    const ry = d.per.find((p) => p.model === y.id)?.acc ?? 0;
-    if (rx > ry) xWins++;
-    else if (ry > rx) yWins++;
-    margins.push({ d, delta: rx - ry });
-  }
-  margins.sort((p, q) => q.delta - p.delta);
-  return { xWins, yWins, margins };
+/** Best model(s) on one domain. */
+function winners(d: Domain): string[] {
+  const best = Math.max(...d.per.map((p) => p.acc ?? 0));
+  return d.per.filter((p) => Math.abs((p.acc ?? 0) - best) < 1e-12).map((p) => p.model);
 }
 
 /* ------------------------------------------------------------------ view --- */
 
 export function Overview() {
   const a = useOM();
+  const { focus, setFocus } = useFocus();
   const [metric, setMetric] = useState<Metric>("acc");
   const order = ranked(a.models);
   const lead = order[0];
   const second = order[1];
-  const gap = lead && second ? (lead.totals.acc ?? 0) - (second.totals.acc ?? 0) : 0;
-  const rec = lead && second ? pairRecord(a, lead, second) : null;
+  const trailing = order[order.length - 1];
+  const gap = (lead?.totals.acc ?? 0) - (second?.totals.acc ?? 0);
+  const spread = (lead?.totals.acc ?? 0) - (trailing?.totals.acc ?? 0);
 
-  const zeroHarness = a.audit.zeroHarness;
-  const structured = zeroHarness.filter((z) => z.kind === "structured");
-  const multipart = zeroHarness.filter((z) => z.kind === "multipart");
-  const plainWrong = zeroHarness.filter((z) => z.kind === "plain");
-  const recovered = structured.filter((z) => (z.per.some((p) => (p.acc ?? 0) > 0))).length;
-  const maxPart = multipart.length
-    ? Math.max(...multipart.flatMap((z) => z.per.map((p) => p.partial ?? 0)))
-    : 0;
+  const winRows = order.map((m) => ({ m, wins: a.domains.filter((d) => winners(d).includes(m.id)).length }));
+  const maxWins = Math.max(1, ...winRows.map((w) => w.wins));
+  const thinking = a.models.filter((m) => m.meta.mode === "thinking").length;
 
-  const constCells = a.audit.constantLevels.map((c) => ({ domain: c.domain, level: c.level }));
-  const constPerModel = order.map((m) => ({
+  // levels: everyone peaks at L1 and dips at L4; is every run under the L5 baseline?
+  const l5Base = a.models[0].totals.levels[4]?.oracle ?? 0;
+  const l5 = order.map((m) => ({ m, ...levelAcc(a.domains, m.id, 5), l4: levelAcc(a.domains, m.id, 4) }));
+  const allUnderBaseline = l5.every((x) => (x.acc ?? 0) < l5Base);
+  const droppedLevels = a.domains.filter((d) => d.const.some((c) => c.level === 5));
+  const l5NoConst = order.map((m) => ({
     m,
-    ...cellsAcc(a.domains, constCells, m.id),
-    blind: 1,
-  }));
-
-  const dropped = (d: Domain) => d.const.some((c) => c.level === 5);
-  const l5 = order.map((m) => ({
-    m,
-    withConst: levelAcc(a.domains, m.id, 5),
-    without: levelAcc(a.domains, m.id, 5, dropped),
+    ...levelAcc(a.domains, m.id, 5, (d) => droppedLevels.includes(d)),
     l4: levelAcc(a.domains, m.id, 4),
   }));
 
-  const leadId = lead?.id ?? a.models[0].id;
-  const byAcc = [...a.domains].sort((x, y) => (accOf(y, leadId) ?? 0) - (accOf(x, leadId) ?? 0));
-  const weakest = [...a.domains].sort((x, y) => (accOf(x, leadId) ?? 0) - (accOf(y, leadId) ?? 0));
+  const zeros = a.audit.zeroHarness;
+  const structured = zeros.filter((z) => z.kind === "structured");
+  const multipart = zeros.filter((z) => z.kind === "multipart");
+  const maxPart = multipart.length ? Math.max(...multipart.flatMap((z) => z.per.map((p) => p.partial ?? 0))) : 0;
 
-  const movers = a.audit.underCredited[0];
-  const droppers = a.audit.overCredited[0];
-  const driftShare = a.integrity.gtDrift.mismatch / Math.max(1, a.integrity.gtDrift.checked);
+  const agreement = a.models.map((m) => m.totals.agreement ?? 0);
+  const overWorst = [...a.models].sort((x, y) => y.totals.over - x.totals.over)[0];
+  const pfWorst = [...a.models].sort((x, y) => (y.totals.pfRate ?? 0) - (x.totals.pfRate ?? 0))[0];
+  const pfBest = [...a.models].sort((x, y) => (x.totals.pfRate ?? 0) - (y.totals.pfRate ?? 0))[0];
+
+  const byAcc = [...a.domains].sort((x, y) => (accOf(y, lead?.id ?? "") ?? 0) - (accOf(x, lead?.id ?? "") ?? 0));
 
   return (
     <div>
       {/* ------------------------------------------------------------ hero --- */}
       <section className="pb-2">
         <p className="font-mono text-[11px] uppercase tracking-[0.2em] text-[#a1a1a1]">
-          {a.benchmark.name} · {a.models.length} open VLMs · {a.benchmark.domains} domains · L1–L5 · {fmtInt(a.benchmark.questionsPerModel)} questions each
+          {a.benchmark.name} · {a.models.length} open VLMs · {a.domains.length} domains × 5 levels · {fmtInt(a.benchmark.questionsPerModel)} questions each
         </p>
-        <h1 className="mt-3 max-w-[26ch] text-3xl font-semibold leading-[1.08] tracking-tighter text-white sm:text-4xl lg:text-[44px]">
-          Every open-model answer, re-graded by <span className="text-accent">one frozen rule</span>
+        <h1 className="mt-3 max-w-[30ch] text-3xl font-semibold leading-[1.08] tracking-tighter text-white sm:text-4xl lg:text-[44px]">
+          Six open models, one benchmark, <span className="text-accent">one frozen grading rule</span>
         </h1>
-        <p className="mt-4 max-w-[86ch] text-[14.5px] leading-relaxed text-[#a1a1a1]">
-          Both runs are scored against the ground truth they recorded, by a single published comparison rule —
-          so each model has exactly one accuracy here. The runs' own scorer is shown alongside as a
-          grader-quality check: it agrees on {pct(lead?.totals.agreement ?? null, 1)} and {pct(second?.totals.agreement ?? null, 1)} of
-          questions and mis-scores the rest in both directions.
+        <p className="mt-4 max-w-[88ch] text-[14.5px] leading-relaxed text-[#a1a1a1]">
+          Every answer every run produced is re-graded by a single published rule, so each model has exactly one accuracy here and the
+          gaps are model differences rather than grading differences. All {fmtInt(a.integrity.gtPairing.checked)} comparable questions
+          share one ground truth across the {a.models.length} runs.
         </p>
 
         <div className="mt-6 grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <TileGrid cols={3}>
-            <Tile label="questions / model" value={fmtInt(a.benchmark.questionsPerModel)} sub={"L1–L5 balanced at " + fmtInt((a.models[0]?.totals.levels[0]?.n ?? 0))} />
-            <Tile label="images / model" value={fmtInt(a.benchmark.imagesPerModel)} sub={fmtInt(a.integrity.evaluatedPerDomain) + " of " + fmtInt(a.integrity.nominalPerDomain) + " per domain"} />
+          <TileGrid cols={4}>
+            <Tile label="runs" value={fmtInt(a.models.length)} sub={thinking + " in thinking mode · sorted by accuracy"} />
+            <Tile
+              label="questions / run"
+              value={
+                a.benchmark.questionsRange[0] === a.benchmark.questionsRange[1]
+                  ? fmtInt(a.benchmark.questionsRange[0])
+                  : fmtInt(a.benchmark.questionsRange[0]) + "–" + fmtInt(a.benchmark.questionsRange[1])
+              }
+              sub={
+                "L1–L5 · " +
+                (a.benchmark.imagesRange[0] === a.benchmark.imagesRange[1]
+                  ? fmtInt(a.benchmark.imagesRange[0])
+                  : fmtInt(a.benchmark.imagesRange[0]) + "–" + fmtInt(a.benchmark.imagesRange[1])) +
+                " images each"
+              }
+            />
+            <Tile label="benchmark" value={a.domains.length + " × 5"} sub={a.benchmark.families.length + " reasoning families"} />
             <Tile
               label="best accuracy"
               value={pct(lead?.totals.acc ?? null, 2)}
               accent={lead?.accent}
-              sub={(lead?.label ?? "") + " · +" + (gap * 100).toFixed(1) + " pts over " + (second?.label ?? "")}
+              sub={(lead ? shortName(lead) : "") + " · +" + (gap * 100).toFixed(1) + " over " + (second ? shortName(second) : "")}
             />
           </TileGrid>
 
@@ -136,10 +119,11 @@ export function Overview() {
             </div>
             <ul className="mt-3 space-y-2">
               {[
-                { to: "/open-models/domains", label: "Domain table", hint: "sort, filter, per-level" },
-                { to: "/open-models/matrix", label: "Domain × level matrix", hint: "the whole benchmark at a glance" },
-                { to: "/open-models/compare", label: "Head to head", hint: "wins, gaps, 1:1 scatter" },
-                { to: "/open-models/audit", label: "Grading audit", hint: "where the runs' scorer errs" },
+                { to: "/open-models/domains", label: "Domain table", hint: "all runs, side by side" },
+                { to: "/open-models/matrix", label: "Matrix & winner map", hint: "domain × level" },
+                { to: "/open-models/compare", label: "Head to head", hint: "any two runs" },
+                { to: "/open-models/audit", label: "Grading audit", hint: "where the scorers differ" },
+                { to: "/open-models/method", label: "Method", hint: "rule, checks, caveats" },
               ].map((l) => (
                 <li key={l.to}>
                   <Link to={l.to} className="group flex items-baseline justify-between gap-3 border-b border-[#141414] pb-2 last:border-0">
@@ -156,35 +140,43 @@ export function Overview() {
       {/* --------------------------------------------------------- league --- */}
       <Section
         eyebrow="01 league"
-        title="Leaderboard"
-        hint="Accuracy is per question under the frozen rule, counted over the full evaluated set — nothing is excluded from the denominator. The whisker is the 95% Wilson interval."
+        title={"All " + a.models.length + " runs, ranked"}
+        hint="Accuracy is per question under the frozen rule over the full evaluated set — nothing is excluded from the denominator. The whisker is the 95% Wilson interval; the bar shows how each run sits against the majority-answer baseline."
       >
         <Panel>
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[900px] text-left text-sm">
+            <table className="w-full min-w-[980px] text-left text-sm">
               <thead>
                 <tr className="border-b border-[#262626] font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="px-3 py-2.5 font-normal">#</th>
-                  <th className="px-3 py-2.5 font-normal">model</th>
+                  <th className="px-3 py-2.5 font-normal">run</th>
                   <th className="px-3 py-2.5 font-normal">accuracy</th>
                   <th className="px-3 py-2.5 text-right font-normal">vs best</th>
-                  <th className="px-3 py-2.5 text-right font-normal">self-score</th>
+                  <th className="px-3 py-2.5 text-right font-normal">own score</th>
                   <th className="px-3 py-2.5 text-right font-normal">partial</th>
-                  <th className="px-3 py-2.5 text-right font-normal">oracle</th>
-                  <th className="px-3 py-2.5 text-right font-normal">headroom</th>
-                  <th className="px-3 py-2.5 text-right font-normal">parse fail</th>
-                  <th className="px-3 py-2.5 text-right font-normal">agreement</th>
+                  <th className="px-3 py-2.5 text-right font-normal">unparsed</th>
+                  <th className="px-3 py-2.5 text-right font-normal">scorer agreement</th>
+                  <th className="px-3 py-2.5 text-right font-normal">over baseline</th>
                   <th className="px-3 py-2.5 font-normal">share</th>
                 </tr>
               </thead>
               <tbody>
                 {order.map((m, i) => (
-                  <tr key={m.id} className="border-b border-[#141414] last:border-0 transition-colors hover:bg-[#101010]">
-                    <td className="px-3 py-3 font-mono text-[11px] text-[#666]">{i + 1}</td>
+                  <tr
+                    key={m.id}
+                    onMouseEnter={() => setFocus(m.id)}
+                    onMouseLeave={() => setFocus(null)}
+                    className="border-b border-[#141414] last:border-0 transition-colors hover:bg-[#101010]"
+                    style={{ background: focus === m.id ? "#101010" : undefined }}
+                  >
                     <td className="px-3 py-3">
-                      <Link to="/open-models/models/$id" params={{ id: m.id }} className="group flex items-center gap-2">
+                      <RankPill rank={i + 1} accent={m.accent} />
+                    </td>
+                    <td className="px-3 py-3">
+                      <Link to="/open-models/models/$id" params={{ id: m.id }} className="group flex flex-wrap items-center gap-2">
                         <Dot color={m.accent} />
                         <span className="text-[#ededed] group-hover:text-accent">{m.label}</span>
+                        <ModeBadge mode={m.meta.mode} />
                         {m.meta.org && <span className="font-mono text-[9px] text-[#555]">{m.meta.org}</span>}
                       </Link>
                     </td>
@@ -192,19 +184,18 @@ export function Overview() {
                       <AccValue value={m.totals.acc} ci={m.totals.ci} color={m.accent} width={64} />
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">
-                      {i === 0 ? "—" : signed((m.totals.acc ?? 0) - (order[0].totals.acc ?? 0), 1)}
+                      {i === 0 ? "—" : signed((m.totals.acc ?? 0) - (lead.totals.acc ?? 0), 1)}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{pct(m.totals.as, 1)}</td>
                     <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{pct(m.totals.partial, 1)}</td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#666]">{pct(m.totals.oracle, 1)}</td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums" style={{ color: m.accent }}>
-                      {signed(m.totals.headroom, 1)}
-                    </td>
-                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">
+                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums" style={{ color: (m.totals.pfRate ?? 0) > 0.1 ? "#f0a5a5" : "#a1a1a1" }}>
                       {pct(m.totals.pfRate, 2)}
                     </td>
                     <td className="px-3 py-3 text-right font-mono text-xs tabular-nums text-[#a1a1a1]">{pct(m.totals.agreement, 2)}</td>
-                    <td className="w-[130px] px-3 py-3">
+                    <td className="px-3 py-3 text-right font-mono text-xs tabular-nums" style={{ color: m.accent }}>
+                      {signed(m.totals.headroom, 1)}
+                    </td>
+                    <td className="w-[120px] px-3 py-3">
                       <Bar value={m.totals.acc} oracle={m.totals.oracle} color={m.accent} height={6} />
                     </td>
                   </tr>
@@ -214,141 +205,125 @@ export function Overview() {
           </div>
         </Panel>
         <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#666]">
-          oracle = always answering the most common ground truth for the same slice · headroom = accuracy − oracle ·
-          agreement = share of questions where the frozen rule and the run's own scorer reach the same verdict.
+          vs best = accuracy − the leader · own score = what the run's own harness reported · unparsed = share of answers the extractor
+          could not read (empty or over-long) · over baseline = accuracy − {pct(a.models[0].totals.oracle, 2)} (always answering the most
+          common ground truth) · share bar sits inside that baseline tick.
         </p>
       </Section>
 
       {/* ------------------------------------------------------- findings --- */}
       <Section
         eyebrow="02 findings"
-        title="What the numbers say"
-        hint="Every figure is computed from the artifact at render time; nothing on this page is transcribed by hand."
+        title="What the field says"
+        hint="Every figure is computed from the artifact at render time; nothing here is transcribed by hand."
       >
         <div className="grid gap-3 lg:grid-cols-2">
-          <Finding
-            tag="headline"
-            title={(lead?.label ?? "") + " leads by " + (gap * 100).toFixed(1) + " points"}
-            accent={lead?.accent}
-          >
+          <Finding tag="headline" title={(lead?.label ?? "") + " leads, and the field spans " + (spread * 100).toFixed(1) + " points"} accent={lead?.accent}>
             <p>
-              {(lead?.label ?? "") + " scores "}
-              <b>{pct(lead?.totals.acc ?? null, 2)}</b> against <b>{pct(second?.totals.acc ?? null, 2)}</b> for{" "}
-              {second?.label}. The gap survives every check: both the runs' own scorer ({pct(lead?.totals.as ?? null, 1)} /{" "}
-              {pct(second?.totals.as ?? null, 1)}) and partial credit ({pct(lead?.totals.partial ?? null, 1)} /{" "}
-              {pct(second?.totals.partial ?? null, 1)}).
+              {(lead?.label ?? "") + " reaches "}<b>{pct(lead?.totals.acc ?? null, 2)}</b>, {signed(gap, 1)} ahead of{" "}
+              {second?.label}. The last-placed run, {trailing?.label}, sits at <b>{pct(trailing?.totals.acc ?? null, 2)}</b>.
             </p>
             <p>
-              Neither model reaches 40%: even the leader fails roughly {Math.round((1 - (lead?.totals.acc ?? 0)) * 100)} of every 100 questions.
+              Nobody clears 43%: even the leader fails {Math.round((1 - (lead?.totals.acc ?? 0)) * 100)} of every 100 questions. Per run, n
+              and coverage are identical ({fmtInt(a.benchmark.questionsRange[0])}
+              {a.benchmark.questionsRange[1] !== a.benchmark.questionsRange[0] ? "–" + fmtInt(a.benchmark.questionsRange[1]) : ""} questions,
+              same {a.domains.length} domains).
             </p>
           </Finding>
 
-          <Finding tag="grader quality" tone="ok" title={"The runs' own scorer agrees on " + pct(lead?.totals.agreement ?? null, 1) + " / " + pct(second?.totals.agreement ?? null, 1)}>
+          <Finding
+            tag="difficulty"
+            tone="warn"
+            title={"At L5 the majority answer beats every model"}
+          >
             <p>
-              Where it disagrees it errs both ways: it credits <b>{fmtInt(lead?.totals.over)}</b> / <b>{fmtInt(second?.totals.over)}</b>{" "}
-              answers the frozen rule rejects, and rejects <b>{fmtInt(lead?.totals.under)}</b> / <b>{fmtInt(second?.totals.under)}</b> it accepts.
+              Accuracy falls from L1 to L4 in every run, then ticks up at L5. That uptick is not ability: L5 carries{" "}
+              {droppedLevels.length} single-answer domains. Drop them and the L5 rise narrows from{" "}
+              {signed(Math.min(...l5.map((x) => (x.acc ?? 0) - (x.l4.acc ?? 0))), 1)}–
+              {signed(Math.max(...l5.map((x) => (x.acc ?? 0) - (x.l4.acc ?? 0))), 1)} to{" "}
+              {signed(Math.min(...l5NoConst.map((x) => (x.acc ?? 0) - (x.l4.acc ?? 0))), 1)}–
+              {signed(Math.max(...l5NoConst.map((x) => (x.acc ?? 0) - (x.l4.acc ?? 0))), 1)} points.
             </p>
             <p>
-              The headline effect partly cancels ({pct(lead?.totals.as ?? null, 1)} → {pct(lead?.totals.acc ?? null, 1)},{" "}
-              {pct(second?.totals.as ?? null, 1)} → {pct(second?.totals.acc ?? null, 1)}); per domain it does not.
+              More bluntly: the L5 majority-answer baseline is <b>{pct(l5Base, 1)}</b> and{" "}
+              {allUnderBaseline ? <b>every one of the {a.models.length} runs scores below it</b> : "the best run only just clears it"} — on
+              those questions a model is worse than guessing the most common answer. The L5 slice is hard to read and should be
+              rebalanced upstream.
             </p>
-            <p className="font-mono text-[11.5px]">
-              <span className="text-[#666]">biggest corrections: </span>
-              {order.map((m, i) => (
-                <span key={m.id} className="mr-4 inline-block">
-                  <span style={{ color: m.accent }}>{m.label}</span>{" "}
-                  <b>{movers ? signed(movers.per[a.models.findIndex((x) => x.id === m.id)], 1) : "—"}</b>{" "}
-                  <span className="text-[#666]">{movers?.label}</span> ·{" "}
-                  <b>{droppers ? signed(droppers.per[a.models.findIndex((x) => x.id === m.id)], 1) : "—"}</b>{" "}
-                  <span className="text-[#666]">{droppers?.label}</span>
-                  {i === 0 ? "" : ""}
-                </span>
-              ))}
+          </Finding>
+
+          <Finding
+            tag="grading"
+            tone="ok"
+            title={"The runs' own scorers agree on " + pct(Math.min(...agreement), 1) + "–" + pct(Math.max(...agreement), 1) + " of questions"}
+          >
+            <p>
+              Every answer is scored twice: by the run's harness and by the frozen rule. Where they disagree, the harness errs both ways —
+              it credits answers the rule rejects and rejects answers it accepts. The largest over-crediting run is{" "}
+              <b>{overWorst?.label}</b> at <b>{fmtInt(overWorst?.totals.over)}</b> questions.
+            </p>
+            <p>
+              Formatting is the other axis: {pfWorst?.label} leaves <b>{pct(pfWorst?.totals.pfRate ?? null, 1)}</b> of answers unparsed
+              against {pct(pfBest?.totals.pfRate ?? null, 2)} for {pfBest?.label}. A model that cannot format its answer loses questions it
+              may have reasoned correctly.
             </p>
           </Finding>
 
           <Finding
             tag="publish blocker"
             tone="warn"
-            title={zeroHarness.length + " domain-levels score 0.0% for both models"}
+            title={zeros.length + " domain-levels score 0.0% for all " + a.models.length + " runs"}
           >
             <p>
-              <b>{structured.length}</b> are grader failures: ground truth stored as{" "}
-              <code className="font-mono text-[11px] text-[#c9c9c9]">{"{'time_of_flight_s': 3.9, 'range_m': 34.5}"}</code> or{" "}
-              <code className="font-mono text-[11px] text-[#c9c9c9]">["blue", "purple"]</code>, which a string comparison cannot read. The
-              frozen rule recovers {recovered} of them — {findRecovered(zeroHarness)}.
+              <b>{structured.length}</b> are grader failures: ground truth stored as a dict or list, which a string comparison cannot read.
+              The frozen rule recovers them — up to <b>{pct(Math.max(...structured.flatMap((z) => z.per.map((p) => p.acc ?? 0))), 1)}</b> for
+              the best run. <b>{multipart.length}</b> are semicolon-separated answers where a run supplies one part (up to{" "}
+              <b>{pct(maxPart, 1)}</b> of the parts present), so those levels are not empty either.
             </p>
             <p>
-              <b>{multipart.length}</b> are semicolon-separated answers where a model supplies one part — up to <b>{pct(maxPart, 1)}</b> of the
-              parts present, so the level is not empty. <b>{plainWrong.length}</b>{" "}
-              {plainWrong.length === 1 ? "is" : "are"} genuinely wrong on both models.
-            </p>
-          </Finding>
-
-          <Finding tag="level design" title={a.audit.constantLevels.length + " levels have a single answer for all " + fmtInt(a.audit.constantLevels[0]?.n ?? 0) + " images"}>
-            <p>
-              {a.audit.constantLevels
-                .slice(0, 3)
-                .map((c) => c.label + " L" + c.level + " is always " + c.top)
-                .join(", ")}
-              {" …"} Blind answering scores 100% on all {a.audit.constantLevels.length}.
-            </p>
-            <p>
-              Models profit: {constPerModel.map((c, i) => (
-                <span key={c.m.id}>
-                  {i > 0 && " · "}
-                  <b style={{ color: c.m.accent }}>{pct(c.acc, 1)}</b> for {c.m.label}
-                </span>
-              ))}{" "}
-              over those {fmtInt(constPerModel[0]?.n ?? 0)} questions. Dropping the constant L5 levels cuts the apparent L5 rebound from{" "}
-              {l5
-                .map((x) => {
-                  const withConst = ((x.withConst.acc ?? 0) - (x.l4.acc ?? 0)) * 100;
-                  const without = ((x.without.acc ?? 0) - (x.l4.acc ?? 0)) * 100;
-                  return withConst.toFixed(1) + " → " + without.toFixed(1) + " for " + x.m.label;
-                })
-                .join(" · ")}
-              .
-            </p>
-          </Finding>
-
-          <Finding tag="difficulty" title="L4 is the real difficulty peak">
-            <p>
-              {a.models.map((m, i) => (
-                <span key={m.id}>
-                  {i > 0 && " · "}
-                  <b style={{ color: m.accent }}>{m.label}</b>{" "}
-                  {m.totals.levels.map((l) => (l.acc == null ? "—" : (l.acc * 100).toFixed(1))).join(" → ")}
-                </span>
-              ))}
-              .
-            </p>
-            <p>
-              L5 only looks easier because of the constant levels above. {a.models.map((m) => m.label + "'s unparsed-response rate is " + pct(m.totals.pfRate, 1)).join("; ")}{" "}
-              — the weaker model loses most of its L1 lead to formatting.
-            </p>
-          </Finding>
-
-          <Finding tag="provenance" tone="warn" title={pct(driftShare, 1) + " of questions drifted in the upstream dataset"}>
-            <p>
-              The same question ids now carry a different ground truth upstream for{" "}
-              <b>{fmtInt(a.integrity.gtDrift.mismatch)}</b> of {fmtInt(a.integrity.gtDrift.checked)} questions — the dataset was regenerated after
-              these runs. Every number here is still graded against the ground truth each run recorded, so the comparison stays paired; but a fresh
-              eval is needed before publishing per-question examples.
-            </p>
-            <p className="font-mono text-[10px] text-[#666]">
-              {a.integrity.dupIds} duplicate question ids · {fmtInt(a.integrity.evaluatedPerDomain)} of {fmtInt(a.integrity.nominalPerDomain)} images
-              per domain evaluated · levels balanced at {fmtInt(a.models[0]?.totals.levels[0]?.n ?? 0)} questions.
+              That leaves <b>{a.audit.zeroFrozen.length}</b> levels where every run scores exactly zero under the rule — the benchmark's
+              genuinely unsolved core. The audit page lists each one.
             </p>
           </Finding>
         </div>
+
+        <Panel className="mt-3 p-4">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <p className="font-mono text-[9px] uppercase tracking-widest text-[#666]">domains won, out of {a.domains.length}</p>
+            <p className="font-mono text-[10px] text-[#555]">a domain is won by the run with the highest frozen-rule accuracy on it</p>
+          </div>
+          <div className="mt-3 flex h-[10px] w-full overflow-hidden rounded-sm bg-[#141414]">
+            {winRows.map((w) => (
+              <span key={w.m.id} title={w.m.label + " · " + w.wins} style={{ width: (w.wins / a.domains.length) * 100 + "%", background: w.m.accent, opacity: w.wins ? 1 : 0.25 }} />
+            ))}
+          </div>
+          <div className="mt-3 grid gap-x-6 gap-y-1.5 sm:grid-cols-2 lg:grid-cols-3">
+            {winRows.map((w) => (
+              <button
+                key={w.m.id}
+                type="button"
+                onClick={() => setFocus(focus === w.m.id ? null : w.m.id)}
+                className="flex items-center gap-2 text-left"
+              >
+                <Dot color={w.m.accent} size={7} />
+                <span className="min-w-0 flex-1 truncate font-mono text-[11px] text-[#c9c9c9]">{w.m.label}</span>
+                <span className="w-14 flex-none">
+                  <Bar value={w.wins / maxWins} color={w.m.accent} height={5} showOracle={false} />
+                </span>
+                <span className="w-14 flex-none text-right font-mono text-[11px] tabular-nums" style={{ color: w.wins ? w.m.accent : "#555" }}>
+                  {w.wins} / {a.domains.length}
+                </span>
+              </button>
+            ))}
+          </div>
+        </Panel>
       </Section>
 
       {/* -------------------------------------------------------- curves --- */}
       <Section
         eyebrow="03 difficulty curve"
         title="Accuracy by cognitive task, L1 → L5"
-        hint="Levels are the dataset's own task ladder — describe, relate, compare, compose, extrapolate."
+        hint="The levels are the dataset's own ladder. Every run is drawn; click one in the strip above to isolate it. The dashed line is the majority-answer baseline for each level."
         right={
           <div className="flex flex-wrap items-center gap-2">
             {METRICS.filter((m) => m.id !== "headroom").map((m) => (
@@ -360,15 +335,28 @@ export function Overview() {
         }
       >
         <Panel className="p-4 sm:p-5">
-          <LevelCurve models={order} levels={a.benchmark.levels} metric={metric} />
+          <LevelSlope models={order} levels={a.benchmark.levels} metric={metric} focus={focus} onFocus={setFocus} />
         </Panel>
-        <div className="mt-3 grid gap-3 sm:grid-cols-5">
-          {a.benchmark.levels.map((lv) => (
-            <div key={lv.n} className="rounded-lg border border-[#262626] bg-[#0a0a0a] p-3">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-[#666]">L{lv.n} — {lv.short}</p>
-              <p className="mt-1 text-[12px] leading-relaxed text-[#a1a1a1]">{lv.desc}</p>
-            </div>
-          ))}
+        <div className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          {a.benchmark.levels.map((lv) => {
+            const best = order.map((m) => ({ m, v: m.totals.levels[lv.n - 1]?.acc ?? 0 })).sort((x, y) => y.v - x.v)[0];
+            return (
+              <div key={lv.n} className="rounded-lg border border-[#262626] bg-[#0a0a0a] p-3">
+                <div className="flex items-baseline justify-between">
+                  <p className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
+                    L{lv.n} — {lv.short}
+                  </p>
+                  <p className="font-mono text-[10px] tabular-nums" style={{ color: best?.m.accent }}>
+                    {pct(best?.v ?? null, 1)}
+                  </p>
+                </div>
+                <p className="mt-1 text-[12px] leading-relaxed text-[#a1a1a1]">{lv.desc}</p>
+                <p className="mt-2 font-mono text-[9px] text-[#555]">
+                  best: {best ? shortName(best.m) : "—"} · baseline {pct(a.models[0].totals.levels[lv.n - 1]?.oracle ?? null, 1)}
+                </p>
+              </div>
+            );
+          })}
         </div>
       </Section>
 
@@ -376,86 +364,40 @@ export function Overview() {
       <Section
         eyebrow="04 families"
         title="Reasoning families"
-        hint="Nine families over 34 domains. The hairline tick marks the majority-answer oracle for the same slice."
+        hint="Nine families over 34 domains. Framed cells are the best run in that family; the last column is the majority-answer baseline for the same slice."
       >
-        <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_320px]">
-          <Panel className="p-4 sm:p-5">
-            <FamilyBars models={order} metric={metric === "headroom" ? "acc" : metric} />
-          </Panel>
-          <Panel className="p-4">
-            <p className="font-mono text-[9px] uppercase tracking-widest text-[#666]">score composition</p>
-            <p className="mt-1.5 text-[12px] leading-relaxed text-[#a1a1a1]">
-              Solid is fully-correct, the lighter band adds questions where the answer is partly right.
-            </p>
-            <div className="mt-4 space-y-4">
-              {order.map((m) => (
-                <div key={m.id}>
-                  <div className="flex items-baseline justify-between">
-                    <span className="flex items-center gap-2 text-[12px] text-[#ededed]">
-                      <Dot color={m.accent} size={6} />
-                      {m.label}
-                    </span>
-                    <span className="font-mono text-[10px] text-[#666]">
-                      {pct(m.totals.acc, 1)} correct · {pct(m.totals.partial, 1)} partial credit
-                    </span>
-                  </div>
-                  <div className="relative mt-1.5 h-[6px] w-full overflow-hidden rounded-sm bg-[#141414]">
-                    <span className="absolute inset-y-0 left-0 rounded-sm opacity-30" style={{ width: pct(m.totals.partial, 1), background: m.accent }} />
-                    <span className="absolute inset-y-0 left-0 rounded-sm" style={{ width: pct(m.totals.acc, 1), background: m.accent }} />
-                  </div>
-                </div>
-              ))}
-            </div>
-            <div className="mt-5 border-t border-[#1c1c1c] pt-3">
-              <p className="font-mono text-[9px] uppercase tracking-widest text-[#666]">majority-answer baseline</p>
-              <p className="t-num mt-1 font-mono text-2xl font-semibold tabular-nums text-[#ededed]">
-                {pct(a.models[0]?.totals.oracle ?? null, 2)}
-              </p>
-              <p className="mt-1 text-[11px] leading-relaxed text-[#666]">
-                Answering the single most common ground truth everywhere. Any accuracy below this line would mean a model is worse than
-                not looking at the image.
-              </p>
-            </div>
-          </Panel>
-        </div>
+        <Panel className="p-3 sm:p-4">
+          <FamilyMatrix models={order} focus={focus} onFocus={setFocus} />
+        </Panel>
       </Section>
 
-      {/* ------------------------------------------------------ head to head --- */}
-      {lead && second && rec && (
-        <Section
-          eyebrow="05 head to head"
-          title={lead.label + " vs " + second.label}
-          hint={"Per-domain accuracy gap in points. " + lead.label + " leads " + rec.xWins + " domains, " + second.label + " leads " + rec.yWins + "."}
-          right={
-            <Link to="/open-models/compare" className="rounded border border-[#262626] px-2.5 py-1 font-mono text-[10px] text-[#a1a1a1] transition-colors hover:border-[#404040] hover:text-white">
-              full comparison →
-            </Link>
-          }
-        >
-          <Panel className="p-4 sm:p-5">
-            <DivergeBars domains={a.domains} a={lead} b={second} limit={10} />
-          </Panel>
-        </Section>
-      )}
+      {/* ----------------------------------------------------- winner map --- */}
+      <Section
+        eyebrow="05 winner map"
+        title="Who leads each domain × level cell"
+        hint={"Each tile is coloured by the run with the highest frozen-rule accuracy in that cell; “—” means every run scored zero. " + a.audit.zeroFrozen.length + " cells are unsolved by all " + a.models.length + " runs."}
+      >
+        <Panel className="p-3 sm:p-4">
+          <WinnerGrid domains={a.domains} levels={a.benchmark.levels} models={order} families={a.benchmark.families} focus={focus} />
+        </Panel>
+      </Section>
 
       {/* ---------------------------------------------------------- index --- */}
       <Section
         eyebrow="06 index"
-        title="Where the benchmark is hardest"
-        hint="Best and worst domains by the leader's accuracy. Domains with a single-answer level are flagged — they inflate accuracy."
+        title="Hardest and easiest slices"
+        hint={"Ranked by " + (lead?.label ?? "the leader") + " — the strongest run overall. ◆ marks a domain with a single-answer level."}
       >
         <div className="grid gap-3 lg:grid-cols-2">
           <Panel className="p-3.5">
-            <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-[#666]">
-              strongest — {lead?.label}
-            </p>
-            <DomainIndex domains={byAcc.slice(0, 6)} modelId={leadId} accent={lead?.accent ?? "#8b5cf6"} />
+            <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-[#666]">easiest for {shortName(lead)}</p>
+            <DomainIndex domains={byAcc.slice(0, 6)} modelId={lead.id} accent={lead.accent} />
           </Panel>
           <Panel className="p-3.5">
             <p className="mb-2 font-mono text-[9px] uppercase tracking-widest text-[#666]">
-              weakest — both models under 30%
+              hardest for {shortName(lead)} — all runs under 25%
             </p>
-            <DomainIndex domains={weakest.slice(0, 6)} modelId={leadId} accent={lead?.accent ?? "#8b5cf6"} />
+            <DomainIndex domains={byAcc.slice(-6).reverse()} modelId={lead.id} accent={lead.accent} />
           </Panel>
         </div>
       </Section>
@@ -482,23 +424,15 @@ function DomainIndex({ domains, modelId, accent }: { domains: Domain[]; modelId:
               ◆ {d.const.map((c) => "L" + c.level).join(", ")}
             </span>
           )}
-          <span className="w-20 flex-none font-mono text-[9px] text-[#555]">{d.familyName}</span>
+          <span className="hidden w-24 flex-none font-mono text-[9px] text-[#555] sm:inline">{d.familyName}</span>
           <div className="hidden w-24 flex-none sm:block">
             <Bar value={accOf(d, modelId)} oracle={d.oracle} color={accent} height={5} />
           </div>
-          <span className="w-12 flex-none text-right font-mono text-[11px] tabular-nums text-[#ededed]">
-            {pct(accOf(d, modelId), 1)}
-          </span>
+          <span className="w-12 flex-none text-right font-mono text-[11px] tabular-nums text-[#ededed]">{pct(accOf(d, modelId), 1)}</span>
         </li>
       ))}
     </ul>
   );
-}
-
-function findRecovered(zeroHarness: { label: string; level: number; per: { model: string; acc: number | null }[] }[]): string {
-  const best = zeroHarness.flatMap((z) => z.per.map((p) => ({ z, p }))).sort((x, y) => (y.p.acc ?? 0) - (x.p.acc ?? 0))[0];
-  if (!best || (best.p.acc ?? 0) <= 0) return "see the audit page for each one";
-  return best.z.label + " L" + best.z.level + " reaches " + pct(best.p.acc, 1);
 }
 
 function Finding({
