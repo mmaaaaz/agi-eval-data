@@ -56,6 +56,19 @@ const lead = order[0];
 const trail = order[order.length - 1];
 
 describe("report pages render against the shipped artifact", () => {
+  it("overview: three headline numbers, a field mean and a glossary", () => {
+    const html = render(Overview as never);
+    expect(html).toContain("field mean");
+    expect(html).toContain("vs guessing");
+    expect(html).toContain("no usable answer");
+    expect(html).toContain("what do these numbers mean?");
+    // the retired jargon must not survive anywhere a reader can see it
+    expect(html).not.toContain("self-score");
+    expect(html).not.toContain("partial credit");
+    expect(html).not.toMatch(/own score(?!r)/);
+    expect(html).not.toContain(">headroom<");
+  });
+
   it("overview: hero, leaderboard, findings, curve, families and winner map", () => {
     const html = render(Overview as never);
     expect(html).toContain("one frozen grading rule");
@@ -68,8 +81,10 @@ describe("report pages render against the shipped artifact", () => {
     expect(html.length).toBeGreaterThan(30000);
   });
 
-  it("domains: matrix-style table with a leader column", () => {
+  it("domains: matrix-style table with a leader column and a field mean", () => {
     const html = render(DomainsPage as never);
+    expect(html).toContain("field mean");
+    expect(html).toContain("guessing");
     expect(html).toContain("copy TSV");
     expect(html).toContain(artifact.domains[0].label);
     expect(html).toContain("leads");

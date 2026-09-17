@@ -54,12 +54,34 @@ export function ranked(models: ModelEntry[]): ModelEntry[] {
 
 export type Metric = "acc" | "as" | "partial" | "headroom";
 
+/**
+ * One name per idea, used on every page. Only `acc` is an accuracy — the rest
+ * are context (how it compares to guessing), a formatting diagnostic, or a
+ * cross-check from the run's own scorer.
+ */
 export const METRICS: { id: Metric; label: string; short: string; hint: string }[] = [
-  { id: "acc", label: "Frozen-rule accuracy", short: "accuracy", hint: "Correct under the frozen grading rule, per question." },
-  { id: "as", label: "Run's own scorer", short: "self-score", hint: "The score the evaluation harness reported for the same answers." },
-  { id: "partial", label: "Partial credit", short: "partial", hint: "Mean share of ground-truth parts matched — a diagnostic, not an accuracy." },
-  { id: "headroom", label: "Headroom over oracle", short: "headroom", hint: "Accuracy minus the majority-answer baseline for the same slice." },
+  { id: "acc", label: "Accuracy", short: "accuracy", hint: "Correct ÷ questions, under the one published grading rule. The headline number." },
+  {
+    id: "as",
+    label: "The run's own scorer",
+    short: "own scorer",
+    hint: "What the run's own harness reported for the same answers. A cross-check on our rule, not a second ability.",
+  },
+  { id: "partial", label: "Partly right", short: "partly right", hint: "Mean share of ground-truth parts matched — half marks, not accuracy." },
+  { id: "headroom", label: "Vs guessing", short: "vs guessing", hint: "Accuracy minus the majority-answer baseline (13.76%): is it really looking at the image?" },
 ];
+
+export const mean = (xs: number[]): number | null => (xs.length ? xs.reduce((s, x) => s + x, 0) / xs.length : null);
+
+/** Average across the whole field for one slice (equal weight per run). */
+export function fieldMean(
+  models: { id: string }[],
+  pick: (modelId: string) => { acc: number | null; as: number | null; partial: number | null; oracle?: number | null },
+  metric: Metric,
+): number | null {
+  const vs = models.map((m) => pick(m.id)).map((v) => metricValue(v, metric));
+  return mean(vs.filter((v): v is number => v != null));
+}
 
 export function metricValue(
   k: { acc: number | null; as: number | null; partial: number | null; oracle?: number | null },

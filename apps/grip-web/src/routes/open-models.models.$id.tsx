@@ -2,18 +2,12 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useOM } from "./open-models";
 import { Bar, Dot, KeyValue, ModeBadge, Panel, RankPill, Section, Tile, TileGrid } from "../components/open-models/ui";
 import { FamilyMatrix, LevelSlope, shortName } from "../components/open-models/charts";
-import { accOf, fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
+import { accOf, fmtInt, mean, pct, ranked, signed } from "../lib/openModelsFmt";
 
 export const Route = createFileRoute("/open-models/models/$id")({
   component: ModelPage,
   notFoundComponent: () => <p className="font-mono text-sm text-[#a1a1a1]">No such run.</p>,
 });
-
-const median = (xs: number[]) => {
-  const s = [...xs].sort((a, b) => a - b);
-  const mid = s.length >> 1;
-  return s.length % 2 ? s[mid] : (s[mid - 1] + s[mid]) / 2;
-};
 
 export function ModelPage() {
   const a = useOM();
@@ -57,7 +51,7 @@ export function ModelPage() {
           <>
             Rank <span className="text-[#ededed]">{rank}</span> of {a.models.length} · wins{" "}
             <span className="text-[#ededed]">{wins}</span> of {a.domains.length} domains · {pct(m.totals.acc, 2)} under the frozen rule
-            against {pct(m.totals.as, 2)} from its own scorer.
+ against {pct(m.totals.as, 2)} from the run's own scorer.
           </>
         }
         right={
@@ -82,25 +76,30 @@ export function ModelPage() {
           </div>
         }
       >
-        <TileGrid cols={6}>
-          <Tile label="accuracy" value={pct(m.totals.acc, 2)} accent={m.accent} sub={"CI " + pct(m.totals.ci[0], 1) + " – " + pct(m.totals.ci[1], 1)} />
-          <Tile label="own score" value={pct(m.totals.as, 2)} sub={"agreement " + pct(m.totals.agreement, 2)} />
-          <Tile label="partial credit" value={pct(m.totals.partial, 2)} sub="mean share of parts matched" />
-          <Tile label="vs baseline" value={signed(m.totals.headroom, 1)} sub={"majority answer " + pct(m.totals.oracle, 1)} />
+        <TileGrid cols={4}>
+          <Tile label="accuracy" value={pct(m.totals.acc, 2)} accent={m.accent} sub={"95% CI " + pct(m.totals.ci[0], 1) + " – " + pct(m.totals.ci[1], 1)} />
+          <Tile label="vs guessing" value={signed(m.totals.headroom, 1)} sub={"guessing floor " + pct(m.totals.oracle, 1)} />
           <Tile
-            label="unparsed answers"
-            value={pct(m.totals.pfRate, 2)}
+            label="no usable answer"
+            value={pct(m.totals.pfRate, 1)}
             accent={(m.totals.pfRate ?? 0) > 0.1 ? "#f0a5a5" : undefined}
-            sub={fmtInt(m.totals.pf) + " of " + fmtInt(m.totals.n)}
+            sub={fmtInt(m.totals.pf) + " of " + fmtInt(m.totals.n) + " answers blank or unreadable"}
           />
-          <Tile label="scorer disagreements" value={fmtInt(m.totals.over + m.totals.under)} sub={fmtInt(m.totals.over) + " over · " + fmtInt(m.totals.under) + " under"} />
+          <Tile label="partly right" value={pct(m.totals.partial, 2)} sub="mean share of answer parts matched" />
         </TileGrid>
+        <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#666]">
+          cross-check · the run's own scorer said {pct(m.totals.as, 2)} and agreed with the published rule on{" "}
+          {pct(m.totals.agreement, 2)} of questions ({fmtInt(m.totals.over)} credited wrongly, {fmtInt(m.totals.under)} rejected wrongly) —{" "}
+          <Link to="/open-models/audit" className="text-accent hover:underline">
+            full breakdown
+          </Link>
+        </p>
       </Section>
 
       <Section
         eyebrow="01 levels"
         title="Where it gains and loses on the L1-L5 ladder"
-        hint={"Its own line is in full colour; the rest of the field stays visible for context. The dashed line is the majority-answer baseline for each level."}
+        hint="Its own line is in full colour, the field's average run in grey, the rest of the field dimmed for context. The dashed line is what guessing the most common answer scores."
       >
         <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_360px]">
           <Panel className="p-4">
@@ -112,9 +111,9 @@ export function ModelPage() {
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="px-3 py-2 font-normal">level</th>
                   <th className="px-3 py-2 text-right font-normal">this run</th>
-                  <th className="px-3 py-2 text-right font-normal">baseline</th>
+                  <th className="px-3 py-2 text-right font-normal" title="what guessing the most common answer scores">guessing</th>
                   <th className="px-3 py-2 text-right font-normal">field best</th>
-                  <th className="px-3 py-2 text-right font-normal">field median</th>
+                  <th className="px-3 py-2 text-right font-normal" title="average across all runs">field mean</th>
                 </tr>
               </thead>
               <tbody>
@@ -137,7 +136,7 @@ export function ModelPage() {
                         <span style={{ color: bestModel?.accent }}>{pct(Math.max(...others), 1)}</span>
                         <span className="ml-1.5 text-[9px] text-[#555]">{bestModel ? shortName(bestModel) : ""}</span>
                       </td>
-                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#a1a1a1]">{pct(median(others), 1)}</td>
+                      <td className="px-3 py-2 text-right font-mono text-[11px] tabular-nums text-[#9a9a9a]">{pct(mean(others), 1)}</td>
                     </tr>
                   );
                 })}
@@ -178,7 +177,11 @@ export function ModelPage() {
             <dl className="mt-4 space-y-2">
               <KeyValue label="accuracy" value={pct(m.totals.acc, 2)} />
               <KeyValue label="vs leader" value={m.id === lead.id ? "—" : signed((m.totals.acc ?? 0) - (lead.totals.acc ?? 0), 2)} hint={lead.label} />
-              <KeyValue label="vs field median" value={signed((m.totals.acc ?? 0) - median(a.models.map((x) => x.totals.acc ?? 0)), 2)} />
+              <KeyValue
+                label="vs field mean"
+                value={signed((m.totals.acc ?? 0) - (mean(a.models.map((x) => x.totals.acc ?? 0)) ?? 0), 2)}
+                hint="average accuracy across every run"
+              />
               <KeyValue label="domains won" value={wins + " of " + a.domains.length} />
               <KeyValue label="questions" value={fmtInt(m.totals.n)} />
               <KeyValue label="images" value={fmtInt(m.totals.images)} />
@@ -221,7 +224,7 @@ export function ModelPage() {
 
       <Section
         eyebrow="04 grading"
-        title="Where its own scorer disagreed"
+        title="Where the run's own scorer disagreed"
         hint="Sampled questions behind the counters above; the audit page carries the full taxonomy for every run."
       >
         <Panel className="p-4">

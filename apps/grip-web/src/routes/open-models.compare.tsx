@@ -154,7 +154,7 @@ export function Compare() {
                   <th className="px-2 py-1.5 font-normal">{shortName(A)}</th>
                   <th className="px-2 py-1.5 font-normal">{shortName(B)}</th>
                   <th className="px-2 py-1.5 text-right font-normal">Δ</th>
-                  <th className="py-1.5 pl-2 text-right font-normal">oracle</th>
+                  <th className="py-1.5 pl-2 text-right font-normal">guessing</th>
                 </tr>
               </thead>
               <tbody>
@@ -224,7 +224,7 @@ export function Compare() {
                   <th className="px-3 py-2 font-normal">{A.label}</th>
                   <th className="px-3 py-2 font-normal">{B.label}</th>
                   <th className="px-3 py-2 text-right font-normal">Δ</th>
-                  <th className="px-3 py-2 text-right font-normal">oracle</th>
+                  <th className="px-3 py-2 text-right font-normal">guessing</th>
                   <th className="px-3 py-2 text-right font-normal">n</th>
                 </tr>
               </thead>

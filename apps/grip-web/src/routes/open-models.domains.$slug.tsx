@@ -2,7 +2,7 @@ import { createFileRoute, Link, notFound } from "@tanstack/react-router";
 import { useOM } from "./open-models";
 import { AccValue, Dot, Legend, Panel, Section, Tile, TileGrid } from "../components/open-models/ui";
 import { LevelTable, shortName } from "../components/open-models/charts";
-import { fmtInt, pct, ranked } from "../lib/openModelsFmt";
+import { fmtInt, pct, ranked, signed } from "../lib/openModelsFmt";
 import type { Domain } from "../lib/openModelsTypes";
 
 export const Route = createFileRoute("/open-models/domains/$slug")({
@@ -57,7 +57,7 @@ export function DomainPage() {
                 label={m.label}
                 value={<AccValue value={r.acc} ci={r.ci} color={m.accent} size="md" width={54} />}
                 accent={m.accent}
-                sub={"own score " + pct(r.as, 1) + " · partial " + pct(r.partial, 1) + " · " + pct((r.acc ?? 0) - (d.oracle ?? 0), 1) + " over baseline"}
+                sub={"vs guessing " + signed((r.acc ?? 0) - (d.oracle ?? 0), 1) + " · partly right " + pct(r.partial, 1) + " · own scorer " + pct(r.as, 1)}
               />
             );
           })}
@@ -67,8 +67,8 @@ export function DomainPage() {
       <Section
         eyebrow="01 levels"
         title="Difficulty ladder"
-        hint="Frozen-rule accuracy per level. The baseline tick is drawn once, in the first track — every run is measured against the same floor."
-        right={<Legend items={[...graded.map((m) => ({ color: m.accent, label: shortName(m) })), { color: "#666", label: "baseline", dash: true }]} />}
+        hint="Accuracy per level. The guessing tick is drawn once, in the first track — every run is measured against the same floor."
+        right={<Legend items={[...graded.map((m) => ({ color: m.accent, label: shortName(m) })), { color: "#666", label: "guessing", dash: true }]} />}
       >
         <Panel>
           <div className="max-h-[70vh] overflow-auto">
@@ -148,10 +148,10 @@ export function DomainPage() {
                 <tr className="font-mono text-[9px] uppercase tracking-widest text-[#666]">
                   <th className="px-3 py-2 font-normal">run</th>
                   <th className="px-3 py-2 text-right font-normal">accuracy</th>
-                  <th className="px-3 py-2 text-right font-normal">own score</th>
-                  <th className="px-3 py-2 text-right font-normal">credits what the rule rejects</th>
-                  <th className="px-3 py-2 text-right font-normal">rejects what the rule accepts</th>
-                  <th className="px-3 py-2 text-right font-normal">unparsed</th>
+                  <th className="px-3 py-2 text-right font-normal" title="the mark the run's own harness gave the same answers">own scorer</th>
+                  <th className="px-3 py-2 text-right font-normal" title="the run's own scorer accepted, our rule rejects">credited wrongly</th>
+                  <th className="px-3 py-2 text-right font-normal" title="the run's own scorer rejected, our rule accepts">rejected wrongly</th>
+                  <th className="px-3 py-2 text-right font-normal" title="blank or unreadable answers">no usable answer</th>
                   <th className="px-3 py-2 font-normal">classes</th>
                 </tr>
               </thead>

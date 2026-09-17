@@ -3,7 +3,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { useFocus, useOM } from "./open-models";
 import { Bar, Chip, Dot, Empty, Panel, Section, Seg, TextInput } from "../components/open-models/ui";
 import { LevelSpark, shortName } from "../components/open-models/charts";
-import { METRICS, type Metric, fmtInt, metricValue, pct, ranked, signed } from "../lib/openModelsFmt";
+import { METRICS, type Metric, fmtInt, mean, metricValue, pct, ranked, signed } from "../lib/openModelsFmt";
 import type { Artifact, ModelEntry } from "../lib/openModelsTypes";
 
 export const Route = createFileRoute("/open-models/domains/")({ component: DomainsPage });
@@ -142,13 +142,14 @@ export function DomainsPage() {
   const constDomains = a.domains.filter((d) => d.const.length > 0);
 
   const copyTsv = () => {
-    const head = ["slice", "n", ...order.map((m) => m.label + " " + metric), "baseline", "spread"].join("\t");
+    const head = ["slice", "n", ...order.map((m) => m.label + " " + metric), "field mean", "guessing", "spread"].join("\t");
     const body = rows
       .map((r) =>
         [
           r.label,
           r.cells[order[0].id].n,
           ...order.map((m) => ((metricValue({ ...r.cells[m.id], oracle: r.oracle }, metric) ?? 0) * 100).toFixed(2)),
+          ((mean(order.map((m) => metricValue({ ...r.cells[m.id], oracle: r.oracle }, metric) ?? 0)) ?? 0) * 100).toFixed(2),
           ((r.oracle ?? 0) * 100).toFixed(2),
           (((spread(r.cells, order) ?? 0) * 100)).toFixed(2),
         ].join("\t"),
@@ -261,7 +262,12 @@ export function DomainsPage() {
                     </th>
                   ))}
                   <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-center font-normal">leads</th>
-                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">baseline</th>
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal text-[#9a9a9a]" title="average of all runs on this slice">
+                    field mean
+                  </th>
+                  <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal" title="what guessing the most common answer scores">
+                    guessing
+                  </th>
                   <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">spread</th>
                   <th className="sticky top-0 z-20 bg-[#0a0a0a] px-3 py-2.5 text-right font-normal">
                     <span style={{ color: shapeModel.accent }}>{shortName(shapeModel)} L1–L5</span>
@@ -279,6 +285,9 @@ export function DomainsPage() {
                   ))}
                   <td className="px-3 py-2 text-center" style={{ color: order[0].accent }}>
                     {shortName(order[0])}
+                  </td>
+                  <td className="px-3 py-2 text-right text-[#9a9a9a]">
+                    {pct(mean(order.map((m) => metricValue({ acc: m.totals.acc, as: m.totals.as, partial: m.totals.partial, oracle: m.totals.oracle }, metric) ?? 0)), 2)}
                   </td>
                   <td className="px-3 py-2 text-right text-[#666]">{pct(a.models[0].totals.oracle, 2)}</td>
                   <td className="px-3 py-2 text-right text-[#666]">
@@ -336,6 +345,9 @@ export function DomainsPage() {
                           {leader.length === 1 ? shortName(leader[0]) : leader.length + "-way tie"}
                         </span>
                       </td>
+                      <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#9a9a9a]">
+                        {pct(mean(order.map((m) => metricValue({ ...r.cells[m.id], oracle: r.oracle }, metric) ?? 0)), 1)}
+                      </td>
                       <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#666]">{pct(r.oracle, 1)}</td>
                       <td className="px-3 py-2 text-right font-mono text-[10px] tabular-nums text-[#a1a1a1]">{signed(spread(r.cells, order), 1)}</td>
                       <td className="px-3 py-2">
@@ -349,7 +361,7 @@ export function DomainsPage() {
                 })}
                 {rows.length === 0 && (
                   <tr>
-                    <td colSpan={order.length + 5}>
+                    <td colSpan={order.length + 6}>
                       <Empty>no slice matches those filters</Empty>
                     </td>
                   </tr>
@@ -360,8 +372,9 @@ export function DomainsPage() {
         </Panel>
 
         <p className="mt-2 font-mono text-[10px] leading-relaxed text-[#666]">
-          baseline = always answering the most common ground truth for that slice · spread = best run − worst run · the tinted cell in each
-          row is the run that leads it{metric === "headroom" ? "" : "; the tick inside each bar is the baseline"}.
+          the tinted cell in each row is the run that leads it · <span className="text-[#9a9a9a]">field mean</span> = average of all{" "}
+          {a.models.length} runs (is the slice hard for everyone?) · guessing = always answering the most common ground truth for that slice
+          {metric === "headroom" ? "" : "; the tick inside each bar is that floor"} · spread = best run − worst run.
         </p>
         {constDomains.length > 0 && (
           <p className="mt-1.5 font-mono text-[10px] leading-relaxed text-[#f0a5a5]">

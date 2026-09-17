@@ -5,7 +5,7 @@
  */
 import { Fragment, useState } from "react";
 import type { Domain, LevelDef, ModelEntry } from "../../lib/openModelsTypes";
-import { METRICS, type Metric, fmtInt, inkOn, metricValue, pct, ramp } from "../../lib/openModelsFmt";
+import { METRICS, type Metric, fmtInt, inkOn, mean, metricValue, pct, ramp } from "../../lib/openModelsFmt";
 import { Bar, Legend } from "./ui";
 
 const metricLabel = (m: Metric) => METRICS.find((x) => x.id === m)?.short ?? m;
@@ -19,7 +19,11 @@ function niceMax(v: number, step = 0.1): number {
 
 /* ------------------------------------------------------------ level curve --- */
 
-/** Accuracy across the L1-L5 task ladder, one line per model. Scales to a field. */
+/** The field's average run, level by level — "is this level hard for everyone?" */
+export const fieldMeanByLevel = (models: ModelEntry[], levels: LevelDef[], metric: Metric): (number | null)[] =>
+  levels.map((_, i) => mean(models.map((m) => metricValue(m.totals.levels[i], metric)).filter((v): v is number => v != null)));
+
+/** Accuracy across the L1-L5 task ladder, one line per model, plus the field mean. */
 export function LevelSlope({
   models,
   levels,
@@ -48,9 +52,11 @@ export function LevelSlope({
     values: levels.map((_, i) => metricValue(m.totals.levels[i], metric)),
   }));
   const oracle = metric === "headroom" ? null : levels.map((_, i) => models[0]?.totals.levels[i]?.oracle ?? null);
+  const field = fieldMeanByLevel(models, levels, metric);
   const rawMax = Math.max(
     ...series.flatMap((s) => s.values.map((v) => v ?? 0)),
     ...(oracle ?? []).map((v) => v ?? 0),
+    ...field.map((v) => v ?? 0),
   );
   const maxV = niceMax(rawMax);
   const y = (v: number) => padT + plotH - (Math.max(0, Math.min(maxV, v)) / maxV) * plotH;
@@ -83,6 +89,15 @@ export function LevelSlope({
           baseline
         </text>
       )}
+      {/* the field's average run, per level */}
+      <polyline
+        points={field.map((v, i) => x(i) + "," + y(v ?? 0)).join(" ")}
+        fill="none"
+        stroke="#9a9a9a"
+        strokeWidth="1.8"
+        strokeLinejoin="round"
+        opacity={focus ? 0.4 : 0.85}
+      />
       {series.map((s) => {
         const a = dim(s.m, focus);
         return (
@@ -122,6 +137,9 @@ export function LevelSlope({
           </text>
         </g>
       ))}
+      <text x={x(0)} y={padT + 2} className="fill-[#9a9a9a] font-mono text-[9px]">
+        field mean {pct(field[0] ?? null, 1)} → {pct(field[field.length - 1] ?? null, 1)}
+      </text>
     </svg>
   );
 }
@@ -143,9 +161,9 @@ export function FamilyMatrix({
   const names = models[0]?.families.map((f) => f.name) ?? [];
   const rows = names.map((name, fi) => {
     const cells = models.map((m) => ({ m, v: metricValue(m.families[fi], metric) ?? 0 }));
-    const mean = cells.reduce((s, c) => s + c.v, 0) / Math.max(1, cells.length);
+    const avg = mean(cells.map((c) => c.v)) ?? 0;
     const best = Math.max(...cells.map((c) => c.v));
-    return { name, fi, cells, mean, best, n: models[0].families[fi].n, oracle: models[0].families[fi].oracle };
+    return { name, fi, cells, avg, best, n: models[0].families[fi].n, oracle: models[0].families[fi].oracle };
   });
   const max = Math.max(0.35, ...rows.flatMap((r) => r.cells.map((c) => c.v)));
 
@@ -169,13 +187,18 @@ export function FamilyMatrix({
                 </button>
               </th>
             ))}
-            <th className="px-1 pb-1.5 text-center font-mono text-[9px] uppercase tracking-widest text-[#666]">base</th>
+            <th className="px-1 pb-1.5 text-center font-mono text-[9px] uppercase tracking-widest text-[#9a9a9a]" title="average of the whole field">
+              field
+            </th>
+            <th className="px-1 pb-1.5 text-center font-mono text-[9px] uppercase tracking-widest text-[#666]" title="what guessing the most common answer scores">
+              guess
+            </th>
             <th className="px-1 pb-1.5 text-center font-mono text-[9px] uppercase tracking-widest text-[#666]">n</th>
           </tr>
         </thead>
         <tbody>
           {rows
-            .sort((a, b) => b.mean - a.mean)
+            .sort((a, b) => b.avg - a.avg)
             .map((r) => (
               <tr key={r.name}>
                 <th scope="row" className="sticky left-0 z-10 max-w-[220px] truncate bg-[#0a0a0a] py-[3px] pr-2 text-left font-mono text-[11px] font-normal text-[#c9c9c9]">
@@ -202,6 +225,15 @@ export function FamilyMatrix({
                     </td>
                   );
                 })}
+                <td className="p-[2px]">
+                  <div
+                    title={"field mean · " + r.name + " · " + pct(r.avg, 1)}
+                    className="flex h-[30px] items-center justify-center rounded-[3px] font-mono text-[11px] font-semibold tabular-nums text-[#ededed]"
+                    style={{ background: ramp(Math.max(0, Math.min(1, r.avg / max)) * 0.5), boxShadow: "inset 0 0 0 1px #4a4a4a" }}
+                  >
+                    {(r.avg * 100).toFixed(1)}
+                  </div>
+                </td>
                 <td className="px-1 text-center font-mono text-[10px] tabular-nums text-[#555]">{pct(r.oracle, 1)}</td>
                 <td className="px-1 text-center font-mono text-[9px] text-[#444]">{Math.round(r.n / 1000)}k</td>
               </tr>
@@ -209,8 +241,9 @@ export function FamilyMatrix({
         </tbody>
       </table>
       <p className="mt-2 font-mono text-[10px] text-[#666]">
-        {metricLabel(metric)} per family · ringed cell = best in that family · <span className="text-[#555]">base</span> = majority-answer
-        baseline · rows ordered by the field's mean.
+        {metricLabel(metric)} per family · ringed cell = best run in that family · <span className="text-[#9a9a9a]">field</span> = average
+        across all {models.length} runs (hard for everyone, or just for some?) · <span className="text-[#555]">guess</span> = majority-answer
+        baseline · rows ordered by the field mean.
       </p>
     </div>
   );

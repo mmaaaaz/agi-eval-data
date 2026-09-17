@@ -134,7 +134,7 @@ export function Method() {
           <Panel className="p-4">
             <p className="font-mono text-[9px] uppercase tracking-widest text-[#9fd8b4]">exact</p>
             <p className="mt-2 text-[12.5px] leading-relaxed text-[#a1a1a1]">
-              Counts, per-domain / level / family accuracies, baseline shares, single-answer detection, coverage and unparsed-answer rates —
+              Counts, per-domain / level / family accuracies, guessing shares, single-answer detection, coverage and no-usable-answer rates —
               integer tallies over complete files, re-derivable with the bake script.
             </p>
           </Panel>
@@ -211,11 +211,11 @@ export function Method() {
               </li>
               <li>
                 <b>Multi-part credit.</b> {a.audit.zeroHarness.filter((z) => z.kind === "multipart").length} levels use semicolon-separated
-                answers where runs supply one part; the frozen rule awards no accuracy there, only partial credit.
+                answers where runs supply one part; the frozen rule awards no accuracy there, only half marks.
               </li>
               <li>
                 <b>Single-answer levels.</b> {a.audit.constantLevels.length} levels have one ground truth for all images, and at L5 the
-                majority-answer baseline ({pct(a.models[0].totals.levels[4]?.oracle ?? null, 1)}) is ahead of every run. Exclude them before
+                guessing floor ({pct(a.models[0].totals.levels[4]?.oracle ?? null, 1)}) is ahead of every run. Exclude them before
                 making any claim about L5.
               </li>
               <li>
