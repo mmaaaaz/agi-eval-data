@@ -18,6 +18,7 @@ const TABS = [
   { to: "/open-models/matrix", label: "matrix" },
   { to: "/open-models/compare", label: "compare" },
   { to: "/open-models/audit", label: "audit" },
+  { to: "/open-models/reanalysis", label: "reanalysis" },
   { to: "/open-models/method", label: "method" },
 ] as const;
 

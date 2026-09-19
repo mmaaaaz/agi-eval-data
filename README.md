@@ -85,6 +85,7 @@ one accuracy; the runs' own scorer is reported beside it as a grader-quality che
 | `/open-models/matrix` | Domain × level heat grid for one model and one metric |
 | `/open-models/compare` | Any two runs: wins, per-family/level gaps, 1:1 scatter, paired table |
 | `/open-models/audit` | Grader disagreements classified, zero levels, single-answer levels, ground-truth drift |
+| `/open-models/reanalysis` | Test-1 reanalysis: constant-answer baselines on the evaluated sample, the adjusted transform, image-level bootstrap CIs, cross-checks |
 | `/open-models/method` | The frozen rule, what was verified, exact vs rule-dependent, caveats, reproduce |
 | `/open-models/models/$id` | Per-run card: levels, families, strengths, grader disagreements |
 
@@ -133,6 +134,8 @@ python scripts/grip_validate.py         # dataset invariants + override conflict
 python scripts/metro_build_data.py      # bake metro version.json (sync feed)
 python scripts/open_models_bake.py      # re-grade the open-model runs -> data/open-models/models.json
 python scripts/open_models_public.py    # copy that artifact into apps/grip-web/public/data/
+python scripts/open_models_test1_reanalysis.py   # baselines + adjusted scores + bootstrap CIs -> reanalysis.json
+python scripts/open_models_test1_report.py       # render docs/open-models-test1-reanalysis.md from it
 ```
 
 Each site expects its relay URL + access code in `/settings` (stored in your browser).
