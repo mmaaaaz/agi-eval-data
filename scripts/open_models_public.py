@@ -16,8 +16,10 @@ from pathlib import Path
 
 REPO = Path(__file__).resolve().parent.parent
 SRC = REPO / "data" / "open-models" / "models.json"
+REANALYSIS = REPO / "data" / "open-models" / "reanalysis.json"
 DEST_DIR = REPO / "apps" / "grip-web" / "public" / "data"
 DEST = DEST_DIR / "open-models.json"
+DEST_REANALYSIS = DEST_DIR / "open-models-reanalysis.json"
 
 
 def main() -> int:
@@ -27,6 +29,11 @@ def main() -> int:
     DEST_DIR.mkdir(parents=True, exist_ok=True)
     shutil.copy2(SRC, DEST)
     print(f"open_models_public: {SRC.relative_to(REPO)} -> {DEST.relative_to(REPO)} ({DEST.stat().st_size / 1024:.1f} KB)")
+    if REANALYSIS.exists():
+        shutil.copy2(REANALYSIS, DEST_REANALYSIS)
+        print(f"open_models_public: {REANALYSIS.relative_to(REPO)} -> {DEST_REANALYSIS.relative_to(REPO)} ({DEST_REANALYSIS.stat().st_size / 1024:.1f} KB)")
+    else:
+        print("open_models_public: reanalysis.json not found - run scripts/open_models_test1_reanalysis.py", file=sys.stderr)
     return 0
 
 

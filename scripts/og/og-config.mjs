@@ -189,6 +189,15 @@ export function siteConfig(name) {
         image: "overview.png",
         url: "/open-models",
       },
+      {
+        dir: "open-models/reanalysis",
+        title: "Test-1 reanalysis · grip-eval",
+        desc:
+          "Constant-answer baselines on the evaluated sample, the (accuracy - baseline) / (1 - baseline) " +
+          "transform, image-level bootstrap CIs, and the impossible_object cross-check for six open VLMs.",
+        image: "overview.png",
+        url: "/open-models/reanalysis",
+      },
     ];
     return {
       dist: join(root, "apps", "grip-web", "dist"),

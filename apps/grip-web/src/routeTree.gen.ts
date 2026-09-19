@@ -21,6 +21,7 @@ import { Route as OpenModelsAuditRouteImport } from './routes/open-models.audit'
 import { Route as OpenModelsCompareRouteImport } from './routes/open-models.compare'
 import { Route as OpenModelsMatrixRouteImport } from './routes/open-models.matrix'
 import { Route as OpenModelsMethodRouteImport } from './routes/open-models.method'
+import { Route as OpenModelsReanalysisRouteImport } from './routes/open-models.reanalysis'
 import { Route as OpenModelsDomainsIndexRouteImport } from './routes/open-models.domains.index'
 import { Route as OpenModelsDomainsSlugRouteImport } from './routes/open-models.domains.$slug'
 import { Route as OpenModelsModelsIdRouteImport } from './routes/open-models.models.$id'
@@ -86,6 +87,11 @@ const OpenModelsMethodRoute = OpenModelsMethodRouteImport.update({
   path: '/method',
   getParentRoute: () => OpenModelsRoute,
 } as any)
+const OpenModelsReanalysisRoute = OpenModelsReanalysisRouteImport.update({
+  id: '/reanalysis',
+  path: '/reanalysis',
+  getParentRoute: () => OpenModelsRoute,
+} as any)
 const OpenModelsDomainsIndexRoute = OpenModelsDomainsIndexRouteImport.update({
   id: '/domains/',
   path: '/domains/',
@@ -118,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/open-models/compare': typeof OpenModelsCompareRoute
   '/open-models/matrix': typeof OpenModelsMatrixRoute
   '/open-models/method': typeof OpenModelsMethodRoute
+  '/open-models/reanalysis': typeof OpenModelsReanalysisRoute
   '/categories/': typeof CategoriesIndexRoute
   '/open-models/': typeof OpenModelsIndexRoute
   '/open-models/domains/$slug': typeof OpenModelsDomainsSlugRoute
@@ -135,6 +142,7 @@ export interface FileRoutesByTo {
   '/open-models/compare': typeof OpenModelsCompareRoute
   '/open-models/matrix': typeof OpenModelsMatrixRoute
   '/open-models/method': typeof OpenModelsMethodRoute
+  '/open-models/reanalysis': typeof OpenModelsReanalysisRoute
   '/categories': typeof CategoriesIndexRoute
   '/open-models': typeof OpenModelsIndexRoute
   '/open-models/domains/$slug': typeof OpenModelsDomainsSlugRoute
@@ -154,6 +162,7 @@ export interface FileRoutesById {
   '/open-models/compare': typeof OpenModelsCompareRoute
   '/open-models/matrix': typeof OpenModelsMatrixRoute
   '/open-models/method': typeof OpenModelsMethodRoute
+  '/open-models/reanalysis': typeof OpenModelsReanalysisRoute
   '/categories/': typeof CategoriesIndexRoute
   '/open-models/': typeof OpenModelsIndexRoute
   '/open-models/domains/$slug': typeof OpenModelsDomainsSlugRoute
@@ -174,6 +183,7 @@ export interface FileRouteTypes {
     | '/open-models/compare'
     | '/open-models/matrix'
     | '/open-models/method'
+    | '/open-models/reanalysis'
     | '/categories/'
     | '/open-models/'
     | '/open-models/domains/$slug'
@@ -191,6 +201,7 @@ export interface FileRouteTypes {
     | '/open-models/compare'
     | '/open-models/matrix'
     | '/open-models/method'
+    | '/open-models/reanalysis'
     | '/categories'
     | '/open-models'
     | '/open-models/domains/$slug'
@@ -209,6 +220,7 @@ export interface FileRouteTypes {
     | '/open-models/compare'
     | '/open-models/matrix'
     | '/open-models/method'
+    | '/open-models/reanalysis'
     | '/categories/'
     | '/open-models/'
     | '/open-models/domains/$slug'
@@ -314,6 +326,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof OpenModelsMethodRouteImport
       parentRoute: typeof OpenModelsRoute
     }
+    '/open-models/reanalysis': {
+      id: '/open-models/reanalysis'
+      path: '/reanalysis'
+      fullPath: '/open-models/reanalysis'
+      preLoaderRoute: typeof OpenModelsReanalysisRouteImport
+      parentRoute: typeof OpenModelsRoute
+    }
     '/open-models/domains/': {
       id: '/open-models/domains/'
       path: '/domains'
@@ -350,6 +369,7 @@ interface OpenModelsRouteChildren {
   OpenModelsCompareRoute: typeof OpenModelsCompareRoute
   OpenModelsMatrixRoute: typeof OpenModelsMatrixRoute
   OpenModelsMethodRoute: typeof OpenModelsMethodRoute
+  OpenModelsReanalysisRoute: typeof OpenModelsReanalysisRoute
   OpenModelsIndexRoute: typeof OpenModelsIndexRoute
   OpenModelsDomainsSlugRoute: typeof OpenModelsDomainsSlugRoute
   OpenModelsModelsIdRoute: typeof OpenModelsModelsIdRoute
@@ -361,6 +381,7 @@ const OpenModelsRouteChildren: OpenModelsRouteChildren = {
   OpenModelsCompareRoute: OpenModelsCompareRoute,
   OpenModelsMatrixRoute: OpenModelsMatrixRoute,
   OpenModelsMethodRoute: OpenModelsMethodRoute,
+  OpenModelsReanalysisRoute: OpenModelsReanalysisRoute,
   OpenModelsIndexRoute: OpenModelsIndexRoute,
   OpenModelsDomainsSlugRoute: OpenModelsDomainsSlugRoute,
   OpenModelsModelsIdRoute: OpenModelsModelsIdRoute,
