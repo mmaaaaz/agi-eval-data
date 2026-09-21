@@ -81,7 +81,7 @@ export function Overview() {
           {a.benchmark.name} · {a.models.length} open VLMs · {a.domains.length} domains × 5 levels · {fmtInt(a.benchmark.questionsPerModel)} questions each
         </p>
         <h1 className="mt-3 max-w-[30ch] text-3xl font-semibold leading-[1.08] tracking-tighter text-white sm:text-4xl lg:text-[44px]">
-          Six open models, one benchmark, <span className="text-accent">one frozen grading rule</span>
+          {a.models.length} open models, one benchmark, <span className="text-accent">one frozen grading rule</span>
         </h1>
         <p className="mt-4 max-w-[88ch] text-[14.5px] leading-relaxed text-[#a1a1a1]">
           Every answer every run produced is re-graded by a single published rule, so each model has exactly one accuracy here and the

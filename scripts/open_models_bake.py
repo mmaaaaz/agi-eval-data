@@ -925,7 +925,22 @@ def main() -> int:
     over_credited = movers[:8]
     under_credited = list(reversed(movers[-8:]))
 
+    # Coverage gaps: a run that evaluated fewer items in a domain than the widest run.
+    # Recorded rather than assumed away, because every per-domain comparison for that
+    # model/domain is then over a smaller sample.
+    coverage_gaps = []
+    for d in domains_out:
+        widest = max(p["n"] for p in d["per"])
+        for p in d["per"]:
+            if p["n"] < widest:
+                coverage_gaps.append({
+                    "model": p["model"], "domain": d["key"], "n": p["n"], "widest": widest,
+                    "missing": widest - p["n"], "share": round(p["n"] / widest, 4),
+                    "images": p["images"],
+                })
+
     integrity = {
+        "coverageGaps": coverage_gaps,
         "dupIds": sum(per_model_domains[m["id"]].get(d, {}).get("dupIds", 0) for m in model_out for d in per_model_domains[m["id"]]),
         # ground truth must be identical across runs for the comparison to be paired;
         # only models after the first are compared, the first one is the reference.
@@ -1048,6 +1063,9 @@ def main() -> int:
               f"partial {t['partial'] * 100:6.2f}%  parseFail {t['pfRate'] * 100:5.2f}%  agree {t['agreement'] * 100:6.2f}%")
     print(f"  zero-harness levels: {len(zero_harness)}   zero-frozen levels: {len(zero_frozen)}   "
           f"constant levels: {len(artifact['audit']['constantLevels'])}")
+    for g in coverage_gaps:
+        print(f"  coverage gap: {g['model']} / {g['domain']} has {g['n']:,} of {g['widest']:,} items "
+              f"({g['images']} images, {g['missing']:,} missing)")
     print(f"  ground-truth drift vs current upstream snapshot: {drift_total['mismatch']:,} of {drift_total['checked']:,}")
     if integrity["gtPairing"]["checked"]:
         print(

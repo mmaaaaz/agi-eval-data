@@ -69,6 +69,23 @@
     "notes": "Dense open vision-language model (8,661,703,120 parameters), Apache-2.0. Its model card links no paper.",
     "short": "Molmo2"
   },
+  "pixtral-large-instruct-2411-hf-fp8-dynamic": {
+    "label": "Pixtral Large 2411 (FP8)",
+    "short": "Pixtral",
+    "org": "Mistral AI",
+    "params": "124B (FP8)",
+    "activeParams": null,
+    "license": "Mistral Research License (MRL)",
+    "released": "2024-11",
+    "context": null,
+    "mode": null,
+    "accent": "#a3e635",
+    "links": {
+      "huggingface": "https://huggingface.co/RedHatAI/Pixtral-Large-Instruct-2411-hf-FP8-dynamic",
+      "paper": null
+    },
+    "notes": "Instruction-tuned Pixtral Large: 124,143,316,352 parameters, of which 121.8B are stored FP8_E4M3 — the FP8-dynamic build by Red Hat AI of mistralai/Pixtral-Large-Instruct-2411. Weights carry the Mistral Research License, not an OSI licence. Its combination3d run covers 725 of 1,500 images (3,878 records missing), so per-domain comparisons for that domain rest on a smaller sample."
+  },
   "qwen3-vl-8b-instruct": {
     "label": "Qwen3-VL-8B-Instruct",
     "org": "Qwen",

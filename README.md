@@ -35,8 +35,9 @@ scripts/           Drive scanners (drive_scan.py, metro_scan.py), build tooling,
 data/latest.json   THE real-world artifact — overwritten by the sync bot (change-gated)
 data/metro.json    THE metro artifact (v4: folders/country/city taxonomy)
 data/grip/         THE grip artifacts (tree.json + {slug}.json.gz ×34) — baked by scripts/grip_scan.py
-data/open-models/  THE open-model artifact (models.json + version.json + models.meta.json) — baked by
-                   scripts/open_models_bake.py from the raw runs in data/open-model-analysis/
+data/open-models/  THE open-model artifacts — models.json (baked by scripts/open_models_bake.py from the raw
+                   runs in data/open-model-analysis/), reanalysis.json (baselines + adjusted scores) and
+                   grain.json (the grain sweep over data/grain_test/)
 docs/              plans & decision log · docs/METRO_PLAN.md is the metro design · docs/grip.md is the grip design
 ```
 
@@ -86,6 +87,7 @@ one accuracy; the runs' own scorer is reported beside it as a grader-quality che
 | `/open-models/compare` | Any two runs: wins, per-family/level gaps, 1:1 scatter, paired table |
 | `/open-models/audit` | Grader disagreements classified, zero levels, single-answer levels, ground-truth drift |
 | `/open-models/reanalysis` | Test-1 reanalysis: constant-answer baselines on the evaluated sample, the adjusted transform, image-level bootstrap CIs, cross-checks |
+| `/open-models/grain` | Grain-robustness sweep (σ 15/25/40): each condition paired against the clean run of the same model on the same images |
 | `/open-models/method` | The frozen rule, what was verified, exact vs rule-dependent, caveats, reproduce |
 | `/open-models/models/$id` | Per-run card: levels, families, strengths, grader disagreements |
 
@@ -136,6 +138,8 @@ python scripts/open_models_bake.py      # re-grade the open-model runs -> data/o
 python scripts/open_models_public.py    # copy that artifact into apps/grip-web/public/data/
 python scripts/open_models_test1_reanalysis.py   # baselines + adjusted scores + bootstrap CIs -> reanalysis.json
 python scripts/open_models_test1_report.py       # render docs/open-models-test1-reanalysis.md from it
+python scripts/open_models_grain.py             # grain sweep -> data/open-models/grain.json (paired deltas + CIs)
+python scripts/open_models_grain_report.py      # render docs/open-models-grain-sweep.md from it
 ```
 
 Each site expects its relay URL + access code in `/settings` (stored in your browser).

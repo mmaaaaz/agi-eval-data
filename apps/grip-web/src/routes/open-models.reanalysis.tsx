@@ -14,14 +14,7 @@ import { fmtInt, pct } from "../lib/openModelsFmt";
 
 export const Route = createFileRoute("/open-models/reanalysis")({ component: ReanalysisPage });
 
-const ORDER = [
-  "Qwen3-VL-8B-Instruct",
-  "Qwen3-VL-8B-Thinking",
-  "Molmo2-8B",
-  "InternVL3.5-8B",
-  "Kimi-VL-A3B-Thinking",
-  "DeepSeek-VL2-Small",
-];
+/** compact names for dense tables; unknown runs fall back to their first word */
 const SHORT: Record<string, string> = {
   "Qwen3-VL-8B-Instruct": "Qwen-I",
   "Qwen3-VL-8B-Thinking": "Qwen-T",
@@ -29,6 +22,7 @@ const SHORT: Record<string, string> = {
   "InternVL3.5-8B": "InternVL",
   "Kimi-VL-A3B-Thinking": "Kimi",
   "DeepSeek-VL2-Small": "DeepSeek",
+  "Pixtral Large 2411 (FP8)": "Pixtral",
 };
 const MD = "https://github.com/mmaaaaz/agi-eval-data/blob/main/docs/open-models-test1-reanalysis.md";
 
@@ -92,7 +86,9 @@ export function ReanalysisPage() {
   }
 
   const M = data.models;
-  const ranked = [...ORDER].sort((a, b) => (M[b].overall.macro ?? -9) - (M[a].overall.macro ?? -9));
+  const ORDER = Object.keys(M).sort((a, b) => (M[b].overall.macro ?? -9) - (M[a].overall.macro ?? -9));
+  for (const k of ORDER) if (!SHORT[k]) SHORT[k] = k.split(" ")[0];
+  const ranked = ORDER;
   const lead = ranked[0];
   const below = ranked.filter((l) => (M[l].overall.macro ?? 0) < 0);
   const constCells = M[ORDER[0]].constant_cells;
@@ -125,7 +121,7 @@ export function ReanalysisPage() {
             <Tile label="best adjusted MACRO" value={pct(M[lead].overall.macro, 2)} accent="#9fd8b4" sub={lead} />
             <Tile
               label="below the baseline"
-              value={below.length + " of 6"}
+              value={below.length + " of " + ORDER.length}
               accent={below.length ? "#f0a5a5" : undefined}
               sub={below.map((l) => SHORT[l]).join(", ") + " — worse than a constant answer on average"}
             />

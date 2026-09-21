@@ -190,6 +190,15 @@ export function siteConfig(name) {
         url: "/open-models",
       },
       {
+        dir: "open-models/grain",
+        title: "Grain sweep · grip-eval",
+        desc:
+          "The same benchmark questions on grain-corrupted images (sigma 15/25/40), each delta paired against " +
+          "the clean run of the same model on the same images.",
+        image: "overview.png",
+        url: "/open-models/grain",
+      },
+      {
         dir: "open-models/reanalysis",
         title: "Test-1 reanalysis · grip-eval",
         desc:
