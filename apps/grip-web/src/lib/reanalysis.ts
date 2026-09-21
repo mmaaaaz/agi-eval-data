@@ -106,3 +106,65 @@ export function useReanalysis(): ReanalysisState {
 
   return { data, loading, error, source };
 }
+
+const GRAIN_PATH = "data/open-models/grain.json";
+const GRAIN_LOCAL = "/data/open-models-grain.json";
+
+async function fetchArtifact<T>(path: string, local: string, validate: (x: unknown) => x is T): Promise<{ data: T; source: string }> {
+  const bust = Date.now();
+  const urls: { url: string; source: string }[] = [
+    { url: local, source: "local" },
+    { url: `https://raw.githubusercontent.com/${DATA_REPO}/main/${path}?v=${bust}`, source: "github" },
+  ];
+  let lastError = "unreachable";
+  for (const c of urls) {
+    try {
+      const res = await fetch(c.url, c.source === "local" ? undefined : { cache: "no-store" });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const parsed = (await res.json()) as unknown;
+      if (!validate(parsed)) throw new Error("malformed artifact");
+      return { data: parsed, source: c.source };
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e);
+    }
+  }
+  throw new Error(lastError);
+}
+
+function isGrain(x: unknown): x is import("./reanalysisTypes").Grain {
+  if (!x || typeof x !== "object") return false;
+  const g = x as { models?: unknown; what_it_is?: unknown };
+  return !!g.models && !!g.what_it_is;
+}
+
+let grainMemory: import("./reanalysisTypes").Grain | null = null;
+
+/** Grain-sweep artifact. Fetched only by the grain page. */
+export function useGrain(): { data: import("./reanalysisTypes").Grain | null; loading: boolean; error: string | null } {
+  const [data, setData] = useState<import("./reanalysisTypes").Grain | null>(grainMemory);
+  const [loading, setLoading] = useState(!grainMemory);
+  const [error, setError] = useState<string | null>(null);
+  const inFlight = useRef(false);
+
+  useEffect(() => {
+    if (grainMemory) {
+      setLoading(false);
+      return;
+    }
+    if (inFlight.current) return;
+    inFlight.current = true;
+    fetchArtifact(GRAIN_PATH, GRAIN_LOCAL, isGrain)
+      .then(({ data: d }) => {
+        grainMemory = d;
+        setData(d);
+        setError(null);
+      })
+      .catch((e) => setError(e instanceof Error ? e.message : String(e)))
+      .finally(() => {
+        inFlight.current = false;
+        setLoading(false);
+      });
+  }, []);
+
+  return { data, loading, error };
+}

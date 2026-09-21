@@ -51,6 +51,7 @@ RUNS_BY_LABEL = {
     "InternVL3.5-8B": "InternVL3_5-8B/internvl3_5-8b",
     "Kimi-VL-A3B-Thinking": "Kimi-VL-A3B-Thinking/kimi-vl-a3b-thinking",
     "DeepSeek-VL2-Small": "deepseek-vl2-small/deepseek-vl2-small",
+    "Pixtral Large 2411 (FP8)": "Pixtral-Large-Instruct-2411-hf-FP8-dynamic/pixtral-large-instruct-2411-hf-fp8-dynamic",
 }
 FAMILIES = {
     "Plane Geometry": ["nested_squares", "nested_triangles", "nested_hexagons", "line_intersection", "angle_estimation"],
@@ -412,6 +413,7 @@ MODEL_ID = {
     "InternVL3.5-8B": "internvl3_5-8b",
     "Kimi-VL-A3B-Thinking": "kimi-vl-a3b-thinking",
     "DeepSeek-VL2-Small": "deepseek-vl2-small",
+    "Pixtral Large 2411 (FP8)": "pixtral-large-instruct-2411-hf-fp8-dynamic",
 }
 
 

@@ -17,10 +17,11 @@ DATA = REPO / "data" / "open-models" / "reanalysis.json"
 PUB = REPO / "data" / "open-models" / "models.json"
 OUT = REPO / "docs" / "open-models-test1-reanalysis.md"
 
-ORDER = ["Qwen3-VL-8B-Instruct", "Qwen3-VL-8B-Thinking", "Molmo2-8B",
-         "InternVL3.5-8B", "Kimi-VL-A3B-Thinking", "DeepSeek-VL2-Small"]
+# display order and compact names; any model the artifact carries but this map
+# does not know is still printed, using its own label
 SHORT = {"Qwen3-VL-8B-Instruct": "Qwen-I", "Qwen3-VL-8B-Thinking": "Qwen-T", "Molmo2-8B": "Molmo2",
-         "InternVL3.5-8B": "InternVL", "Kimi-VL-A3B-Thinking": "Kimi", "DeepSeek-VL2-Small": "DeepSeek"}
+         "InternVL3.5-8B": "InternVL", "Kimi-VL-A3B-Thinking": "Kimi", "DeepSeek-VL2-Small": "DeepSeek",
+         "Pixtral Large 2411 (FP8)": "Pixtral"}
 
 
 def f4(x):
@@ -40,6 +41,9 @@ def main() -> int:
     pub = json.loads(PUB.read_text(encoding="utf-8"))
     pubacc = {m["label"]: m["totals"]["acc"] for m in pub["models"]}
     M = r["models"]
+    ORDER = sorted(M, key=lambda k: -(M[k]["overall"]["macro"] if M[k]["overall"]["macro"] is not None else -9))
+    for k in ORDER:
+        SHORT.setdefault(k, k.split(" ")[0])
     L = []
     a = L.append
     ranked = sorted(ORDER, key=lambda k: -(M[k]["overall"]["macro"] or -9))

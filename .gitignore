@@ -6,6 +6,7 @@ client_secret.json
 
 # raw VLM evaluation runs (hundreds of MB) — the baked artifact IS tracked
 data/open-model-analysis/*/
+data/grain_test/*/
 !data/open-model-analysis/legacy/
 data/open-models/.cache/
 

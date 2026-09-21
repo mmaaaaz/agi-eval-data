@@ -21,6 +21,7 @@
     "data:grip": "python scripts/grip_scan.py && python scripts/grip_validate.py && python scripts/grip_sync_public.py",
     "data:open-models": "python scripts/open_models_bake.py && python scripts/open_models_public.py",
     "data:open-models:test1": "python scripts/open_models_test1_reanalysis.py && python scripts/open_models_test1_report.py && python scripts/open_models_public.py",
+    "data:open-models:grain": "python scripts/open_models_grain.py && python scripts/open_models_grain_report.py && python scripts/open_models_public.py",
     "data:open-models:refresh": "python scripts/open_models_bake.py --refresh && python scripts/open_models_public.py",
     "check:grip": "python scripts/grip_validate.py",
     "dev:grip-web": "turbo run dev --filter=@grip/web"

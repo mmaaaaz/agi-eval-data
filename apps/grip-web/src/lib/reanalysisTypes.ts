@@ -80,3 +80,55 @@ export type Reanalysis = {
   subset_8500: Blocked;
   frontier_comparison: Blocked;
 };
+
+/** Mirrors scripts/open_models_grain.py output (data/open-models/grain.json). */
+
+export type GrainCondition = {
+  condition: string;
+  n: number;
+  cells: number;
+  grain_exact: number | null;
+  main_exact: number | null;
+  delta_pooled: number | null;
+  delta_macro: number | null;
+  delta_ci: [number, number] | null;
+  n_parsed: number;
+  grain_exact_parsed: number | null;
+  main_exact_parsed: number | null;
+  delta_parsed_pooled: number | null;
+  delta_parsed_ci: [number, number] | null;
+  unparsed_grain: number;
+  unparsed_main: number;
+};
+
+export type GrainGroupRow = {
+  key: string | number;
+  condition: string;
+  n: number;
+  main_n: number;
+  grain_exact: number | null;
+  main_exact: number | null;
+  delta: number | null;
+};
+
+export type GrainModel = {
+  id: string;
+  conditions: string[];
+  per_condition: GrainCondition[];
+  by_level: GrainGroupRow[];
+  by_domain: GrainGroupRow[];
+  by_family: GrainGroupRow[];
+  completeness: Record<string, { records: number; expected: number; missing: number }>;
+};
+
+export type Grain = {
+  generated: string;
+  what_it_is: {
+    conditions: string[];
+    images_per_domain: number;
+    records_per_condition: number;
+    verified: string[];
+    unverifiable: string[];
+  };
+  models: Record<string, GrainModel>;
+};

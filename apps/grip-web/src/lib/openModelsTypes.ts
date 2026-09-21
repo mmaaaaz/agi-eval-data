@@ -176,6 +176,8 @@ export type Artifact = {
     constantLevels: ConstantLevelRow[];
   };
   integrity: {
+    /** runs that evaluated fewer items in a domain than the widest run */
+    coverageGaps: { model: string; domain: string; n: number; widest: number; missing: number; share: number; images: number }[];
     dupIds: number;
     nominalPerDomain: number;
     evaluatedPerDomain: number;
