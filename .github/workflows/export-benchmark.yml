@@ -1,0 +1,157 @@
+name: export-benchmark
+
+# THE CANONICAL BENCHMARK EXPORT, committed to git.
+#
+# Ticket 17. `scripts/factory/02_fetch_export.py` downloads GET /api/questions/export.jsonl to
+# data/factory/questions.jsonl - the file the gate reads and that NOTHING produced, so the gate
+# could only ever report "no items found". The fetch is built; this is the scheduler around it.
+#
+# ---------------------------------------------------------------------------
+# THIS WORKFLOW IS MANUAL-ONLY ON PURPOSE. ENABLING THE SCHEDULE IS YOUR CALL.
+# ---------------------------------------------------------------------------
+#
+# The planning tree is private and nothing has been pushed this session. Publishing benchmark
+# data to a shared repository on a timer is a different kind of act from a data sync, and an
+# agent should not take it. **So the job exists, can be run by hand today, and does not fire on
+# its own.**
+#
+# TO ENABLE IT, uncomment the two lines under `on:` and commit. That is the whole change.
+#
+# ONE REPOSITORY VARIABLE MUST EXIST FIRST, or the job refuses to run:
+#
+#   Settings -> Secrets and variables -> Actions -> Variables -> New variable
+#     RELAY_URL = https://<your-worker>.workers.dev
+#
+# No secret is needed: the export endpoint is an open read.
+#
+# BEFORE YOU DO, check one thing that cannot be read from inside this repository:
+#
+#   Is `.github/rulesets/main-protection.json` APPLIED?   Settings -> Rules -> Rulesets
+#
+# If it IS applied, a `pull_request` rule rejects direct pushes, and this job - like the four
+# sync workflows that push the same way - will fail on every run. The failure is LOUD (see the
+# "Report a rejected push" step and the alert below), not silent, which is the point of writing
+# it this way rather than guessing.
+#
+#   APPLIED      -> either add the bot to the ruleset bypass list, or switch the push step to
+#                   open a pull request instead
+#   NOT APPLIED  -> uncomment the schedule and you are done
+
+on:
+  # schedule:
+  #   - cron: "0 7 * * *"   # daily 07:00 UTC, an hour after sync-data
+  workflow_dispatch:
+
+concurrency:
+  group: export-benchmark-main
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      # THE FETCH REFUSES TO OVERWRITE A GOOD FILE WITH AN EMPTY EXPORT, and prints what the
+      # gate is about to see. A non-zero exit here means the live set was unreachable or empty,
+      # and the committed file is left exactly as it was.
+      # THE ENV VAR NAME MUST MATCH WHAT THE SCRIPT READS. The first version set `RELAY`;
+      # `02_fetch_export.py` reads `RELAY_URL`, and refuses to run without it. The job would have
+      # failed on its first run with "refusing to run: set --relay or RELAY_URL." - **a workflow
+      # that cannot work, written by matching the idea in my head rather than the contract in the
+      # file.**
+      #
+      # AND NO SECRET IS NEEDED. The export is an OPEN READ (ADR-0002: open reads and drafts,
+      # code-gated approvals). The first version passed `HARNESS_CODE`, which the script never
+      # sends - an unused secret in the environment is the same defect as an unused import.
+      - name: Fetch the canonical export
+        env:
+          RELAY_URL: ${{ vars.RELAY_URL }}
+        run: python scripts/factory/02_fetch_export.py --out data/factory/questions.jsonl
+
+      - name: Commit the export
+        run: |
+          git config user.name  "agi-eval-bot"
+          git config user.email "bot@agi-eval-data.local"
+          git add data/factory/questions.jsonl
+          if git diff --cached --quiet; then
+            echo "No change since the last export."
+          else
+            git commit -m "chore(export): benchmark questions $(date -u '+%Y-%m-%dT%H:%MZ')"
+          fi
+
+      - name: Push, and SAY SO if the branch is protected
+        run: |
+          git fetch origin main
+          git pull --rebase origin main
+          if git diff --quiet origin/main; then
+            echo "nothing to push"
+            exit 0
+          fi
+          # A REJECTED PUSH IS REPORTED AS ITSELF. Without this the run fails with a raw
+          # git error, and the reader has to know that "protected branch" is the cause.
+          if ! git push origin HEAD:main 2>/tmp/push.err; then
+            echo "::error title=Push rejected::main refused the push. If main is protected,"
+            echo "::error::add the bot to the ruleset bypass list, or open a PR instead."
+            cat /tmp/push.err
+            exit 1
+          fi
+
+      # FAILURES ARE NOT SILENT. `sync-data.yml` already does this, and ticket 17 assumed a
+      # scheduled failure notifies nobody. It does - because the workflow says so.
+      - name: Alert on failure
+        if: failure()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: 'export-failed', state: 'open',
+            });
+            if (issues.length === 0) {
+              await github.rest.issues.create({
+                owner: context.repo.owner, repo: context.repo.repo,
+                title: `Benchmark export failed @ ${new Date().toISOString()}`,
+                labels: ['export-failed'],
+                body: `Run: ${context.serverUrl}/${context.repo.owner}/${context.repo.repo}/actions/runs/${context.runId}`
+                  + `\n\nIf the push was rejected, check whether the \`main-protection\` ruleset is applied.`,
+              });
+            }
+
+      # AN ALERT THAT CANNOT RE-FIRE IS NOT AN ALERT.
+      #
+      # The failure step opens an issue ONLY IF none is open. Nothing ever closed one, so after
+      # the first failure the issue stayed open for good and **every later failure created
+      # nothing and notified nobody** - the worst state, because it looks like alerting.
+      #
+      # Closing on SUCCESS is what makes the next failure a new event.
+      - name: Alert on recovery
+        if: success()
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const LABEL = 'export-failed';
+            const { data: issues } = await github.rest.issues.listForRepo({
+              owner: context.repo.owner, repo: context.repo.repo,
+              labels: LABEL, state: 'open',
+            });
+            for (const i of issues) {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: i.number,
+                body: `Recovered at ${new Date().toISOString()} - run ${context.runId} succeeded.`,
+              });
+              await github.rest.issues.update({
+                owner: context.repo.owner, repo: context.repo.repo,
+                issue_number: i.number, state: 'closed',
+              });
+            }

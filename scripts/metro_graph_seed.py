@@ -32,14 +32,14 @@ def city_name(filename: str) -> str:
 
 
 def main() -> None:
-    data = json.loads(SRC.read_text(encoding="utf-8"))
+    data = json.loads(SRC.read_text(encoding="utf-8-sig"))
     files = data.get("files", [])
     image_rows = [r for r in files if len(r) >= 9 and r[7] == "i"]
 
     existing = {}
     if OUT.exists():
         try:
-            prev = json.loads(OUT.read_text(encoding="utf-8"))
+            prev = json.loads(OUT.read_text(encoding="utf-8-sig"))
             existing = prev.get("graphs", {})
         except Exception:
             existing = {}

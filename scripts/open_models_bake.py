@@ -511,7 +511,7 @@ def scan_domain(path: Path, refresh: bool):
     key = f"{st.st_size}:{int(st.st_mtime)}"
     if not refresh and cpath.exists():
         try:
-            cached = json.loads(cpath.read_text(encoding="utf-8"))
+            cached = json.loads(cpath.read_text(encoding="utf-8-sig"))
             if cached.get("key") == key:
                 return cached["data"]
         except Exception:
@@ -671,7 +671,7 @@ def main() -> int:
         return 1
     print("models:", [m["id"] for m in models])
 
-    existing_meta = json.loads(META_FILE.read_text(encoding="utf-8")) if META_FILE.exists() else {}
+    existing_meta = json.loads(META_FILE.read_text(encoding="utf-8-sig")) if META_FILE.exists() else {}
     meta_overrides, seeded = seed_meta(models, existing_meta)
     if seeded:
         OUT_DIR.mkdir(parents=True, exist_ok=True)

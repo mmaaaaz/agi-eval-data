@@ -13,7 +13,7 @@ from pathlib import Path
 
 
 def load_snapshot(p):
-    d = json.loads(Path(p).read_text(encoding="utf-8"))
+    d = json.loads(Path(p).read_text(encoding="utf-8-sig"))
     files = {f["id"]: f for f in d["file_list"]}
     return d, files
 

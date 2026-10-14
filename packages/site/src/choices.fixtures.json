@@ -1,0 +1,87 @@
+{
+  "_why": "Shared by packages/site/src/questions.test.ts (TypeScript) and scripts/harness/selftest.py (Python). release.parse_choices and the site's parseChoices must agree on every encoding the pipeline can meet, or the release and the review screen disagree about what the options are.",
+  "cases": [
+    {
+      "input": [
+        "Yes",
+        "No"
+      ],
+      "expected": [
+        "Yes",
+        "No"
+      ],
+      "why": "a real array, straight from the API list endpoint"
+    },
+    {
+      "input": "[\"Yes\", \"No\", \"Maybe\"]",
+      "expected": [
+        "Yes",
+        "No",
+        "Maybe"
+      ],
+      "why": "a JSON array string — what the API export emits"
+    },
+    {
+      "input": "[\"The forklift\", \"The SUV\"]",
+      "expected": [
+        "The forklift",
+        "The SUV"
+      ],
+      "why": "options containing spaces"
+    },
+    {
+      "input": "Yes|No",
+      "expected": [
+        "Yes",
+        "No"
+      ],
+      "why": "the legacy pipe form release.py still supports"
+    },
+    {
+      "input": "  [\"a\", \"b\"]  ",
+      "expected": [
+        "a",
+        "b"
+      ],
+      "why": "surrounding whitespace"
+    },
+    {
+      "input": "[]",
+      "expected": [],
+      "why": "an empty JSON array"
+    },
+    {
+      "input": "",
+      "expected": [],
+      "why": "empty string: a numeric or text item"
+    },
+    {
+      "input": null,
+      "expected": [],
+      "why": "null: the column was never set"
+    },
+    {
+      "input": "[oops",
+      "expected": [
+        "[oops"
+      ],
+      "why": "malformed JSON falls back to the pipe split, never crashes"
+    },
+    {
+      "input": "[1, 2, 3]",
+      "expected": [
+        "1",
+        "2",
+        "3"
+      ],
+      "why": "non-string entries are coerced"
+    },
+    {
+      "input": "[\"\", \"No\"]",
+      "expected": [
+        "No"
+      ],
+      "why": "blank options are dropped"
+    }
+  ]
+}

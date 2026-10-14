@@ -8,7 +8,15 @@ import {
   UI_MESSAGE_STREAM_HEADERS,
   type UIMessage,
 } from "ai";
-import { createQuestionsApi } from "@questions-api";
+import {
+  ACTOR_COOKIE,
+  actorSetCookie,
+  createQuestionsApi,
+  hasCode,
+  issueActor,
+  parseCookies,
+  verifyActor,
+} from "@questions-api";
 import { normQ, normTags } from "@agi-eval/shared";
 import { CORS_HEADERS, jsonResponse as json } from "./http";
 import { z } from "zod";
@@ -16,7 +24,12 @@ import { z } from "zod";
 /** Worker env — D1 binding + AI gateway secrets (kept here; the factory takes db+code). */
 interface Env {
   DB?: D1Database;
+  /** reviewer secret: the only door that may approve ground truth */
   QUESTIONS_CODE?: string;
+  /** harness secret: the only door that may write measurements */
+  HARNESS_CODE?: string;
+  /** signs the server-issued actor id. Unset = fall back to the client's id. */
+  ACTOR_SECRET?: string;
   GATEWAY_KEY?: string;
   GATEWAY_MODEL?: string;
   ACCESS_CODE?: string;
@@ -124,8 +137,22 @@ export default {
       );
 
     if (url.pathname === "/api/chat" && request.method === "POST") {
-      if (env.ACCESS_CODE && request.headers.get("x-access-code") !== env.ACCESS_CODE)
-        return json({ error: "invalid access code" }, 401, { ...CORS_HEADERS });
+      // THIS DOOR FAILS CLOSED, LIKE THE OTHER TWO. It was `if (env.ACCESS_CODE && ...)`,
+      // so an UNSET secret meant no authentication at all — the opposite of the rule this
+      // project states about itself in wrangler.toml: an unset secret DISABLES the door.
+      // There was a third door, failing open, unnoticed because it is not a questions door.
+      // It also SPENDS: it reaches a paid OpenAI model through the AI gateway.
+      if (!hasCode(request.headers.get("x-access-code"), env.ACCESS_CODE))
+        return json(
+          {
+            error: env.ACCESS_CODE
+              ? "invalid access code"
+              : "pooled chat is not configured (missing ACCESS_CODE) — the site will not "
+                + "spend on an unauthenticated door. Set the secret, or add your own key.",
+          },
+          401,
+          { ...CORS_HEADERS },
+        );
 
       const limit = Number(env.RATE_LIMIT_PER_IP || 30);
       if (!allowIp(ipOf(request), limit))
@@ -249,9 +276,48 @@ export default {
     }
 
     if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS_HEADERS });
-    const qapi = createQuestionsApi({ db: env.DB, questionsCode: env.QUESTIONS_CODE, normQ, normTags });
-    const questionsResponse = await qapi.handle(request, url);
-    if (questionsResponse) return questionsResponse;
+    // Two doors, and both privileged ones FAIL CLOSED. An unset secret disables the
+    // door rather than opening it: reads and drafts stay open, but nothing can be
+    // approved and no measurement can be written. Warning, not opening.
+    if (!env.QUESTIONS_CODE) console.warn("[relay] QUESTIONS_CODE is unset: approval is DISABLED (fail closed). Set it to review items.");
+    if (!env.HARNESS_CODE) console.warn("[relay] HARNESS_CODE is unset: measurement ingest is DISABLED (fail closed). Set it to record model runs.");
+    // SERVER-ISSUED ACTOR IDENTITY.
+    //
+    // Not authentication, and it must not be described as such. The point is that
+    // an id in the ledger should be one this server chose and can verify, so a
+    // contributor cannot impersonate someone else by editing localStorage. If the
+    // secret is unset we fall back to the client's id and say so, because
+    // attribution is not a gate and blocking it would break authoring entirely.
+    let setCookie: string | null = null;
+    let actorId = "";
+    if (env.ACTOR_SECRET) {
+      const jar = parseCookies(request.headers.get("cookie"));
+      actorId = (await verifyActor(env.ACTOR_SECRET, jar[ACTOR_COOKIE])) ?? "";
+      if (!actorId) {
+        const issued = await issueActor(env.ACTOR_SECRET);
+        actorId = issued.id;
+        setCookie = actorSetCookie(issued.cookie, url.protocol === "https:");
+      }
+    } else {
+      console.warn("[relay] ACTOR_SECRET is unset: attribution falls back to the client-supplied id.");
+    }
+    const forwardedHeaders = new Headers(request.headers);
+    if (actorId) forwardedHeaders.set("x-actor", actorId);
+    forwardedHeaders.delete("cookie");
+    const forwarded = new Request(request, { headers: forwardedHeaders });
+
+    const qapi = createQuestionsApi({
+      db: env.DB,
+      questionsCode: env.QUESTIONS_CODE,
+      harnessCode: env.HARNESS_CODE,
+      normQ,
+      normTags,
+    });
+    const questionsResponse = await qapi.handle(forwarded, url);
+    if (questionsResponse) {
+      if (setCookie) questionsResponse.headers.append("Set-Cookie", setCookie);
+      return questionsResponse;
+    }
 
     return json({ error: "not found" }, 404, { ...CORS_HEADERS });
   },

@@ -121,3 +121,26 @@ jobs:
           else
             gh issue create --repo "$GITHUB_REPOSITORY" --title "$TITLE" --body "$BODY"
           fi
+
+  # THE OTHER HALF, AND IT WAS MISSING WHILE THE FAILURE HALF WAS DONE WELL.
+  #
+  # This workflow's failure step is the BEST of the five: it COMMENTS on an open issue rather than
+  # only creating one, so a second failure does notify. But nothing closed the issue, so a
+  # recovered re-bake left a "site may go stale" issue open for good - **and a stale warning is one
+  # people learn to ignore.**
+  notify-on-recovery:
+    name: close the drift issue when re-bake succeeds
+    needs: rebake
+    if: success()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Close the drift issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TITLE="grip re-bake failing — site may go stale"
+          EXISTING=$(gh issue list --repo "$GITHUB_REPOSITORY" --state open --search "in:title $TITLE" --json number --jq '.[0].number' 2>/dev/null || true)
+          if [ -n "$EXISTING" ]; then
+            gh issue comment "$EXISTING" --repo "$GITHUB_REPOSITORY" --body "Recovered: the re-bake succeeded in run $GITHUB_RUN_ID."
+            gh issue close "$EXISTING" --repo "$GITHUB_REPOSITORY"
+          fi

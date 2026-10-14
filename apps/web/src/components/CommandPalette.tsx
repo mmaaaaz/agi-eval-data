@@ -26,7 +26,6 @@ export function CommandPalette({ open, onClose }: { open: boolean; onClose: () =
       { key: "p-insights", label: "Insights", group: "Pages", run: () => navigate({ to: "/gallery/insights" }) },
       { key: "p-contribs", label: "Contributors", group: "Pages", run: () => navigate({ to: "/gallery/contributors" }) },
       { key: "p-dups", label: "Duplicates", group: "Pages", run: () => navigate({ to: "/gallery/duplicates" }) },
-      { key: "p-project", label: "Project", group: "Pages", run: () => navigate({ to: "/project" }) },
     ];
     if (!data) return pages;
     const actions: Item[] = [

@@ -10,17 +10,19 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as AskRouteImport } from './routes/ask'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as GalleryRouteImport } from './routes/gallery'
-import { Route as ProjectRouteImport } from './routes/project'
+import { Route as ResultsRouteImport } from './routes/results'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as StatusRouteImport } from './routes/status'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
-import { Route as ContributeEvaluateRouteImport } from './routes/contribute.evaluate'
+import { Route as ContributeReviewRouteImport } from './routes/contribute.review'
+import { Route as ContributeRulesRouteImport } from './routes/contribute.rules'
 import { Route as GalleryIndexRouteImport } from './routes/gallery.index'
 import { Route as GalleryDuplicatesRouteImport } from './routes/gallery.duplicates'
 import { Route as GalleryInsightsRouteImport } from './routes/gallery.insights'
 import { Route as GalleryOptimizationRouteImport } from './routes/gallery.optimization'
+import { Route as GalleryTriageRouteImport } from './routes/gallery.triage'
 import { Route as GalleryContributorsIndexRouteImport } from './routes/gallery.contributors.index'
 import { Route as GalleryContributorsEmailRouteImport } from './routes/gallery.contributors.$email'
 import { Route as GalleryOptimizationIndexRouteImport } from './routes/gallery.optimization.index'
@@ -29,11 +31,6 @@ import { Route as GalleryOptimizationOwnerRouteImport } from './routes/gallery.o
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AskRoute = AskRouteImport.update({
-  id: '/ask',
-  path: '/ask',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContributeRoute = ContributeRouteImport.update({
@@ -46,9 +43,9 @@ const GalleryRoute = GalleryRouteImport.update({
   path: '/gallery',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ProjectRoute = ProjectRouteImport.update({
-  id: '/project',
-  path: '/project',
+const ResultsRoute = ResultsRouteImport.update({
+  id: '/results',
+  path: '/results',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -56,14 +53,24 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const StatusRoute = StatusRouteImport.update({
+  id: '/status',
+  path: '/status',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ContributeIndexRoute = ContributeIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ContributeRoute,
 } as any)
-const ContributeEvaluateRoute = ContributeEvaluateRouteImport.update({
-  id: '/evaluate',
-  path: '/evaluate',
+const ContributeReviewRoute = ContributeReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
+  getParentRoute: () => ContributeRoute,
+} as any)
+const ContributeRulesRoute = ContributeRulesRouteImport.update({
+  id: '/rules',
+  path: '/rules',
   getParentRoute: () => ContributeRoute,
 } as any)
 const GalleryIndexRoute = GalleryIndexRouteImport.update({
@@ -84,6 +91,11 @@ const GalleryInsightsRoute = GalleryInsightsRouteImport.update({
 const GalleryOptimizationRoute = GalleryOptimizationRouteImport.update({
   id: '/optimization',
   path: '/optimization',
+  getParentRoute: () => GalleryRoute,
+} as any)
+const GalleryTriageRoute = GalleryTriageRouteImport.update({
+  id: '/triage',
+  path: '/triage',
   getParentRoute: () => GalleryRoute,
 } as any)
 const GalleryContributorsIndexRoute =
@@ -113,15 +125,17 @@ const GalleryOptimizationOwnerRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
-  '/project': typeof ProjectRoute
+  '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
-  '/contribute/evaluate': typeof ContributeEvaluateRoute
+  '/status': typeof StatusRoute
+  '/contribute/review': typeof ContributeReviewRoute
+  '/contribute/rules': typeof ContributeRulesRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
   '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
+  '/gallery/triage': typeof GalleryTriageRoute
   '/contribute/': typeof ContributeIndexRoute
   '/gallery/': typeof GalleryIndexRoute
   '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
@@ -131,12 +145,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
-  '/project': typeof ProjectRoute
+  '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
-  '/contribute/evaluate': typeof ContributeEvaluateRoute
+  '/status': typeof StatusRoute
+  '/contribute/review': typeof ContributeReviewRoute
+  '/contribute/rules': typeof ContributeRulesRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
+  '/gallery/triage': typeof GalleryTriageRoute
   '/contribute': typeof ContributeIndexRoute
   '/gallery': typeof GalleryIndexRoute
   '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
@@ -147,15 +163,17 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/ask': typeof AskRoute
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
-  '/project': typeof ProjectRoute
+  '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
-  '/contribute/evaluate': typeof ContributeEvaluateRoute
+  '/status': typeof StatusRoute
+  '/contribute/review': typeof ContributeReviewRoute
+  '/contribute/rules': typeof ContributeRulesRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
   '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
+  '/gallery/triage': typeof GalleryTriageRoute
   '/contribute/': typeof ContributeIndexRoute
   '/gallery/': typeof GalleryIndexRoute
   '/gallery/contributors/$email': typeof GalleryContributorsEmailRoute
@@ -167,15 +185,17 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/ask'
     | '/contribute'
     | '/gallery'
-    | '/project'
+    | '/results'
     | '/settings'
-    | '/contribute/evaluate'
+    | '/status'
+    | '/contribute/review'
+    | '/contribute/rules'
     | '/gallery/duplicates'
     | '/gallery/insights'
     | '/gallery/optimization'
+    | '/gallery/triage'
     | '/contribute/'
     | '/gallery/'
     | '/gallery/contributors/$email'
@@ -185,12 +205,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/ask'
-    | '/project'
+    | '/results'
     | '/settings'
-    | '/contribute/evaluate'
+    | '/status'
+    | '/contribute/review'
+    | '/contribute/rules'
     | '/gallery/duplicates'
     | '/gallery/insights'
+    | '/gallery/triage'
     | '/contribute'
     | '/gallery'
     | '/gallery/contributors/$email'
@@ -200,15 +222,17 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
-    | '/ask'
     | '/contribute'
     | '/gallery'
-    | '/project'
+    | '/results'
     | '/settings'
-    | '/contribute/evaluate'
+    | '/status'
+    | '/contribute/review'
+    | '/contribute/rules'
     | '/gallery/duplicates'
     | '/gallery/insights'
     | '/gallery/optimization'
+    | '/gallery/triage'
     | '/contribute/'
     | '/gallery/'
     | '/gallery/contributors/$email'
@@ -219,11 +243,11 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AskRoute: typeof AskRoute
   ContributeRoute: typeof ContributeRouteWithChildren
   GalleryRoute: typeof GalleryRouteWithChildren
-  ProjectRoute: typeof ProjectRoute
+  ResultsRoute: typeof ResultsRoute
   SettingsRoute: typeof SettingsRoute
+  StatusRoute: typeof StatusRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -233,13 +257,6 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/ask': {
-      id: '/ask'
-      path: '/ask'
-      fullPath: '/ask'
-      preLoaderRoute: typeof AskRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contribute': {
@@ -256,11 +273,11 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GalleryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/project': {
-      id: '/project'
-      path: '/project'
-      fullPath: '/project'
-      preLoaderRoute: typeof ProjectRouteImport
+    '/results': {
+      id: '/results'
+      path: '/results'
+      fullPath: '/results'
+      preLoaderRoute: typeof ResultsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -270,6 +287,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/status': {
+      id: '/status'
+      path: '/status'
+      fullPath: '/status'
+      preLoaderRoute: typeof StatusRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/contribute/': {
       id: '/contribute/'
       path: '/'
@@ -277,11 +301,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ContributeIndexRouteImport
       parentRoute: typeof ContributeRoute
     }
-    '/contribute/evaluate': {
-      id: '/contribute/evaluate'
-      path: '/evaluate'
-      fullPath: '/contribute/evaluate'
-      preLoaderRoute: typeof ContributeEvaluateRouteImport
+    '/contribute/review': {
+      id: '/contribute/review'
+      path: '/review'
+      fullPath: '/contribute/review'
+      preLoaderRoute: typeof ContributeReviewRouteImport
+      parentRoute: typeof ContributeRoute
+    }
+    '/contribute/rules': {
+      id: '/contribute/rules'
+      path: '/rules'
+      fullPath: '/contribute/rules'
+      preLoaderRoute: typeof ContributeRulesRouteImport
       parentRoute: typeof ContributeRoute
     }
     '/gallery/': {
@@ -310,6 +341,13 @@ declare module '@tanstack/react-router' {
       path: '/optimization'
       fullPath: '/gallery/optimization'
       preLoaderRoute: typeof GalleryOptimizationRouteImport
+      parentRoute: typeof GalleryRoute
+    }
+    '/gallery/triage': {
+      id: '/gallery/triage'
+      path: '/triage'
+      fullPath: '/gallery/triage'
+      preLoaderRoute: typeof GalleryTriageRouteImport
       parentRoute: typeof GalleryRoute
     }
     '/gallery/contributors/': {
@@ -344,12 +382,14 @@ declare module '@tanstack/react-router' {
 }
 
 interface ContributeRouteChildren {
-  ContributeEvaluateRoute: typeof ContributeEvaluateRoute
+  ContributeReviewRoute: typeof ContributeReviewRoute
+  ContributeRulesRoute: typeof ContributeRulesRoute
   ContributeIndexRoute: typeof ContributeIndexRoute
 }
 
 const ContributeRouteChildren: ContributeRouteChildren = {
-  ContributeEvaluateRoute: ContributeEvaluateRoute,
+  ContributeReviewRoute: ContributeReviewRoute,
+  ContributeRulesRoute: ContributeRulesRoute,
   ContributeIndexRoute: ContributeIndexRoute,
 }
 
@@ -374,6 +414,7 @@ interface GalleryRouteChildren {
   GalleryDuplicatesRoute: typeof GalleryDuplicatesRoute
   GalleryInsightsRoute: typeof GalleryInsightsRoute
   GalleryOptimizationRoute: typeof GalleryOptimizationRouteWithChildren
+  GalleryTriageRoute: typeof GalleryTriageRoute
   GalleryIndexRoute: typeof GalleryIndexRoute
   GalleryContributorsEmailRoute: typeof GalleryContributorsEmailRoute
   GalleryContributorsIndexRoute: typeof GalleryContributorsIndexRoute
@@ -383,6 +424,7 @@ const GalleryRouteChildren: GalleryRouteChildren = {
   GalleryDuplicatesRoute: GalleryDuplicatesRoute,
   GalleryInsightsRoute: GalleryInsightsRoute,
   GalleryOptimizationRoute: GalleryOptimizationRouteWithChildren,
+  GalleryTriageRoute: GalleryTriageRoute,
   GalleryIndexRoute: GalleryIndexRoute,
   GalleryContributorsEmailRoute: GalleryContributorsEmailRoute,
   GalleryContributorsIndexRoute: GalleryContributorsIndexRoute,
@@ -393,11 +435,11 @@ const GalleryRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AskRoute: AskRoute,
   ContributeRoute: ContributeRouteWithChildren,
   GalleryRoute: GalleryRouteWithChildren,
-  ProjectRoute: ProjectRoute,
+  ResultsRoute: ResultsRoute,
   SettingsRoute: SettingsRoute,
+  StatusRoute: StatusRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

@@ -1,13 +1,29 @@
-import { createRootRoute } from "@tanstack/react-router";
+import { createRootRoute, Link } from "@tanstack/react-router";
 import { AppShell, NotFound } from "@site/shell";
 
+// THE WORKING SET. The owner needs to select images and author questions quickly, so the nav
+// holds the tools that do that plus the progress they check. **Method, Prior art, Alternatives
+// and Project are gone** - they are reading pages, and they were asked for by name.
+//
+// Choose first: it is the fast keyboard triage screen.
 const NAV = [
-  { to: "/", label: "Overview" },
+  { to: "/gallery/triage", label: "Choose" },
   { to: "/gallery", label: "Gallery" },
-  { to: "/ask", label: "Ask" },
   { to: "/contribute", label: "Contribute" },
-  { to: "/project", label: "Project" },
+  { to: "/results", label: "Results" },
+  { to: "/status", label: "Status" },
 ];
+
+// GALLERY, CHOOSE AND ASK ARE NOT IN THE NAV, BY THE OWNER'S REQUEST.
+//
+// The gallery is still reachable - `contribute` opens it as the image picker, which is where
+// authoring starts - and `/gallery/*` still resolves for anyone with a link. **What changed is
+// what the site advertises.**
+//
+// `ask` is the chat, and it is the one route that costs money: `apps/relay`'s `/api/chat`
+// reaches a paid model. Its door fails closed, so it is off unless ACCESS_CODE is set - and it
+// is now off the nav as well. **Ticket 24 is the decision to keep it or delete it; this is the
+// half that needs no decision.**
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Overview",
@@ -15,10 +31,12 @@ const PAGE_TITLES: Record<string, string> = {
   "/gallery/insights": "Insights",
   "/gallery/duplicates": "Duplicates",
   "/gallery/contributors": "Contributors",
-  "/ask": "Ask AI",
+  "/gallery/triage": "Choose images",
   "/contribute": "Contribute",
-  "/contribute/evaluate": "Evaluate",
-  "/project": "Project",
+  "/contribute/review": "Review",
+  "/contribute/rules": "Writing rules",
+  "/results": "Results",
+  "/status": "Status",
 };
 
 export const Route = createRootRoute({
@@ -50,6 +68,13 @@ export const Route = createRootRoute({
           >
             GitHub ↗
           </a>
+          {" · "}
+          {/* SETTINGS IS NOT A NAV ITEM. It holds the BYOK key and the access code -
+              reachable, not advertised. Removing it entirely would make the key entry
+              unreachable on mobile, which is a regression rather than a tidy-up. */}
+          <Link to="/settings" className="text-accent transition-colors hover:underline">
+            Settings
+          </Link>
         </span>
       }
       footerRender={(latest) => (
@@ -62,13 +87,10 @@ export const Route = createRootRoute({
       palette
       fallbackTitle="agi-eval-data — dataset ledger"
       menuTitle="agi-eval-data · menu"
-      mobileExtra={[{ to: "/settings", label: "Settings" }]}
       mobileHints={{
         "/": "dataset overview",
         "/gallery": "browse the images",
-        "/ask": "chat with the data",
         "/contribute": "author questions",
-        "/project": "about the benchmark",
         "/settings": "relay · access code · key",
       }}
     />

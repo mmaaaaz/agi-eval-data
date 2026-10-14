@@ -12,9 +12,31 @@ binding = "AI"
 binding = "DB"
 database_name = "agi-eval-questions"
 database_id = "0d90cf33-9334-42ae-995a-d15805b95bdc"
+# canonical migrations. apply with: npx wrangler d1 migrations apply agi-eval-questions --remote
+# regenerate the files from apps/relay/schema*.sql with: python scripts/db/sync_migrations.py
+migrations_dir = "migrations"
 
 [vars]
 FORCE_FALLBACK = "0"
 GATEWAY_MODEL = "openai/gpt-5-nano"
 RATE_LIMIT_PER_IP = "101"
+
+# ---------------------------------------------------------------------------
+# SECRETS — set with:  npx wrangler secret put <NAME>
+#
+# The questions API has two doors, and BOTH privileged ones FAIL CLOSED. An
+# unset secret disables the door; it never opens it. Reads and draft writes are
+# always open by design.
+#
+#   QUESTIONS_CODE  reviewer secret. Needed to approve, fix or reject an item,
+#                   and to create an item directly as approved.
+#                   UNSET -> nobody can change ground truth.
+#   HARNESS_CODE    harness secret. Needed to POST /api/runs.
+#                   UNSET -> no measurement can be recorded.
+#   ACTOR_SECRET    signs the server-issued actor id that attributes every item.
+#                   UNSET -> attribution falls back to the client-supplied id, which
+#                   is an honour system. Not a gate: authoring still works.
+#
+# Do NOT put either value in this file; it is committed.
+# ---------------------------------------------------------------------------
 

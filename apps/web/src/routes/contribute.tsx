@@ -3,7 +3,8 @@ import { Eyebrow } from "@site/section";
 
 const TABS = [
   { to: "/contribute", label: "Questions", exact: true },
-  { to: "/contribute/evaluate", label: "Evaluate", exact: false },
+  { to: "/contribute/review", label: "Review", exact: false },
+  { to: "/contribute/rules", label: "Rules", exact: false },
 ];
 
 export const Route = createFileRoute("/contribute")({ component: ContributeLayout });

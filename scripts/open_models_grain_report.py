@@ -28,7 +28,7 @@ def ci(x):
 
 
 def main() -> int:
-    g = json.loads(DATA.read_text(encoding="utf-8"))
+    g = json.loads(DATA.read_text(encoding="utf-8-sig"))
     M = g["models"]
     labels = sorted(M)
     L = []

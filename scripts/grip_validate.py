@@ -66,7 +66,7 @@ def check_overrides(details: dict[str, dict]) -> int:
     for ov_path in sorted(OVERRIDES_DIR.rglob("*.json")):
         n += 1
         try:
-            ov = json.loads(ov_path.read_text(encoding="utf-8"))
+            ov = json.loads(ov_path.read_text(encoding="utf-8-sig"))
         except json.JSONDecodeError as e:
             check(False, f"{ov_path.name}: invalid JSON ({e})")
             continue
@@ -104,7 +104,7 @@ def main() -> int:
         print("GRIP validation: FAIL")
         return 1
 
-    tree = json.loads(tree_p.read_text(encoding="utf-8"))
+    tree = json.loads(tree_p.read_text(encoding="utf-8-sig"))
     check(len(tree["categories"]) == 34,
           f"expected 34 categories, got {len(tree['categories'])}")
     counts = tree["counts"]

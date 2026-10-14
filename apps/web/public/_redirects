@@ -2,4 +2,7 @@
 /duplicates /gallery/duplicates 301
 /contributors /gallery/contributors 301
 /contributors/* /gallery/contributors/:splat 301
-/evaluate /contribute/evaluate 301
+# evaluation moved out of the browser into the local harness (ticket 16).
+# these redirect to authoring so old links do not 404.
+/evaluate /contribute 302
+/contribute/evaluate /contribute 302

@@ -67,3 +67,39 @@ relay/dry-v*/
 
 ref/
 .tanstack/
+
+# ---------------------------------------------------------------------------
+# PRIVATE - benchmark planning, research and agent tooling.
+# Not shared with the team yet. Delete a line here when you are ready to
+# publish that specific artifact, then commit it deliberately.
+# ---------------------------------------------------------------------------
+.agents/
+.claude/
+.scratch/
+_scratch/
+Paper/
+research/
+AGENTS.md
+docs/agents/
+bias_geo_landscape_report.md
+physics_geometry_vlm_landscape.md
+spatial-benchmarks-and-tooling-verification.md
+vlm_facts_report_2026-10.md
+abs_cache.json
+arxiv_cache.json
+ddg_cache.json
+
+# ---------------------------------------------------------------------------
+# FOUND IN ROUND 129 WHILE PREPARING THE FIRST PUSH.
+#
+# The private plan documents were TRACKABLE - a `git add -A` would have published the owner's
+# implementation plan and `plan-germetrical.md` to a repository shared with the team, which is
+# the one thing every round of this session has been careful not to do.
+# ---------------------------------------------------------------------------
+*.docx
+plan-*.md
+.hermes/
+.pi/
+skills-lock.json
+data/factory/
+data/drive/

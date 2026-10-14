@@ -166,7 +166,7 @@ def main():
     args = ap.parse_args()
 
     if args.from_snapshot:
-        snap = json.loads(Path(args.from_snapshot).read_text(encoding="utf-8"))
+        snap = json.loads(Path(args.from_snapshot).read_text(encoding="utf-8-sig"))
         fl = snap["file_list"]
         files = [{"id": f["id"], "name": f["name"], "mimeType": f.get("mime") or "",
                   "size": f.get("size") or "0", "md5Checksum": f.get("md5") or "",
@@ -179,7 +179,7 @@ def main():
         out.parent.mkdir(exist_ok=True)
         out.write_text(json.dumps(build_ci_payload(files, reports, buckets),
                                   ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-        c = json.loads(out.read_text(encoding="utf-8"))["meta"]["counts"]
+        c = json.loads(out.read_text(encoding="utf-8-sig"))["meta"]["counts"]
         print(f"CI artifact written: {out} ({out.stat().st_size/1024:.0f} KB)  counts={c}")
         return
 

@@ -44,7 +44,7 @@ export function siteConfig(name) {
       {
         dir: "",
         title: `Overview · agi-eval-data — dataset ledger`,
-        desc: `${fmt(c.imagesUnique)} unique real-world images where vision models fail — ${owners.length} contributors, ${fmt(c.dupCopies)} duplicates pruned, syncing daily.`,
+        desc: `${fmt(c.imagesUnique)} unique images, deduplicated and synced daily, from ${owners.length} contributors. Corpus complete; questions in progress; no model evaluated yet.`,
         image: "overview.png",
         url: "/",
       },
@@ -86,9 +86,37 @@ export function siteConfig(name) {
       {
         dir: "project",
         title: `Project · agi-eval-data — dataset ledger`,
-        desc: "An AGI benchmark targeting visual & geometric reasoning failures of frontier vision-language models.",
+        desc: "A benchmark under construction: human-authored questions about real photographs, measuring whether vision-language models know when they are wrong. Corpus complete, questions in progress.",
         image: "project.png",
         url: "/project",
+      },
+      {
+        dir: "method",
+        title: `Method · agi-eval-data — dataset ledger`,
+        desc: "What we are building, and why each number on this site is that number — sampling, statistical power, and an audit of our own metadata.",
+        image: "project.png",
+        url: "/method",
+      },
+      {
+        dir: "prior-art",
+        title: `Prior art · agi-eval-data — dataset ledger`,
+        desc: "What is already published in vision-language-model evaluation, what number settles it, and where the genuine gap is.",
+        image: "project.png",
+        url: "/prior-art",
+      },
+      {
+        dir: "alternatives",
+        title: `Alternatives · agi-eval-data — dataset ledger`,
+        desc: "We checked whether physical-AI / VLA offered an emptier field. It does not — the reason is recorded here.",
+        image: "project.png",
+        url: "/alternatives",
+      },
+      {
+        dir: "status",
+        title: `Status · agi-eval-data — dataset ledger`,
+        desc: "What has been explored, what it showed, and what is still outstanding.",
+        image: "project.png",
+        url: "/status",
       },
     ];
     // one page per contributor — shared links get their personal card

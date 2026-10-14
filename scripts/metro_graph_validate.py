@@ -28,7 +28,7 @@ SCHEMA = ROOT / "data" / "metro-graph.schema.json"
 
 
 def load_json(p: Path):
-    return json.loads(p.read_text(encoding="utf-8"))
+    return json.loads(p.read_text(encoding="utf-8-sig"))
 
 
 def validate_schema(doc) -> list[str]:

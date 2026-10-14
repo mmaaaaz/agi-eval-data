@@ -5,6 +5,9 @@ on:
     paths:
       - "apps/**"
       - "packages/**"
+      - "scripts/**"
+      - ".github/**"
+      - "data/**"
       - "package.json"
       - "bun.lock"
       - "turbo.json"
@@ -13,6 +16,9 @@ on:
     paths:
       - "apps/**"
       - "packages/**"
+      - "scripts/**"
+      - ".github/**"
+      - "data/**"
       - "package.json"
       - "bun.lock"
       - "turbo.json"
@@ -53,5 +59,87 @@ jobs:
           python scripts/open_models_public.py
           bunx turbo run build --filter=@grip/web
 
-      - name: Test grip (report invariants + page render probes)
-        run: cd apps/grip-web && bunx vitest run
+      # Every package's tests, not just grip's. The task existed and CI never called
+      # it, so 169 tests only ever ran on a developer's machine.
+      - name: Test (all packages)
+        run: bunx turbo run test
+
+      # The static truthfulness guard. It exists specifically to stop the site
+      # claiming more than was measured — and it was never invoked here, which is
+      # exactly why a false claim ("a script checks option-length spread") sat in the
+      # contributor-facing rules page unnoticed. A guard with no runner is decoration.
+      - name: Guard (no unsupported claims on the site)
+        run: python scripts/factory/08_site_truthfulness.py
+
+      # A thing that is never called is indistinguishable from a thing that does not exist.
+      # This project has produced that defect repeatedly — image_edit had a comment and no
+      # writer, 06_break_the_model could only --demo, the Phase 5 analyses lived in a print
+      # statement, and four analyses written in rounds 73-74 were defined and NEVER CALLED.
+      # Reading the code does not find it. Counting references does.
+      #
+      # Unlike the plan guard, this reads only scripts/, so CI CAN run it.
+      - name: Guard (no machinery without a runner)
+        run: python scripts/factory/12_unwired.py
+
+      # THE WORKFLOW CHECKS ITSELF FIRST. ci.yml was edited four times in four rounds and
+      # nothing validated it: a typo in a path leaves valid YAML, GitHub still starts the run,
+      # and the guard simply never fires. This step fails if any command names a file that
+      # does not exist, any -m module does not import, or any guard this repo depends on is
+      # not invoked here at all.
+      - name: Check (every command CI runs resolves)
+        run: python scripts/factory/13_ci_resolves.py > /dev/null
+
+      # A STAGE WHOSE needs_files ARE ABSENT IS SKIPPED, NOT FAILED. So a wrong order, or a
+      # mis-typed path, quietly makes the pipeline do less than it says and still report
+      # success. This checks that every need has an EARLIER producer.
+      - name: Guard (pipeline stage order)
+        run: python scripts/factory/14_pipeline_order.py > /dev/null
+
+      # A COMMENT THAT CONTRADICTS THE CODE IS WORSE THAN NO COMMENT: it is read as the
+      # design. packages/questions-api/src/index.ts said "Unset = open" in three places while
+      # the code failed closed, and the same property was stated CORRECTLY in the relay — so
+      # the repository documented its most security-critical invariant both ways.
+      - name: Guard (no source claim contradicts the code)
+        run: python scripts/factory/15_source_claims.py > /dev/null
+
+      # THE MIGRATIONS ARE THE ONLY PATH A NEW DATABASE TAKES, and nothing checked them:
+      # sync_migrations.py regenerates them and WRITES FILES, so it cannot run here. This is
+      # read-only - it applies them to an in-memory database and diffs the result.
+      - name: Migrations apply to a fresh database
+        run: python scripts/db/check_migrations.py > /dev/null
+
+      # THE INTEGRITY GATE HAD NO RUNNER ANYWHERE. 03_verify.py is the check that decides
+      # whether a result may be quoted at all, and until round 82 nothing invoked it except a
+      # human remembering to. That is the defect this repo keeps producing: a guard with no
+      # runner is decoration.
+      #
+      # It exits 0 on an ABSENT dataset (a warning) and 1 on a real violation, so it is
+      # meaningful before the data exists and strict once it does.
+      - name: Gate (dataset integrity)
+        run: python scripts/factory/03_verify.py
+
+      # The provenance ledger must build from the committed corpus ledger, so a
+      # broken audit fails here rather than during a release.
+      - name: Guard (provenance ledger builds)
+        run: python scripts/factory/00_provenance.py --no-write --json > /dev/null
+
+      # THE ALLOWLIST SAID CI RAN THIS, AND CI DID NOT. `12_unwired` exempts it on the
+      # grounds that a workflow runs it, so the exemption rested on a claim nobody checked -
+      # **an exemption whose stated reason is false is worse than no exemption**, because it
+      # reads as covered. It is a real audit, `data/latest.json` is tracked, so it runs here.
+      - name: Guard (corpus metadata honesty)
+        run: python scripts/factory/00_metadata_audit.py > /dev/null
+
+      # The harness contract. Every defect found in rounds 28-35 came from RUNNING the
+      # pipeline rather than reading it, so these run it on every change.
+      - name: Harness self-test (the contract, 128 assertions)
+        run: python -m scripts.harness.selftest
+
+      # The full path through the real CLIs: freeze a release from a realistic export,
+      # sweep with the offline stub, analyze, blind-filter, ingest. No network, no model,
+      # no spend. Answers the one question unit tests cannot: do the pieces work wired
+      # together?
+      - name: Harness smoke (the full path, offline)
+        run: python -m scripts.harness.smoke
+
+      - ".github/**"

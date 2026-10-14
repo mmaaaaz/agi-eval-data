@@ -40,7 +40,7 @@ def load_manifest() -> dict:
     m = CACHE / "manifest.json"
     if not m.exists():
         raise SystemExit("no .grip-cache/manifest.json — run scripts/grip_fetch.py first")
-    return json.loads(m.read_text(encoding="utf-8"))
+    return json.loads(m.read_text(encoding="utf-8-sig"))
 
 
 # ---------- tree discovery (from the fetched cache) ----------
@@ -56,7 +56,7 @@ def find_subsuites(cat_folder: str) -> tuple[list[dict], list[dict]]:
     ann = CACHE / "annotations_index.json"
     if not ann.exists():
         raise SystemExit("no .grip-cache/annotations_index.json — run scripts/grip_fetch.py first")
-    index = json.loads(ann.read_text(encoding="utf-8"))
+    index = json.loads(ann.read_text(encoding="utf-8-sig"))
     rels = index.get(cat_folder, [])
     subsuites: list[dict] = []
     if f"{cat_folder}/annotations.jsonl" in rels:
@@ -83,7 +83,7 @@ def _prev_category(cat_folder: str) -> dict | None:
     global _prev_tree
     if _prev_tree is None:
         p = OUT_DIR / "tree.json"
-        _prev_tree = json.loads(p.read_text(encoding="utf-8")) if p.exists() else {}
+        _prev_tree = json.loads(p.read_text(encoding="utf-8-sig")) if p.exists() else {}
     for c in _prev_tree.get("categories", []):
         if c["folder"] == cat_folder:
             return c
@@ -175,7 +175,7 @@ def load_overrides(slug: str) -> dict[str, dict]:
         return {}
     out = {}
     for p in sorted(d.glob("*.json")):
-        out[p.stem] = json.loads(p.read_text(encoding="utf-8"))
+        out[p.stem] = json.loads(p.read_text(encoding="utf-8-sig"))
     return out
 
 

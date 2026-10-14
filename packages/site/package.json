@@ -4,7 +4,8 @@
   "private": true,
   "scripts": {
     "typecheck": "tsc --noEmit",
-    "build": "tsc --noEmit"
+    "build": "tsc --noEmit",
+    "test": "vitest run"
   },
   "exports": {
     "./shell": "./src/shell.tsx",
@@ -12,6 +13,11 @@
     "./format": "./src/format.ts",
     "./questions": "./src/questions.ts",
     "./authoring": "./src/authoring.tsx",
+    "./review": "./src/review.tsx",
+    "./triage": "./src/triage.tsx",
+    "./actor": "./src/ActorBar.tsx",
+    "./livesync": "./src/useLiveSync.ts",
+    "./anchor": "./src/AnchorBox.tsx",
     "./grading": "./src/grading.tsx",
     "./syncchip": "./src/SyncChip.tsx",
     "./thumb": "./src/ThumbImage.tsx",

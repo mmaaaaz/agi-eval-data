@@ -39,7 +39,7 @@ def ext_of(name, mime):
 
 def main():
     snap_path = pick_snapshot()
-    snap = json.loads(snap_path.read_text(encoding="utf-8"))
+    snap = json.loads(snap_path.read_text(encoding="utf-8-sig"))
     files = snap["file_list"]
 
     # duplicate md5 set (images only, consistent with scanner semantics)
@@ -76,7 +76,7 @@ def main():
     blob = json.dumps(payload, ensure_ascii=False, separators=(",", ":")).replace("</", "<\\/")
 
     template = Path(__file__).parent / "report_template.html"
-    html = template.read_text(encoding="utf-8").replace("__DATA__", blob)
+    html = template.read_text(encoding="utf-8-sig").replace("__DATA__", blob)
     out = Path(__file__).parent / "report.html"
     out.write_text(html, encoding="utf-8")
     print(f"Dashboard written: {out.resolve()}  ({out.stat().st_size/1024/1024:.2f} MB)")

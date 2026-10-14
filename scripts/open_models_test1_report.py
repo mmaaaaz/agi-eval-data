@@ -37,8 +37,8 @@ def ci(x):
 
 
 def main() -> int:
-    r = json.loads(DATA.read_text(encoding="utf-8"))
-    pub = json.loads(PUB.read_text(encoding="utf-8"))
+    r = json.loads(DATA.read_text(encoding="utf-8-sig"))
+    pub = json.loads(PUB.read_text(encoding="utf-8-sig"))
     pubacc = {m["label"]: m["totals"]["acc"] for m in pub["models"]}
     M = r["models"]
     ORDER = sorted(M, key=lambda k: -(M[k]["overall"]["macro"] if M[k]["overall"]["macro"] is not None else -9))

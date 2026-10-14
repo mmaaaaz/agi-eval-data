@@ -7,13 +7,9 @@ import { Eyebrow } from "@site/section";
 
 export const Route = createFileRoute("/settings")({ component: Settings });
 
-const OR_KEY_STORAGE = "evaluate.openrouterKey";
-
 function Settings() {
   const [settings, setSettings] = useState<AskSettingsData>(loadSettings);
-  const [orKey, setOrKey] = useState(() => localStorage.getItem(OR_KEY_STORAGE) ?? "");
   useEffect(() => { saveSettings(settings); }, [settings]);
-  useEffect(() => { localStorage.setItem(OR_KEY_STORAGE, orKey); }, [orKey]);
 
 
 
@@ -59,27 +55,7 @@ function Settings() {
             type="password"
             value={settings.accessCode}
             onChange={(e) => { setSettings((s) => ({ ...s, accessCode: e.target.value })); toast.success("saved"); }}
-            placeholder="the shared code for /contribute + /evaluate"
-            className="w-full rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
-          />
-        </label>
-      </section>
-
-      <section className="mt-6 space-y-5 rounded-lg border border-[#262626] bg-[#0a0a0a]/40 p-5">
-        <div>
-          <h2 className="font-medium tracking-tight text-white">OpenRouter</h2>
-          <p className="mt-1 font-mono text-[10px] leading-4 text-[#666]">
-            used by /contribute → evaluate to run questions against models directly from your browser. get a key at
-            {" "}<a href="https://openrouter.ai/settings/keys" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">openrouter.ai/settings/keys ↗</a>
-          </p>
-        </div>
-        <label className="block">
-          <span className="mb-1 block font-mono text-[10px] uppercase tracking-wider text-[#666]">api key</span>
-          <input
-            type="password"
-            value={orKey}
-            onChange={(e) => { setOrKey(e.target.value); toast.success("saved"); }}
-            placeholder="sk-or-v1-…"
+            placeholder="the reviewer code — only needed to approve items"
             className="w-full rounded-md border border-[#262626] bg-[#050505] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
           />
         </label>

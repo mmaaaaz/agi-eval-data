@@ -73,7 +73,7 @@ def last_baked_sha(tree_path: Path) -> str | None:
     if not tree_path.exists():
         return None
     try:
-        return json.loads(tree_path.read_text(encoding="utf-8")).get("bakedFromCommit")
+        return json.loads(tree_path.read_text(encoding="utf-8-sig")).get("bakedFromCommit")
     except (json.JSONDecodeError, OSError):
         return None
 

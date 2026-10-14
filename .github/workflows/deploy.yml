@@ -13,9 +13,19 @@ on:
       - "packages/**"
       - "data/**"
       - "scripts/og/**"
+      # THE SCRIPTS THAT BUILD THE DEPLOYED ARTIFACT. Changing one of these changed what the
+      # site serves, and did NOT re-run the deploy - **the site would serve stale data built by
+      # the old script.** `13_ci_resolves.py` now checks exactly this: a workflow must trigger
+      # on the scripts its own steps run, by exact path or by directory wildcard.
+      - "scripts/build_data.py"
+      - "scripts/metro_build_data.py"
+      - "scripts/open_models_public.py"
+      # a check that runs before the relay deploy; re-running is cheap and correct
+      - "scripts/db/check_migrations.py"
       - "package.json"
       - "bun.lock"
       - "turbo.json"
+      - ".github/**"
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
@@ -90,7 +100,19 @@ jobs:
           if [ "$HAS_TOKEN" = "true" ] && [ "$HAS_ACCOUNT" = "true" ]; then
             echo "ok=true" >> "$GITHUB_OUTPUT"
           else
-            echo "ok=false — set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets" >> "$GITHUB_OUTPUT"
+            echo "ok=false" >> "$GITHUB_OUTPUT"
+            # A SKIPPED DEPLOY MUST NOT LOOK LIKE A SUCCESSFUL ONE.
+            #
+            # Every deploy job is gated on this output, so with the secrets unset the workflow
+            # runs green and deploys NOTHING. The message used to go only to $GITHUB_OUTPUT - a
+            # file nobody reads - so the run summary said nothing at all. **A green run that
+            # shipped nothing is the same defect as a pipeline that exits 0 having done no work.**
+            #
+            # A WARNING, NOT A FAILURE: a fork legitimately has no secrets, and failing there
+            # would be wrong. An annotation surfaces it in the run summary, where a person looks.
+            echo "::warning title=Deploys are SKIPPED::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set, so every deploy job is gated off and this run will ship nothing."
+            echo "CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID is not set - DEPLOYS ARE SKIPPED."
+            echo "Set them under Settings -> Secrets and variables -> Actions -> Secrets."
           fi
 
   relay:
@@ -111,6 +133,39 @@ jobs:
       - name: Typecheck
         run: bunx turbo run typecheck
 
+      # MIGRATIONS FIRST, THEN CODE. The relay was deployed with NO migration step, so a
+      # change that needs a new column shipped the code and left the database behind - **the
+      # API would fail in production on the path a user is using**, and nothing in this
+      # repository could see it, because `check_migrations.py` validates the API against the
+      # migrations in the REPO, not against what is actually deployed.
+      #
+      # `wrangler d1 migrations apply` TRACKS what it has applied, so this is a no-op when there
+      # is nothing new. That is what makes it safe to run on every deploy rather than only when
+      # someone remembers.
+      # TESTS AND THE SCHEMA CONTRACT, BEFORE ANYTHING SHIPS.
+      #
+      # `deploy.yml` NEVER RAN THE TESTS - only a typecheck - and every deploy job `needs:`
+      # only `changes`, NOT `ci`. Both workflows trigger on the same push, so **a deploy could
+      # complete while CI was failing**, and nothing connected the guard suite to what ships.
+      #
+      # A cross-workflow dependency would need `workflow_run` and a restructure. Running the
+      # checks HERE makes the deploy SELF-SUFFICIENT instead: it cannot ship something that
+      # fails its own tests, whatever else is happening on the same push.
+      - name: Test
+        run: bunx turbo run test
+
+      - name: Check the API against the schema (read-only)
+        run: python3 scripts/db/check_migrations.py > /dev/null
+
+      - name: Apply migrations (before the code that needs them)
+      - name: Apply migrations (before the code that needs them)
+        run: bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --remote
+        working-directory: apps/relay
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+
+      - name: Deploy relay
       - name: Deploy relay
         run: bunx --bun wrangler@4.125.0 deploy
         working-directory: apps/relay
@@ -147,6 +202,9 @@ jobs:
       - name: Stamp per-route OG tags
         run: node scripts/og/gen-route-html.mjs
 
+      - name: Test
+        run: bunx turbo run test
+
       - name: Deploy pages
         run: bunx --bun wrangler@4.125.0 pages deploy dist --project-name=agi-eval-data --branch=main --commit-dirty=true
         working-directory: apps/web
@@ -172,6 +230,10 @@ jobs:
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
 
+      - name: Test
+        run: bunx turbo run test
+
+      - name: Deploy metro relay
       - name: Deploy metro relay
         run: bunx --bun wrangler@4.125.0 deploy
         working-directory: apps/metro-relay
@@ -214,6 +276,9 @@ jobs:
       - name: Stamp per-route OG tags
         run: node scripts/og/gen-route-html.mjs metro
 
+      - name: Test
+        run: bunx turbo run test
+
       - name: Deploy metro pages
         run: bunx --bun wrangler@4.125.0 pages deploy dist --project-name=metro-eval --branch=main --commit-dirty=true
         working-directory: apps/metro-web
@@ -248,6 +313,9 @@ jobs:
       - name: Stamp per-route OG tags
         run: node scripts/og/gen-route-html.mjs grip
 
+      - name: Test
+        run: bunx turbo run test
+
       - name: Deploy grip pages
         run: bunx --bun wrangler@4.125.0 pages deploy dist --project-name=grip-eval --branch=main --commit-dirty=true
         working-directory: apps/grip-web
@@ -269,6 +337,9 @@ jobs:
 
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
+
+      - name: Test
+        run: bunx turbo run test
 
       - name: Deploy grip sync worker
         run: bunx --bun wrangler@4.125.0 deploy

@@ -213,7 +213,7 @@ def main():
     args = ap.parse_args()
 
     if args.from_snapshot:
-        snap = json.loads(Path(args.from_snapshot).read_text(encoding="utf-8"))
+        snap = json.loads(Path(args.from_snapshot).read_text(encoding="utf-8-sig"))
         fl = snap.get("files", snap.get("file_list", []))
         folders = {f["id"]: (f["name"], f.get("parent_id")) for f in snap.get("folders", [])}
         files = []

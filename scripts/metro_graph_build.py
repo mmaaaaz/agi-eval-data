@@ -17,7 +17,7 @@ GRAPH = ROOT / "data" / "metro-graph.json"
 def main() -> None:
     if not GRAPH.exists():
         raise SystemExit(f"{GRAPH} not found — run scripts/metro_graph_seed.py first")
-    doc = json.loads(GRAPH.read_text(encoding="utf-8"))
+    doc = json.loads(GRAPH.read_text(encoding="utf-8-sig"))
     graphs = doc.get("graphs", {})
     # Sort graphs by file_id
     sorted_graphs = {}

@@ -590,7 +590,7 @@ def main() -> int:
     ap.add_argument("--manifest", type=str, default=None, help="frontier manifest of question ids (8,500 rows)")
     args = ap.parse_args()
 
-    published = json.loads((REPO / "data" / "open-models" / "models.json").read_text(encoding="utf-8"))
+    published = json.loads((REPO / "data" / "open-models" / "models.json").read_text(encoding="utf-8-sig"))
     pub_cell = {}
     for model in published["models"]:
         for d in published["domains"]:

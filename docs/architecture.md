@@ -1,7 +1,9 @@
 # Architecture & Ops Handbook
 
 Living doc for the **agi-eval-data** repo — two live dataset platforms, one Turborepo.
-Last verified: 2026-08-27 (both sites deployed, syncs green).
+Last verified: **2026-10-13** — and this line said 2026-08-27 for a month and a half while the
+repo moved. **A "last verified" date is a claim, and the claim is only as good as the check behind
+it** — there was none, so it aged silently. See the note at the end of this file.
 
 ---
 
@@ -13,19 +15,20 @@ vision-language models. Two independent sub-projects share this repo:
 | | Real-world images | Metro / transit |
 |---|---|---|
 | Site | [agi-eval-data.pages.dev](https://agi-eval-data.pages.dev) | [metro-eval.pages.dev](https://metro-eval.pages.dev) |
-| Dataset | 54.5k+ photos where VLMs fail | 85 metro network maps · 38 countries · 30 official PDFs |
+| Dataset | 56,285 photos where VLMs fail | 85 metro network maps · 38 countries · 30 official PDFs |
 | Artifact | `data/latest.json` | `data/metro.json` |
 | Sync | **daily** 06:00 UTC (dataset complete) | **hourly** (:00) (new dataset, wants fresh data) |
 | Source | user's whole Drive | Drive folder `metro/transit_dataset` |
 | Questions DB | Cloudflare D1 `agi-eval-questions` | Cloudflare D1 `metro-eval-questions` |
-| Chat AI | ✅ (DuckDB-WASM + gateway relay) | ❌ (no chat — catalog-first) |
+| Chat AI | **OFF — the door fails closed unless `ACCESS_CODE` is set** | ❌ (no chat — catalog-first) |
 
 ## Repository map
 
 ```
 apps/web            real-world site — Vite · React 19 · TanStack Router · Tailwind v4 · shadcn/ui
                     routes: / (overview) /gallery(/insights,/duplicates,/contributors) /ask /contribute(/evaluate) /project /settings
-apps/relay          Cloudflare Worker — AI chat relay (Vercel AI Gateway + Workers AI fallback) + questions API (D1)
+apps/relay          Cloudflare Worker — questions API + a chat relay whose door FAILS CLOSED
+                    (unset ACCESS_CODE disables it). It spends, so it is off until asked for.(D1)
 apps/metro-web      metro site — same stack, NO chat. routes: / /catalog(/compare) /gallery(/pdfs,/contributors,/duplicates) /contribute(/evaluate) /project /settings
                     components/GraphAssist.tsx (lazy, on by default — opt out VITE_ENABLE_MAPS_ASSIST=0)
 apps/metro-relay    Cloudflare Worker — questions API only (D1 metro-eval-questions), provenance columns source/graph_file_id/graph_path
@@ -36,9 +39,12 @@ scripts/            Drive scanners, build tooling, OG renderers + metro_graph_va
 data/latest.json    real-world artifact (v3 schema, 8-col rows)
 data/metro.json     metro artifact (v4 schema, 9-col rows: + folders path)
 data/metro-graph.json   single-file sidecar (`graphs[file_id]`, v1; see data/metro-graph.schema.json) — single file, never per-city — $0 forever
-docs/               this handbook + metro.md + metro-graph.md + project guide (project.tsx)
+docs/               this handbook + metro.md · metro-graph.md · grip.md · open-models*.md
+                    + agents/ (issue-tracker, triage-labels, domain)
 og/                 OG cards (foundation: og/*.png · metro: og/metro/*.png)
-.github/workflows/  ci · deploy · sync-data · sync-metro · sync-share
+extras/             other projects: dataset-tools, dedup, Paper (gitignored working files)
+.github/workflows/  NINE: ci · deploy · export-benchmark · graph-check · grip-rebake · optimize-batch
+                    · sync-data · sync-metro · sync-share
 ```
 
 ### Data artifacts
@@ -177,3 +183,26 @@ bun run check:metro-graph  # or python scripts/metro_graph_validate.py
 - **OAuth refresh token**: Google app must stay In Production (testing-mode tokens die weekly).
 - **Graph sidecar + flag** — `VITE_ENABLE_MAPS_ASSIST` is on by default (opt out with `0`/`false`). When disabled, `MarkLayer`/`AssistPanel` are not rendered and `/contribute` renders the baseline `AuthorQuestions`. Sidecar is `data/metro-graph.json` (single file, `graphs[file_id]`; see `data/metro-graph.schema.json` v1) and is never merged into `data/metro.json` v4 (9-col MetroRow) — the Drive scope stays `drive.metadata.readonly` with no hosted Maps keys and no sync coupling ($0 forever).
 - **Branch normalization** — `normalizeBranch()` lives in `apps/metro-web/src/lib/data.ts` (not a separate package — `packages/metro-shared` drift is corrected by re-exporting or removing the duplicate normalization there). All `?branch=` reads go through it; `branchOf()` dev-warns (instead of silently returning `ours`) when `folders` is missing, per B9.
+
+---
+
+## What was wrong with this file, and what now watches it
+
+**Corrected 2026-10-13.** The handbook described the repository as it was on **2026-08-27** and had
+drifted in six places:
+
+| said | was |
+| --- | --- |
+| `Last verified: 2026-08-27` | six weeks earlier, and nothing had checked since |
+| `54.5k+ photos` | **56,285** |
+| Chat AI **✅** | **OFF** — the door fails closed unless `ACCESS_CODE` is set |
+| the relay is an *"AI chat relay"* | it is a questions API **plus** a chat relay that is disabled by default |
+| five workflows | **nine** |
+| `docs/` is "this handbook + 3" | nine documents, including `agents/` |
+
+> **A "last verified" date is a claim, and the claim is only as good as the check behind it.**
+> There was none, so it aged silently — and the longer it stood, the more it read as current.
+
+**Now checked**: `scripts/factory/15_source_claims.py` scans `docs/**/*.md` — **as it already
+scanned every `README.md` and `AGENTS.md`** — and fails on a path that does not resolve. The
+handbook was the last document in the repository that nothing watched.

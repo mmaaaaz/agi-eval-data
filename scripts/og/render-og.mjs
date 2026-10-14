@@ -124,8 +124,8 @@ const specs = [];
 specs.push({
   file: "overview.png", eyebrow: "DATASET LEDGER",
   title: "The dataset, live.",
-  sub: "Real-world images where vision models fail — counted honestly.",
-  chips: [chip(fmt(c.imagesUnique), "unique images"), chip(fmt(owners.length), "contributors"), chip("hourly", "sync")],
+  sub: "Uncurated images, deduplicated daily — questions in progress.",
+  chips: [chip(fmt(c.imagesUnique), "unique images"), chip(fmt(owners.length), "contributors"), chip("daily", "sync")],
 });
 specs.push({
   file: "gallery.png", eyebrow: "GALLERY",
