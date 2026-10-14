@@ -359,6 +359,13 @@ def main() -> None:
     key = os.environ.get("OPENROUTER_API_KEY", "")
     os.makedirs(OUT, exist_ok=True)
 
+    # THE SPEND REFUSAL COMES FIRST, BEFORE THE INPUT IS OPENED.
+    #
+    # Round 131, found by running smoke on a CLEAN CHECKOUT: the candidates file is gitignored,
+    # so this died with FileNotFoundError BEFORE the refusal - and a caller could not tell an
+    # unauthorised spend from a missing file. The refusal is about AUTHORISATION, so it is
+    # answered whatever the files say.
+    refuse_without_spend(args, "--spend", "question generation")
     with open(args.candidates, encoding="utf-8") as fh:
         cand = json.load(fh)
     images = cand["images"][: args.n]
@@ -408,7 +415,6 @@ def main() -> None:
         return
 
     # THE PAID PATH STARTS HERE. Everything above is the offline stub.
-    refuse_without_spend(args, "--spend", "question generation")
 
     if not key:
         raise SystemExit("OPENROUTER_API_KEY not set — run with --dry-run or export the key")

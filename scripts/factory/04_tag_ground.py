@@ -167,6 +167,13 @@ def main() -> int:
     args = ap.parse_args()
 
     src = pathlib.Path(args.candidates)
+    # THE SPEND REFUSAL COMES FIRST, BEFORE ANY INPUT CHECK.
+    #
+    # Found in round 131 by running the smoke test on a CLEAN CHECKOUT: with data/factory/
+    # absent this returned at the input guard below and **never printed the refusal**, so the
+    # smoke assertion - and any caller - could not tell a missing input from an unauthorised
+    # spend. The spend rule is about AUTHORISATION, so it is answered whatever the files say.
+    refuse_without_spend(args, "--spend", 'domain tagging')
     if not src.exists():
         print("no candidates file: " + str(src), file=sys.stderr)
         print("run first:  python scripts/factory/01_select_images.py --target 3000", file=sys.stderr)
@@ -209,7 +216,6 @@ def main() -> int:
         print()
         print("DRY RUN: offline stub, no network, no spend.")
     else:
-        refuse_without_spend(args, "--spend", 'domain tagging')
         if not args.base_url:
             print("refusing to guess an endpoint: pass --base-url.", file=sys.stderr)
             return 2
