@@ -223,10 +223,15 @@ def main() -> int:
             print("         spend: inference on images.")
             refused += 1
             continue
-        if miss_f:
-            print("SKIP     " + s.key + "  — missing input: " + ", ".join(miss_f))
-            skipped += 1
-            continue
+        # THE ENV CHECK COMES FIRST, AND IT IS THE SPEND RULE THAT DECIDES THE ORDER.
+        #
+        # It used to follow the input check, so on a clean checkout - where
+        # `data/factory/candidates.json` does not exist - a paid stage with `--spend` and no env
+        # reported 'SKIP missing input' and **never reached the refusal**. The owner passes
+        # `--spend` to authorise money; the one message they must get back is about the money,
+        # not about a file.
+        #
+        # A free stage is unaffected: it skips for either reason.
         if miss_e:
             # A PAID STAGE IS NEVER SILENTLY SKIPPED.
             #
@@ -245,6 +250,10 @@ def main() -> int:
                 refused += 1
                 continue
             print("SKIP     " + s.key + "  — missing env: " + ", ".join(m for m in miss_e))
+            skipped += 1
+            continue
+        if miss_f:
+            print("SKIP     " + s.key + "  — missing input: " + ", ".join(miss_f))
             skipped += 1
             continue
 

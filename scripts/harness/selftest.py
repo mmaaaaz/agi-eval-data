@@ -2298,8 +2298,13 @@ _rp = _ilu2.module_from_spec(_spec2)
 sys.modules["_rp"] = _rp
 _spec2.loader.exec_module(_rp)
 
+    # A TRACKED FILE, NOT A GITIGNORED ONE. This fixture named data/factory/provenance.jsonl,
+    # and data/factory/ is gitignored - so on a CLEAN CHECKOUT the file is absent and the test
+    # asserted the existence of something the repository does not contain. **It passed locally
+    # and failed in CI**, which is the whole class this round is about.
+    # It names a file that ships instead.
 _okstage = _rp.Stage("x", "scripts/factory/00_provenance.py", "t",
-                     makes_files=["data/factory/provenance.jsonl"])
+                     makes_files=["data/latest.json"])
 check("a stage whose declared output exists reports no missing output",
       _rp.missing_outputs(_okstage) == [], _rp.missing_outputs(_okstage))
 _missing = _rp.Stage("y", "scripts/factory/00_provenance.py", "t",
@@ -2308,8 +2313,12 @@ check("a stage whose declared output is absent is reported missing",
       _rp.missing_outputs(_missing) == ["data/factory/__nope.json"])
 check("a stage that declares no outputs is not failed for that",
       _rp.missing_outputs(_rp.Stage("z", "scripts/harness/analyze.py", "t")) == [])
-# empty counts, like a missing input: a 0-byte artefact is what a broken stage leaves.
 _empty = ROOT / "data" / "factory" / "__empty_probe.json"
+# empty counts, like a missing input: a 0-byte artefact is what a broken stage leaves.
+# THE DIRECTORY IS GITIGNORED, SO IT IS ABSENT ON A CLEAN CHECKOUT. This wrote a probe file
+# into data/factory/ and assumed the directory existed - **it does locally, and does not in
+# CI**, so the self-test died at 342 of 446 assertions with no traceback on stderr.
+_empty.parent.mkdir(parents=True, exist_ok=True)
 _empty.write_text("", encoding="utf-8")
 try:
     check("a 0-byte output counts as absent",
