@@ -6,6 +6,12 @@ import { TanStackRouterVite } from "@tanstack/router-plugin/vite";
 
 export default defineConfig({
   plugins: [TanStackRouterVite(), react(), tailwindcss()],
+  // Vite 6 rejects unknown Host headers (403 "Blocked request") by default; the
+  // local dev server is reached through a cloudflared quick tunnel, whose
+  // random *.trycloudflare.com hostname cannot be listed ahead of time.
+  server: {
+    allowedHosts: [".trycloudflare.com"],
+  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

@@ -5,9 +5,10 @@ compatibility_date = "2025-01-01"
 [observability]
 enabled = true
 
-[ai]
-binding = "AI"
-
+# THE [ai] BINDING IS REMOVED. It was the only way this Worker could spend money, and the
+# owner's rule is that the only permitted spend is inference on images. The chat route that used
+# it is retired. Re-adding this binding re-opens a Cloudflare spend surface - do it only with an
+# explicit decision, and add the route back with it.
 [[d1_databases]]
 binding = "DB"
 database_name = "agi-eval-questions"

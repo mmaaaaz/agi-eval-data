@@ -1,13 +1,7 @@
-import {
-  convertToModelMessages,
-  createGateway,
-  createUIMessageStream,
-  createUIMessageStreamResponse,
-  stepCountIs,
-  streamText,
-  UI_MESSAGE_STREAM_HEADERS,
-  type UIMessage,
-} from "ai";
+// THE AI SDK IS NO LONGER IMPORTED. The chat route was retired and the [ai] binding removed,
+// so nothing here needs it - **and the Worker bundle fell from 888 KiB to 183 KiB when it
+// went.** A dependency kept for a route that cannot run is a spend surface kept for a
+// capability that was taken away.
 import {
   ACTOR_COOKIE,
   actorSetCookie,
@@ -21,7 +15,7 @@ import { normQ, normTags } from "@agi-eval/shared";
 import { CORS_HEADERS, jsonResponse as json } from "./http";
 import { z } from "zod";
 
-/** Worker env — D1 binding + AI gateway secrets (kept here; the factory takes db+code). */
+// Worker env - the D1 binding and the door secrets. NO AI binding: see the retirement note
 interface Env {
   DB?: D1Database;
   /** reviewer secret: the only door that may approve ground truth */
@@ -30,82 +24,13 @@ interface Env {
   HARNESS_CODE?: string;
   /** signs the server-issued actor id. Unset = fall back to the client's id. */
   ACTOR_SECRET?: string;
-  GATEWAY_KEY?: string;
   GATEWAY_MODEL?: string;
   ACCESS_CODE?: string;
   RATE_LIMIT_PER_IP?: string;
-  FORCE_FALLBACK?: string;
-  AI?: { run: (model: string, input: Record<string, unknown>) => Promise<{ response?: string }> };
 }
 
 /** Workers AI model used when the gateway rate-limits (free 10k neurons/day). */
 const FALLBACK_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
-const RATE_LIMIT_RE = /rate[- ]?limit|429|free tier|quota|too many requests/i;
-/** After a gateway rate-limit, route around it for this long (sticky per isolate). */
-const FALLBACK_WINDOW_MS = 3 * 60_000;
-let gwFallbackUntil = 0;
-/** Overflow prompt: no SQL tool (Workers AI tool-calling proved unreliable) —
- *  answer narratively and say when precise numbers are unavailable. */
-const FALLBACK_SYSTEM_PROMPT = `You are the assistant for agi-eval-data — an AGI benchmark dataset of real-world images where vision models fail, plus geometric reasoning problems (~54.5k images, 7 contributors, syncing daily from Google Drive).
-Questions ABOUT the dataset, its purpose, stats or project: answer directly and helpfully. The precise SQL tool is temporarily unavailable (the primary model is rate-limited), so if a question needs an exact count, ranking or filter, say: "Precise numbers are temporarily unavailable — ask again in a couple of minutes." Keep answers to 1-3 sentences. Off-topic questions: reply with exactly one line: "I only answer questions about the agi-eval-data dataset."`;
-/* per-IP daily cap (best-effort, in-memory) */
-const rateMap = new Map();
-function allowIp(ip: string, limit: number) {
-  const day = Math.floor(Date.now() / 86400000);
-  const rec = rateMap.get(ip);
-  if (!rec || rec.day !== day) {
-    rateMap.set(ip, { day, count: 1 });
-    return true;
-  }
-  if (rec.count >= limit) return false;
-  rec.count++;
-  return true;
-}
-
-function ipOf(request: Request): string {
-  return (
-    request.headers.get("cf-connecting-ip") ??
-    (request.headers.get("x-forwarded-for") || "").split(",")[0].trim() ??
-    "unknown"
-  );
-}
-
-/**
- * Rich schema brief — the model sees exact DDL + semantics so it writes
- * correct SQL instead of hallucinating column types.
- */
-const SYSTEM_PROMPT = `You are the data analyst for agi-eval-data — an AGI benchmark dataset of real-world images where vision models fail, plus geometric reasoning problems.
-
-SCOPE: Answer ONLY questions about this dataset, its stats, or the project. For anything else, reply with exactly one line: "I only answer questions about the agi-eval-data dataset." — nothing more.
-
-STYLE:
-- Lead with the exact answer (number/name/list). Then at most 1–2 short context sentences.
-- No filler, no apologies, no restating the question, no offers to "break it down further" unless asked.
-
-CONTRIBUTORS:
-- Match contributors ONLY by their EXACT owner email (given in the user message as CONTRIBUTOR MATCHES). Never guess names or emails, never use name-pattern matching. If a CONTRIBUTOR MATCHES block lists people the user did not ask about, IGNORE it.
-
-DATA RULES:
-- "pictures/images" = kind='i'. Videos (kind='v') are excluded from picture counts.
-- unique images = COUNT(DISTINCT md5). Duplicates: md5 shared by >1 row.
-- day is VARCHAR 'YYYY-MM-DD'. Add a day filter ONLY when the user names a period ("in august", "last week") — then write the real dates (e.g. day LIKE '2026-08-%' for August 2026). For "total / overall / all time" questions: NO day filter.
-- orientation/width/height/camera are EXIF columns; NULL when unknown — never guess.
-
-SQL:
-- Call run_sql for ANY data question — answer from the real result, never invent numbers.
-- Chain multiple run_sql calls when a question needs multi-step analysis (filter → aggregate → compare). Never re-run an identical query — reuse the result you already have.
-- Older tool results may be trimmed to 8 rows; re-run a query when you need rows that were trimmed.
-- Single SELECT per call, LIMIT auto-added (200).
-
-PATTERNS — copy these shapes exactly (owner is always the exact email from CONTRIBUTOR MATCHES):
-- count by contributor: SELECT COUNT(*) FROM images WHERE owner = 'EMAIL' AND kind = 'i'
-- unique by contributor: SELECT COUNT(DISTINCT md5) FROM images WHERE owner = 'EMAIL' AND kind = 'i'
-- per-day counts: SELECT day, COUNT(*) AS uploads FROM images WHERE kind = 'i' AND day LIKE 'YYYY-MM-%' GROUP BY day ORDER BY day
-- top contributors: SELECT owner, COUNT(DISTINCT md5) AS uniq FROM images WHERE kind = 'i' GROUP BY owner ORDER BY uniq DESC LIMIT 5
-- orientation split: SELECT orientation, COUNT(*) AS n FROM images WHERE kind = 'i' GROUP BY orientation
-- contributor shots by orientation: SELECT COUNT(*) FROM images WHERE owner = 'EMAIL' AND kind = 'i' AND orientation = 'portrait'
-- duplicates by contributor: SELECT owner, COUNT(*) AS dup_copies FROM images WHERE kind = 'i' AND md5 IN (SELECT md5 FROM images WHERE kind = 'i' GROUP BY md5 HAVING COUNT(*) > 1) GROUP BY owner ORDER BY dup_copies DESC LIMIT 5
-`;
 
 /* client-side tool: executed in the visitor's browser against DuckDB WASM.
    No `execute` here — the AI SDK forwards the call to the client. */
@@ -140,139 +65,34 @@ export default {
       // THIS DOOR FAILS CLOSED, LIKE THE OTHER TWO. It was `if (env.ACCESS_CODE && ...)`,
       // so an UNSET secret meant no authentication at all — the opposite of the rule this
       // project states about itself in wrangler.toml: an unset secret DISABLES the door.
-      // There was a third door, failing open, unnoticed because it is not a questions door.
-      // It also SPENDS: it reaches a paid OpenAI model through the AI gateway.
-      if (!hasCode(request.headers.get("x-access-code"), env.ACCESS_CODE))
-        return json(
-          {
-            error: env.ACCESS_CODE
-              ? "invalid access code"
-              : "pooled chat is not configured (missing ACCESS_CODE) — the site will not "
-                + "spend on an unauthenticated door. Set the secret, or add your own key.",
-          },
-          401,
-          { ...CORS_HEADERS },
-        );
-
-      const limit = Number(env.RATE_LIMIT_PER_IP || 30);
-      if (!allowIp(ipOf(request), limit))
-        return json(
-          {
-            error: `daily limit reached for your address (${limit} questions/day). Add your own key via settings, or try again after 00:00 UTC.`,
-          },
-          429,
-          { ...CORS_HEADERS },
-        );
-
-      if (!env.GATEWAY_KEY)
-        return json(
-          { error: "pooled chat is not configured (missing GATEWAY_KEY)" },
-          503,
-          { ...CORS_HEADERS },
-        );
-
-      const { messages, context } = (await request.json()) as {
-        messages: UIMessage[];
-        /** per-turn client context (viewing + contributor emails) — never shown to the user */
-        context?: string;
-      };
-
-      const modelMessages = await convertToModelMessages(messages);
-      if (context) {
-        const lastUser = [...modelMessages].reverse().find((m) => m.role === "user");
-        if (lastUser) {
-          lastUser.content =
-            typeof lastUser.content === "string"
-              ? `${context}\n\n${lastUser.content}`
-              : [{ type: "text", text: context }, ...lastUser.content];
-        }
+      //
+      // ---------------------------------------------------------------------------
+      // AND THE ROUTE IS NOW RETIRED, WHICH IS THE SPEND RULE RATHER THAN A PREFERENCE.
+      //
+      // The owner's constraint is that the ONLY thing that may cost money is inference on
+      // images. This route was the last surface that could cost money on CLOUDFLARE instead:
+      // it reached Workers AI through the `[ai]` binding as a fallback, and an AI gateway
+      // before that.
+      //
+      // **The chat PAGE was deleted in round 129, so nothing in the repository calls this.**
+      // The route survived as dead code that could still spend if anyone found the URL. The
+      // `[ai]` binding is removed from wrangler.toml and the client library is no longer
+      // imported, so the capability is GONE rather than merely unreachable.
+      //
+      // The door is kept and still checked FIRST, so the 401 assertions in worker.test.ts keep
+      // meaning what they meant: the door closes before anything else happens.
+      // ---------------------------------------------------------------------------
+      if (!hasCode(request.headers.get("x-access-code"), env.ACCESS_CODE)) {
+        return json({ error: env.ACCESS_CODE
+          ? "invalid access code"
+          : "chat is disabled: ACCESS_CODE is not set on this worker" }, 401, { ...CORS_HEADERS });
       }
-      const gw = createGateway({ apiKey: env.GATEWAY_KEY });
-      const noteError = (e: unknown) => `AI error: ${e instanceof Error ? e.message : String(e)}`;
-
-      // sticky fallback: once the gateway rate-limits, route around it for a
-      // while; FORCE_FALLBACK=1 bypasses the gateway entirely (testing)
-      const force = env.FORCE_FALLBACK === "1";
-      const primaryActive = !force && Date.now() >= gwFallbackUntil;
-
-      // overflow runs WITHOUT tools and WITHOUT the AI SDK: Workers AI
-      // tool-calling proved unreliable (garbled tool JSON on llama fp8-fast,
-      // tools ignored on qwen-coder) and the provider duplicated stream
-      // deltas — a single non-streaming env.AI.run is bulletproof
-      const runFallback = async (): Promise<string> => {
-        const msgs = [
-          { role: "system", content: FALLBACK_SYSTEM_PROMPT },
-          ...modelMessages.map((m) => ({
-            role: m.role,
-            content: typeof m.content === "string"
-              ? m.content
-              : m.content.map((p) => (p.type === "text" ? p.text : "")).join(""),
-          })),
-        ];
-        const out = await env.AI!.run(FALLBACK_MODEL, { messages: msgs, max_tokens: 300 });
-        return out?.response?.trim() || "Precise numbers are temporarily unavailable — ask again in a couple of minutes.";
-      };
-
-      const stream = createUIMessageStream({
-        execute: async ({ writer }) => {
-          const writeText = (text: string) => {
-            writer.write({ type: "text-start", id: "fb" } as Parameters<typeof writer.write>[0]);
-            writer.write({ type: "text-delta", id: "fb", delta: text } as Parameters<typeof writer.write>[0]);
-            writer.write({ type: "text-end", id: "fb" } as Parameters<typeof writer.write>[0]);
-          };
-
-          if (!primaryActive) {
-            // sticky window: straight to the toolless overflow engine
-            writeText(await runFallback());
-            return;
-          }
-
-          const result = streamText({
-            model: gw(env.GATEWAY_MODEL || "openai/gpt-5-nano"),
-            system: SYSTEM_PROMPT,
-            messages: modelMessages,
-            tools: { run_sql: runSqlTool },
-            stopWhen: stepCountIs(8),
-            abortSignal: request.signal,
-          });
-          const inner = result.toUIMessageStream({ onError: noteError });
-
-          // peek the first chunks: a gateway rate-limit error arrives before
-          // any real content — swap to the Workers AI fallback transparently
-          const reader = inner.getReader();
-          const buffered: unknown[] = [];
-          let swap = false;
-          try {
-            for (;;) {
-              const { done, value } = await reader.read();
-              if (done) break;
-              const chunk = value as { type?: string; errorText?: string };
-              buffered.push(chunk);
-              if (chunk.type === "error") {
-                if (RATE_LIMIT_RE.test(chunk.errorText ?? "")) swap = true;
-                break; // other errors pass through untouched
-              }
-              if (chunk.type !== "start" && chunk.type !== "start-step") break; // real content began
-            }
-          } catch {
-            /* aborted mid-peek — commit whatever buffered and let merge finish */
-          }
-          if (swap) {
-            gwFallbackUntil = Date.now() + FALLBACK_WINDOW_MS;
-            try { await reader.cancel(); } catch { /* already closed */ }
-            writeText(await runFallback());
-          } else {
-            for (const chunk of buffered) writer.write(chunk as Parameters<typeof writer.write>[0]);
-            reader.releaseLock();
-            writer.merge(inner);
-          }
-        },
-        onError: noteError,
-      });
-      return createUIMessageStreamResponse({
-        stream,
-        headers: { ...UI_MESSAGE_STREAM_HEADERS, ...CORS_HEADERS },
-      });
+      return json({
+        error: "the chat endpoint is retired",
+        detail: "It could spend on Cloudflare, and the only permitted spend is inference on "
+          + "images. The page was removed; this route is kept only so an old client gets a "
+          + "clear answer rather than a 404.",
+      }, 410, { ...CORS_HEADERS });
     }
 
     if (!env.DB) return json({ error: "questions API is not configured (missing D1 binding)" }, 503, { ...CORS_HEADERS });

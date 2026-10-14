@@ -29,6 +29,18 @@ on:
       - ".github/workflows/deploy.yml"
   workflow_dispatch:
     inputs:
+      # EVERY JOB, INCLUDING THE SITE. Without this there is NO WAY TO DEPLOY THE WEB APP
+      # ON DEMAND: a push only deploys what its own diff touched, and a manual run has no diff
+      # at all (see the note below the filters), so `deploy pages` is skipped on both.
+      #
+      # Measured in round 134: the live bundle still carried `Ask AI` and `chat with the data`
+      # - strings deleted from the source two rounds earlier. **The code was right, the
+      # secrets were right, and the site was stale**, with every run reporting success.
+      force_all:
+        description: "deploy everything, ignoring the changed-path filter"
+        type: boolean
+        default: false
+      # kept for compatibility; force_all supersedes it
       force_grip:
         description: "deploy grip pages even if no grip frontend paths changed"
         type: boolean
@@ -141,7 +153,7 @@ jobs:
   relay:
     name: deploy relay
     needs: changes
-    if: needs.changes.outputs.relay == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || needs.changes.outputs.relay == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -197,7 +209,7 @@ jobs:
   pages:
     name: deploy pages
     needs: changes
-    if: needs.changes.outputs.web == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || needs.changes.outputs.web == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -236,7 +248,7 @@ jobs:
   metro-relay:
     name: deploy metro relay
     needs: changes
-    if: needs.changes.outputs.metro_app == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || needs.changes.outputs.metro_app == 'true')
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-metro
@@ -264,7 +276,7 @@ jobs:
   metro-pages:
     name: deploy metro pages
     needs: changes
-    if: needs.changes.outputs.metro_web == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || needs.changes.outputs.metro_web == 'true')
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-metro
@@ -309,7 +321,7 @@ jobs:
   grip-pages:
     name: deploy grip pages
     needs: changes
-    if: needs.changes.outputs.grip_web == 'true' || inputs.force_grip == true
+    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || inputs.force_grip == true || needs.changes.outputs.grip_web == 'true')
     runs-on: ubuntu-latest
     concurrency:
       group: deploy-grip
@@ -346,7 +358,7 @@ jobs:
   grip-sync:
     name: deploy grip sync worker
     needs: changes
-    if: needs.changes.outputs.grip_app == 'true' && needs.changes.outputs.secrets == 'true'
+    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || needs.changes.outputs.grip_app == 'true')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
