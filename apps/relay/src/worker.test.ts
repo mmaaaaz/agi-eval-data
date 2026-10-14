@@ -76,14 +76,25 @@ describe("the open routes", () => {
     expect(((await res.json()) as { service?: string }).service).toBe("agi-eval-relay");
   });
 
-  it("reports an UNSET model rather than inventing one", async () => {
+  it("reports which DOORS are configured, without inventing a transport", async () => {
     const res = await call("/api/info");
-    expect(((await res.json()) as { model?: string }).model).toBe("unset");
+    const j = (await res.json()) as {
+      role?: string; doors?: { approval?: string; measurement?: string; chat?: string }
+    };
+    // THE TRANSPORT IS GONE. This used to assert `model: "unset"` and
+    // `transport: "ai-sdk-v5"` - a transport the Worker no longer has, since the chat route was
+    // retired and the AI SDK removed in round 134. **A deployed endpoint advertising a transport
+    // it does not have is a claim nothing checks.**
+    expect(j.role).toBe("questions API");
+    expect(j.doors?.approval).toMatch(/DISABLED/);
+    expect(j.doors?.measurement).toMatch(/DISABLED/);
+    expect(j.doors?.chat).toBe("retired");
   });
 
-  it("reports the configured model when there is one", async () => {
-    const res = await call("/api/info", undefined, { GATEWAY_MODEL: "openai/gpt-5-nano" });
-    expect(((await res.json()) as { model?: string }).model).toBe("openai/gpt-5-nano");
+  it("says a door is CONFIGURED when its secret is set", async () => {
+    const res = await call("/api/info", undefined, { QUESTIONS_CODE: "s3cret" });
+    const j = (await res.json()) as { doors?: { approval?: string } };
+    expect(j.doors?.approval).toBe("configured");
   });
 
   it("answers a preflight with 204 and CORS headers", async () => {

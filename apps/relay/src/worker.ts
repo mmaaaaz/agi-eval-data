@@ -56,7 +56,24 @@ export default {
 
     if (url.pathname === "/api/info")
       return json(
-        { model: env.GATEWAY_MODEL ?? "unset", transport: "ai-sdk-v5" },
+        // THE TRANSPORT IS GONE, SO THE FIELD IS GONE. This said
+      // `transport: "ai-sdk-v5"` and `model: env.GATEWAY_MODEL` - left over from the chat relay,
+      // whose route was retired and whose binding was removed in round 134. **A deployed endpoint
+      // advertising a transport it no longer has is a claim nothing checks**, which is the defect
+      // this project guards against on its own site.
+      //
+      // It now reports what the Worker IS: the questions API, and whether each door is configured.
+      // **Whether a secret is SET is not a secret** - the doors already warn about it on boot - and
+      // it is the first thing anyone debugging a 401 needs to know.
+      {
+        service: "agi-eval-relay",
+        role: "questions API",
+        doors: {
+          approval: env.QUESTIONS_CODE ? "configured" : "DISABLED (fail closed)",
+          measurement: env.HARNESS_CODE ? "configured" : "DISABLED (fail closed)",
+          chat: "retired",
+        },
+      },
         200,
         { ...CORS_HEADERS },
       );
