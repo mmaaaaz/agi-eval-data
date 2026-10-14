@@ -44,6 +44,19 @@ def post(relay: str, payload: dict, actor: str, actor_name: str, timeout: int = 
             "Content-Type": "application/json",
             "x-actor": actor,
             "x-actor-name": actor_name,
+            # A USER-AGENT, BECAUSE CLOUDFLARE BLOCKS PYTHON'S DEFAULT WITH A 403.
+            #
+            # Found in round 144 by seeding for real: **every one of 600 requests returned
+            # 403**, while the same payload sent by hand returned 200. The difference was the
+            # client, and the client's only distinguishing feature is its User-Agent:
+            #
+            #     urllib default (Python-urllib/3.x)  ->  403
+            #     agi-eval-data/1.0                    ->  200
+            #
+            # **A script that cannot talk to its own API is indistinguishable from an API that
+            # refuses it**, and the failure said nothing about why. Named so the next person does
+            # not spend the same time on it.
+            "User-Agent": "agi-eval-data-seeder/1.0 (+https://github.com/mmaaaaz/agi-eval-data)",
         },
     )
     try:
