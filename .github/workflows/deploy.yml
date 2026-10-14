@@ -111,6 +111,29 @@ jobs:
             # A WARNING, NOT A FAILURE: a fork legitimately has no secrets, and failing there
             # would be wrong. An annotation surfaces it in the run summary, where a person looks.
             echo "::warning title=Deploys are SKIPPED::CLOUDFLARE_API_TOKEN or CLOUDFLARE_ACCOUNT_ID is not set, so every deploy job is gated off and this run will ship nothing."
+            # AND A JOB SUMMARY, BECAUSE A ::warning IS ONE LINE IN A COLLAPSED STEP.
+            #
+            # Measured in round 133: `deploy pages` had been SKIPPED on EVERY run, and the only
+            # trace was an annotation nobody opened. The site never updated and the workflow
+            # reported success each time. **A skipped deploy that looks green is the same defect
+            # as a pipeline that exits 0 having done no work** - the third costume it has worn.
+            #
+            # SINGLE quotes throughout: backticks inside double quotes EXECUTE in shell, which is
+            # how a summary about secret names becomes a command substitution.
+            {
+              echo '## Deploys are SKIPPED - nothing shipped'
+              echo ''
+              echo 'Every deploy job is gated on this step, and it did not pass, so **this run'
+              echo 'published nothing** while reporting success.'
+              echo ''
+              echo '| secret | set |'
+              echo '| --- | --- |'
+              echo "| CLOUDFLARE_API_TOKEN | $HAS_TOKEN |"
+              echo "| CLOUDFLARE_ACCOUNT_ID | $HAS_ACCOUNT |"
+              echo ''
+              echo 'Set them under Settings -> Secrets and variables -> Actions -> Secrets,'
+              echo 'then re-run this workflow.'
+            } >> "$GITHUB_STEP_SUMMARY"
             echo "CLOUDFLARE_API_TOKEN and/or CLOUDFLARE_ACCOUNT_ID is not set - DEPLOYS ARE SKIPPED."
             echo "Set them under Settings -> Secrets and variables -> Actions -> Secrets."
           fi
