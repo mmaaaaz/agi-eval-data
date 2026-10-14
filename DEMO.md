@@ -10,7 +10,7 @@
 | --- | --- |
 | Photographs in the corpus | **56,285** |
 | Survive the technical filters | **55,527** |
-| **Selected for annotation** | **600**, stratified by resolution |
+| **Selected for annotation** | **600**, stratified by resolution — **and now LOADED into the live store** |
 | **Questions authored (LIVE, in D1)** | **1** — approved, with 1 model evaluation |
 
 **The 600 were chosen against a quota, not at random**, because the corpus is badly skewed:
@@ -54,10 +54,14 @@ session does not drift to whatever is common.
 
 **2. Gallery shows all 56,285** — searchable, filterable, with the 600 marked.
 
-**3. Contribute opens an image and lets you write a question against it** — multiple choice,
+**3. Choose now reads the 600 from the database.** They are loaded as `proposed`, so the triage
+   screen steers you through them and your decision overwrites the proposal. **Re-running the
+   seeder cannot clobber a human decision** — the guard is in the SQL.
+
+**4. Contribute opens an image and lets you write a question against it** — multiple choice,
 numeric with a tolerance, yes/no, or free text. The form validates as you go.
 
-**4. Status and Results show progress.**
+**5. Status and Results show progress.**
 
 ## The two claims worth making out loud
 
