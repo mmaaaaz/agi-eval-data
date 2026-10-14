@@ -89,6 +89,7 @@ jobs:
               - "packages/questions-api/**"
               - "packages/shared/**"
               - "scripts/db/check_migrations.py"
+              - "scripts/db/diagnose_remote.py"
               - "bun.lock"
               - "package.json"
               - "turbo.json"
