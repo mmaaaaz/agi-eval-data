@@ -426,6 +426,30 @@ try:
 except ValueError as _e:
     check("build() REFUSES an item outside the taxonomy", "not valid" in str(_e), str(_e)[:90])
 
+print("A LINK TO A DELETED ROUTE IS CAUGHT")
+# FIVE ROUTES WERE DELETED IN ROUNDS 129 AND 132. The links were unwrapped BY HAND, and hand work
+# does not scale - a _src left pointing at a deleted route renders a dead link on a deployed site.
+# TypeScript's typed routes help only where the route tree has regenerated.
+#
+# AND THE FIRST VERSION OF THIS CHECK COULD NOT FAIL. It collected its findings, printed them, and
+# appended to all_problems at the BOTTOM of main - which an EARLY RETURN never reached. It printed
+# "OK" while reporting nothing. **Found by planting a link and watching the guard pass**, which is
+# the only way to tell a check from decoration.
+_dl = Path(_tf.mkdtemp())
+(_dl / "apps" / "web" / "src" / "routes").mkdir(parents=True)
+(_dl / "apps" / "web" / "src" / "routes" / "index.tsx").write_text("", encoding="utf-8")
+(_dl / "apps" / "web" / "src" / "routes" / "status.tsx").write_text("", encoding="utf-8")
+(_dl / "apps" / "web" / "src" / "x.tsx").write_text(
+    'export const A = () => <a href="/status">s</a>;\n'
+    'export const B = () => <a href="/method">m</a>;\n', encoding="utf-8")
+_dl_p = _src.find_dead_route_links(_dl)
+check("a link to a route with no route file IS caught",
+      [x["route"] for x in _dl_p] == ["/method"], str(_dl_p))
+check("and a link that DOES resolve is not",
+      all(x["route"] != "/status" for x in _dl_p), str(_dl_p))
+check("the real web app has no link to a deleted route",
+      _src.find_dead_route_links(ROOT) == [], str(_src.find_dead_route_links(ROOT)))
+
 print("A DEPLOY THAT CANNOT BE TRIGGERED IS CAUGHT")
 # ROUND 134: THE SITE HAD NOT DEPLOYED IN WEEKS while every run reported SUCCESS. A push deploys
 # only what its own diff touched, and a manual workflow_dispatch has NO DIFF AT ALL - so every

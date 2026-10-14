@@ -1,5 +1,5 @@
 /**
- * /ask + /contribute settings v4 — pooled AI Gateway via relay. localStorage only.
+ * /contribute settings v4 — pooled AI Gateway via relay. localStorage only.
  * Re-exported from @site with the web-specific key + default relay.
  */
 import { loadSettings as _load, saveSettings as _save } from "@site/settings";

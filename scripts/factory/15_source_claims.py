@@ -269,6 +269,45 @@ def find_spend_bindings(base: pathlib.Path) -> list[dict]:
             out.append({"file": rel})
     return out
 
+
+# ---------------------------------------------------------------------------
+# A LINK TO A PAGE THAT DOES NOT EXIST
+# ---------------------------------------------------------------------------
+
+# FIVE ROUTES WERE DELETED IN ROUNDS 129 AND 132 (ask, method, prior-art, alternatives,
+# project). The links were unwrapped by hand at the time, and hand work does not scale: a
+# `to=` or `navigate({ to: })` left pointing at a deleted route renders a dead link on a
+# deployed site, and **nothing in this repository checked it** - TypeScript's typed routes help
+# only where the route tree has regenerated.
+def find_dead_route_links(base: pathlib.Path) -> list[dict]:
+    """An internal route referenced by the web app that no route file defines."""
+    routes_dir = base / "apps" / "web" / "src" / "routes"
+    if not routes_dir.exists():
+        return []
+    # a route file `gallery.triage.tsx` is the path `/gallery/triage`
+    known = set()
+    for p in routes_dir.glob("*.tsx"):
+        name = p.stem
+        if name.startswith("__") or name == "routeTree":
+            continue
+        known.add("/" + name.replace(".index", "").replace(".", "/"))
+        known.add("/" + name.replace(".", "/"))
+    out = []
+    pattern = re.compile(r'(?:to:|href=)["\' ]*"(/[a-z0-9/\-]*)"')
+    for p in sorted((base / "apps" / "web" / "src").rglob("*.ts*")):
+        if out_of_scope(p):
+            continue
+        try:
+            text = p.read_text(encoding="utf-8-sig", errors="ignore")
+        except Exception:
+            continue
+        for m in pattern.finditer(text):
+            target = m.group(1)
+            if target in known or target == "/":
+                continue
+            out.append({"file": p.relative_to(base).as_posix(), "route": target})
+    return out
+
 def find_problems(base: pathlib.Path) -> list[dict]:
     out = []
     for d in SOURCES:
@@ -547,13 +586,19 @@ def main(argv: list[str] | None = None) -> int:
     refs = find_broken_references(base)
     gaps = find_coverage_gaps(base)
     paid_hosts = find_unexpected_paid_hosts(base)
+    dead_links = find_dead_route_links(base)
     spend_bindings = find_spend_bindings(base)
     print("scanned the source for claims that contradict the code, for guards in a scope where")
     print("they cannot work, for imports nothing uses, for counts the code settles, for README")
     print("references that do not resolve, for files a README omits, for a BILLING HOST outside a")
     print("file allowed to have one, and for a SPEND BINDING that names no host at all")
+    # EVERY NEW CHECK MUST BE ADDED HERE TOO. The first version of the dead-link check collected
+    # its findings, printed them, and appended to all_problems at the BOTTOM of main - which this
+    # early return never reached. **It printed "OK" while reporting nothing, which is a check that
+    # cannot fail**, the defect this file exists to find. Found by planting a link to a deleted
+    # route and watching the guard pass.
     if (not problems and not scopes and not unused and not counts and not refs and not gaps
-            and not paid_hosts and not spend_bindings):
+            and not paid_hosts and not spend_bindings and not dead_links):
         print()
         print("OK — no source claim contradicts the documented invariant that an unset")
         print("     privilege secret DISABLES the door, and every guard has its variable.")
@@ -608,6 +653,15 @@ def main(argv: list[str] | None = None) -> int:
         print("Inference on images is the ONLY permitted spend. A billing host may appear only in a")
         print("file this check allows, and every allowed file must state why.")
         print()
+    if dead_links:
+        print(str(len(dead_links)) + " LINK(S) TO A ROUTE THAT DOES NOT EXIST:")
+        for x in dead_links:
+            print("  " + x["file"] + " -> " + x["route"])
+        print()
+        print("A deleted page leaves a dead link on a deployed site. TypeScript catches this only")
+        print("where the route tree has regenerated, so it is checked here.")
+        print()
+        all_problems.append("a check above reported a problem")
     if spend_bindings:
         print(str(len(spend_bindings)) + " SPEND BINDING(S) OUTSIDE AN ALLOWED FILE:")
         for x in spend_bindings:
