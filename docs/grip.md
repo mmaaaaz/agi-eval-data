@@ -6,7 +6,6 @@ The **third site** in this repo: a lean explorer for the GRIP-Benchmark-34 suite
 
 Live: https://grip-eval.pages.dev
 Upstream (single source of truth): https://github.com/bilaljawaid980/Geomatric-Reasoning-Benchmark-Dataset
-Design doc: `plan-germetrical.md` · Plans: `.hermes/plans/*grip*`
 
 ---
 

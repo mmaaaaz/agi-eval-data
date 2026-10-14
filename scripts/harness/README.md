@@ -7,7 +7,7 @@ moved here (ADR-0004). The site authors and displays; the harness measures.
 
 **The spend rule.** This harness is the *only* place money is allowed to go: GPU or API
 time to run models on images. Everything it depends on — the frozen release, the image
-cache, the trace file — is local and free. See `../../.scratch/seen-not-grasped/zero-spend.md`.
+cache, the trace file — is local and free. **The spend rule is the owner's, and it is enforced here rather than documented here** — `spend.py` is the gate, and the rule it serves is stated in `AGENTS.md`.
 
 ## The five properties that make results publishable
 

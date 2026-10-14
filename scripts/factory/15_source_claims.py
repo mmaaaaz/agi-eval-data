@@ -427,6 +427,12 @@ def find_stale_counts(base: pathlib.Path) -> list[dict]:
 _EXTERNAL_REFS = {
     "OPEN_QUESTION_SPEC.md": "named as 'upstream' in docs/grip.md - it is in the other project",
     "GLOSSARY.md": "the name the domain-modeling skill defaults to, quoted in docs/agents/domain.md",
+    "AGENTS.md":
+        "gitignored on purpose, because .scratch/ is private - but it is a REAL file in a working"
+        " checkout, and a doc is right to name it",
+    "apps/metro-web/public/data/metro-graph.json":
+        "a BUILD ARTIFACT, gitignored; the tracked source is data/metro-graph.json and the schema"
+        " beside it",
 }
 
 _REF = re.compile(r"`([A-Za-z0-9_./-]+\.(?:py|ts|tsx|json|sql|md|yml|jsonc|toml))`")
