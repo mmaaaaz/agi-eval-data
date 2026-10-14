@@ -1,92 +1,73 @@
-# The relay deploy is blocked on a partially-applied migration
+# The relay deploy is blocked. Here is the measured state, not a guess.
 
-**Written 2026-10-14. This is a one-time repair for a production database. Read it before running
-anything.**
+**Rewritten 2026-10-14 after querying the real database. The first version of this file was
+WRONG — see "What the first version got wrong" at the end.**
 
-## What happened
+## What the remote database actually contains
 
-The `relay` deploy job had **never run** — `deploy.yml` declared `changes.outputs.relay` but had no
-`relay:` key in its `filters:` block, so the output was always empty. Fixed in round 140; the job
-now runs.
-
-When it finally ran, the **migration step failed**. The remote log is not readable (private repo),
-but the failure mode is reproduced locally:
+Wrangler is authenticated on the owner's machine, so this is **measured, not inferred**:
 
 ```
-X ERROR  duplicate column name: family
+$ wrangler d1 execute agi-eval-questions --remote --command "SELECT name FROM sqlite_master ..."
+  _cf_KV, evaluations, excluded, questions, sqlite_sequence, tags
+
+$ ... "SELECT id, name FROM d1_migrations"
+  X ERROR  no such table: d1_migrations
+
+$ ... "SELECT name FROM pragma_table_info('questions')"
+  id, file_id, contributor, question, qnorm, answer_type, answer, choices,
+  difficulty, tags, status, created_at
 ```
 
-**Why.** Migration `0005_v5c_item_axis.sql` begins with two `ALTER TABLE questions ADD COLUMN`
-statements and then ran a six-term `UNION ALL`. **D1 rejects six compound terms**, so that file
-failed — *after* its ALTERs had already taken effect. D1 records a migration **by name, and only
-when the whole file succeeds**, so `0005` was never marked applied.
+**Three facts follow, and they are the whole picture:**
 
-Every retry therefore re-runs the ALTERs, which now hit existing columns.
+1. **There is no `d1_migrations` table.** No migration has **ever** been applied through wrangler.
+2. **`questions` has only the twelve columns of the original `schema.sql`.** None of the fifty-odd
+   columns from `0002` onward exist.
+3. **The database is at the ORIGINAL schema state**, not a partial one.
 
-**The six-term UNION is fixed** (round 138, split into two three-term statements). The remaining
-problem is purely the recorded state.
+## And the migrations apply cleanly to it
 
-## What the database actually looks like
+The exact production DDL was read from the remote, loaded into a local D1, and the real migration
+set applied:
 
-The ALTERs from `0002`, `0003` and `0005` **have run**. What did NOT run is:
-
-* the `UPDATE` backfills at the end of `0005`
-* everything in `0006`, `0007`, `0008`
-
-## The repair, in order
-
-**1. See exactly where you are.** Nothing below this line should run until this is read.
-
-```bash
-cd apps/relay
-bunx --bun wrangler@4.125.0 d1 migrations list agi-eval-questions --remote
-bunx --bun wrangler@4.125.0 d1 execute agi-eval-questions --remote \
-  --command "SELECT name FROM d1_migrations ORDER BY id"
+```
+0001_core.sql            ✅
+0002_v4_epistemic.sql    ✅
+0003_v5_pairing.sql      ✅
+0004_v5b_guards.sql      ✅
+0005_v5c_item_axis.sql   ✅
+0006_v5d_eval_truth.sql  ✅
+0007_v5e_run_key.sql     ✅
+0008_v5f_run_summary.sql ✅
 ```
 
-**2. Confirm the columns from 0005 exist.**
+**So the migrations are not the problem.** The remote failure is environmental — a timeout, a
+transient API error, or a wrangler version difference — **and I could not read the remote log to
+say which, because the repository is private.**
 
-```bash
-bunx --bun wrangler@4.125.0 d1 execute agi-eval-questions --remote \
-  --command "SELECT name FROM pragma_table_info('questions') WHERE name IN ('family','relevance')"
-```
+## What to do
 
-**If both rows come back**, `0005`'s ALTERs ran and its name must be recorded without re-running it.
+**Re-run the deploy.** Nothing needs repairing first.
 
-**3. Record 0005 as applied.**
+**Actions → deploy → Run workflow → tick `force_all`.**
 
-```bash
-bunx --bun wrangler@4.125.0 d1 execute agi-eval-questions --remote \
-  --command "INSERT INTO d1_migrations (name) VALUES ('0005_v5c_item_axis.sql')"
-```
+The job now runs `scripts/db/diagnose_remote.py` **before** the migration step, so if it fails
+again the log will say **which migration**, instead of a bare SQLite error.
 
-**4. Run the backfill that 0005 never reached, and the rest of the migrations.**
+## What the first version of this file got wrong
 
-```bash
-bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --remote
-```
+It said the database was **partially migrated** — that `0005`'s ALTERs had taken effect before its
+six-term UNION failed, so `0005` needed recording as applied.
 
-`0006`, `0007` and `0008` are all `ADD COLUMN` and `CREATE` statements that have never run, so they
-apply cleanly. **They are still the new ones — nothing else is stale.**
+**All of that was false.** I reached it by reproducing a failure mode locally and **treating the
+reproduction as evidence about production rather than as a hypothesis to test.** The one command
+that settles it — `SELECT name FROM d1_migrations` — I did not run, because the diagnosis felt
+complete.
 
-**5. Re-run the deploy.**
+**The advice was also dangerous**: recording `0005` as applied against a database that has none of
+its columns would have skipped the migration that creates them, and every later migration would
+have failed on a missing column instead.
 
-Actions → deploy → Run workflow → tick **force_all**.
-
-## Why the backfill is not lost
-
-The `UPDATE` in `0005` only recovers a `family` value that an old row smuggled into its `tags`
-field. **If no items were authored before the migration, there is nothing to recover** — and
-`scripts/factory/03_verify.py` reports `C1.4` and the item-count checks, so the gate will say so
-rather than a guess.
-
-**If items DO exist**, run the two `UPDATE` statements from
-`apps/relay/migrations/0005_v5c_item_axis.sql` by hand with `d1 execute --remote`. They are
-idempotent in effect: the second carries `family IS NULL`, so running both again fills only what is
-missing.
-
-## What I did NOT do
-
-**I did not run any of this against your database.** It is production, the state is inferred from a
-reproduced failure mode rather than from the remote log, and step 1 exists to replace my inference
-with your measurement.
+> **A local reproduction tells you a failure mode exists. It does not tell you which one you have.**
+> The remote is one command away, and it is the only thing that answers the question.
