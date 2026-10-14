@@ -27,6 +27,13 @@ from __future__ import annotations
 import argparse
 import pathlib
 import sqlite3
+
+# WHAT THE DATABASE ACTUALLY ALLOWS, NOT WHAT THIS INTERPRETER DEFAULTALLY DOES.
+#
+# SQLite's default is 500. D1 rejects a six-term UNION, so the ceiling is at or below five -
+# and every statement in these migrations must fit under it. Verified against a real local D1
+# in round 138, where the six-term form failed and the three-term form applied cleanly.
+D1_COMPOUND_SELECT_LIMIT = 5
 import sys
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -214,6 +221,27 @@ def main(argv=None) -> int:
         return 2
 
     db = sqlite3.connect(":memory:")
+
+    # D1'S COMPOUND-SELECT LIMIT IS FAR LOWER THAN PLAIN SQLITE'S, AND THIS IS THE POINT OF
+    # THE CHECK RATHER THAN A DETAIL OF IT.
+    #
+    # Round 138 applied these migrations to a REAL local D1 with
+    # `wrangler d1 migrations apply --local` and got:
+    #
+    #     too many terms in compound SELECT: SQLITE_ERROR
+    #
+    # on a six-term UNION in schema_v5c_item_axis.sql. **Plain sqlite3 reports its limit as
+    # 500 and accepts the statement**, so this script validated the file as clean while the
+    # relay's deploy - which applies migrations before the code that needs them - would have
+    # FAILED IN PRODUCTION.
+    #
+    # The interpreter is the same; the LIMIT is not. Setting it here costs nothing and makes
+    # this check disagree with the runner for the same reason the runner does.
+    try:
+        db.setlimit(sqlite3.SQLITE_LIMIT_COMPOUND_SELECT, D1_COMPOUND_SELECT_LIMIT)
+    except (AttributeError, sqlite3.NotSupportedError):
+        print("note: this sqlite3 cannot set the compound-select limit; the check is weaker")
+        print("      than the database it stands in for.")
     failures, total = [], 0
     print("applying " + str(len(files)) + " migration(s) to a FRESH database:")
     for f in files:

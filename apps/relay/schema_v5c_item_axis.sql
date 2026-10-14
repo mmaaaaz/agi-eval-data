@@ -47,11 +47,33 @@ CREATE INDEX IF NOT EXISTS idx_q_relevance ON questions(relevance);
 -- can be recovered so historical items are not permanently unclassified, and leave
 -- anything ambiguous NULL rather than guessing a family.
 -- ---------------------------------------------------------------------------
+-- SPLIT INTO TWO STATEMENTS OF THREE TERMS EACH, BECAUSE D1 REJECTS THE SIX-TERM FORM.
+--
+-- Found in round 138 by applying the migrations to a REAL local D1
+-- (wrangler d1 migrations apply --local) rather than to plain SQLite:
+--
+--     too many terms in compound SELECT: SQLITE_ERROR
+--
+-- check_migrations.py PASSES, because plain SQLite allows far more compound terms than D1
+-- does. So this file validated clean in the repo and would have FAILED IN PRODUCTION on the
+-- relay's deploy, which applies migrations before the code that needs them.
+--
+-- The second statement carries `family IS NULL` so it fills only what the first missed, which
+-- makes the split exactly equivalent to the single pass.
 UPDATE questions
 SET family = (
   SELECT t.tag FROM (
     SELECT 'counting' AS tag UNION ALL SELECT 'scene_text' UNION ALL SELECT 'spatial'
-    UNION ALL SELECT 'attribute_binding' UNION ALL SELECT 'absent_entity'
+  ) AS t
+  WHERE (',' || REPLACE(REPLACE(tags, ', ', ','), ' ,', ',') || ',') LIKE '%,' || t.tag || ',%'
+  LIMIT 1
+)
+WHERE family IS NULL AND tags IS NOT NULL AND tags <> '';
+
+UPDATE questions
+SET family = (
+  SELECT t.tag FROM (
+    SELECT 'attribute_binding' AS tag UNION ALL SELECT 'absent_entity'
     UNION ALL SELECT 'knowledge_boundary'
   ) AS t
   WHERE (',' || REPLACE(REPLACE(tags, ', ', ','), ' ,', ',') || ',') LIKE '%,' || t.tag || ',%'
