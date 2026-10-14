@@ -22,6 +22,7 @@ on:
       - "scripts/open_models_public.py"
       # a check that runs before the relay deploy; re-running is cheap and correct
       - "scripts/db/check_migrations.py"
+      - "scripts/db/diagnose_remote.py"
       - "package.json"
       - "bun.lock"
       - "turbo.json"
@@ -212,6 +213,20 @@ jobs:
       - name: Check the API against the schema (read-only)
         run: python3 scripts/db/check_migrations.py > /dev/null
 
+      # DIAGNOSE BEFORE APPLYING, SO A HALF-APPLIED MIGRATION IS NAMED AND NOT GUESSED AT.
+      #
+      # Round 140: this job ran for the first time and failed with a raw
+      # `duplicate column name: family`. The cause was migration 0005, whose ALTERs had taken
+      # effect before its six-term UNION failed - and D1 records a migration BY NAME, only when
+      # the whole file succeeds. **A raw SQLite error names the symptom and not the cause.**
+      #
+      # `--continue-on-error` is NOT used: a diagnosed partial state should stop the deploy and
+      # point at docs/relay-migration-repair.md, not half-apply something else.
+      - name: Diagnose the remote schema (names a half-applied migration)
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: python scripts/db/diagnose_remote.py --db agi-eval-questions
       - name: Apply migrations (before the code that needs them)
         run: bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --remote
         working-directory: apps/relay
