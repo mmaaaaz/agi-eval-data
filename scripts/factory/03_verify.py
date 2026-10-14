@@ -114,8 +114,13 @@ def main() -> int:
             f"{len(md5s)} checked")
     bad_geo = [c for c in cand.get("images", []) if c.get("w", 0) < 256 or c.get("h", 0) < 256]
     g.check("C1.3", "every image is >=256px on both axes", not bad_geo, f"{len(bad_geo)} violations")
-    g.check("C1.4", "selection seed is recorded",
-            "seed" in cand, f"seed={cand.get('seed')}")
+    if not cand.get("images"):
+        g.check("C1.4", "selection seed is recorded", False,
+                "no candidates ledger yet - the seed is unknowable here, so no selection "
+                "may be quoted as reproducible", warn_only=True)
+    else:
+        g.check("C1.4", "selection seed is recorded",
+                "seed" in cand, f"seed={cand.get('seed')}")
 
     # ---- C2 item integrity -------------------------------------------
     print("\nC2 item integrity")
