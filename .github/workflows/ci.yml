@@ -11,6 +11,7 @@ on:
       - "package.json"
       - "bun.lock"
       - "turbo.json"
+      - "requirements.txt"
   push:
     branches: [main]
     paths:
@@ -22,6 +23,7 @@ on:
       - "package.json"
       - "bun.lock"
       - "turbo.json"
+      - "requirements.txt"
 
 concurrency:
   group: ci-${{ github.ref }}
@@ -40,6 +42,13 @@ jobs:
 
       - name: Install (frozen lockfile)
         run: bun install --frozen-lockfile
+      # PYTHON PACKAGES, BEFORE ANYTHING THAT NEEDS THEM.
+      #
+      # The runner starts with a bare Python. Nothing installed Pillow, so the self-test died
+      # at 319 of 446 assertions with an ImportError - **and every guard before it passed**, so
+      # CI looked green-ish on a subset of the project rather than red on all of it.
+      - name: Install (python packages)
+        run: python -m pip install --quiet -r requirements.txt
 
       - name: Typecheck (all packages incl. relays + factories)
         run: bunx turbo run typecheck

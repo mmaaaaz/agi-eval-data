@@ -1,0 +1,12 @@
+# PYTHON PACKAGES CI MUST INSTALL, AND NOTHING ELSE.
+#
+# Found in round 131: the self-test died at 319 of 446 assertions on the Ubuntu runner with
+# `ImportError: PIL` - **the runner installs no Python packages at all**, and nothing said so.
+# Every guard before it passed, so CI looked like it was testing the project when it was
+# testing a subset of it.
+#
+# Pillow is used by 10_pii.py, 00_metadata_audit.py, 04_perturb.py and the self-test's GPS
+# detector check. **The GPS check is the reason this is a dependency rather than a skip**:
+# skipping when PIL is absent would be a check that cannot fail, which is the defect this
+# repository keeps producing.
+pillow>=10.0
