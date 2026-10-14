@@ -103,3 +103,7 @@ plan-*.md
 skills-lock.json
 data/factory/
 data/drive/
+
+# a `wrangler deploy --dry-run` output directory. It is a BUILD ARTIFACT and was
+# committed by accident in round 134 - the dry-run is useful and its output is not source.
+.dryrun/
