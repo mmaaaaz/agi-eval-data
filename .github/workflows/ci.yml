@@ -117,6 +117,23 @@ jobs:
       - name: Migrations apply to a fresh database
         run: python scripts/db/check_migrations.py > /dev/null
 
+      # AND AGAINST THE REAL ENGINE, NOT A STAND-IN FOR IT.
+      #
+      # The step above opens sqlite3.connect(':memory:'). The interpreter matches the runner's;
+      # the LIMITS do not - plain sqlite3 allows 500 compound-select terms, D1 allows fewer.
+      # Round 138 found a SIX-TERM UNION in schema_v5c_item_axis.sql that sqlite3 accepted and
+      # D1 REJECTED, so the relay's deploy - which applies migrations before the code that needs
+      # them - would have failed in production while every check here passed.
+      #
+      # 'wrangler d1 --local' runs miniflare, which is the same engine the edge runs. It needs
+      # no credentials and no network after the first run.
+      - name: Migrations apply to a real local D1
+        working-directory: apps/relay
+        run: |
+          bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --local
+          # A FRESH directory each time, so an already-applied database cannot mask a failure.
+          rm -rf /tmp/d1ci && bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --local --persist-to /tmp/d1ci
+
       # THE INTEGRITY GATE HAD NO RUNNER ANYWHERE. 03_verify.py is the check that decides
       # whether a result may be quoted at all, and until round 82 nothing invoked it except a
       # human remembering to. That is the defect this repo keeps producing: a guard with no
