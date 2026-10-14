@@ -71,6 +71,26 @@ jobs:
         if: github.event_name == 'push'
         with:
           filters: |
+            # THE RELAY FILTER WAS MISSING ENTIRELY, AND THE OUTPUT WAS DECLARED.
+            #
+            # `changes.outputs.relay` has been wired to `steps.filter.outputs.relay` since the
+            # job was written - but there was no `relay:` key in this block. So the output was
+            # ALWAYS EMPTY and `deploy relay` was skipped on every run since it existed.
+            #
+            # Found in round 140 by probing the DEPLOYED relay: it still answered
+            # `questions API is locked`, a global gate the code removed rounds ago, and
+            # `/api/changes` returned 404. **The site's authoring flow calls those endpoints.**
+            #
+            # The failure is silent by construction: a filter key that does not exist produces
+            # an empty output, and an empty output reads exactly like "nothing changed".
+            relay:
+              - "apps/relay/**"
+              - "packages/questions-api/**"
+              - "packages/shared/**"
+              - "scripts/db/check_migrations.py"
+              - "bun.lock"
+              - "package.json"
+              - "turbo.json"
             web:
               - "apps/web/**"
               - "packages/shared/**"

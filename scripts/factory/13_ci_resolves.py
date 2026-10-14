@@ -279,6 +279,38 @@ def find_undeployable_jobs(base: pathlib.Path) -> list[dict]:
         out.append({'job': job, 'cond': cond.strip()[:70]})
     return out
 
+
+# ---------------------------------------------------------------------------
+# A FILTER OUTPUT WITH NO FILTER
+# ---------------------------------------------------------------------------
+#
+# FOUND IN ROUND 140, AND IT HAD SILENTLY DISABLED A DEPLOY SINCE IT WAS WRITTEN.
+#
+# `changes.outputs.relay` was wired to `steps.filter.outputs.relay` - but there was NO
+# `relay:` key in the `filters:` block. So the output was ALWAYS EMPTY, and `deploy relay`
+# was skipped on every single run since it existed.
+#
+# The failure is silent by construction: **a filter key that does not exist produces an empty
+# output, and an empty output reads exactly like 'nothing changed'.** The deployed relay still
+# answered a global gate the code had removed rounds earlier.
+#
+# So: every steps.filter.outputs.X must have a matching X: in the filters block.
+def find_orphan_filter_outputs(base: pathlib.Path) -> list[str]:
+    """An output wired to a paths-filter key that the filter does not define."""
+    p = base / ".github" / "workflows" / "deploy.yml"
+    if not p.exists():
+        return []
+    text = p.read_text(encoding='utf-8-sig', errors='ignore')
+    used = set(re.findall(r'steps[.]filter[.]outputs[.]([a-z_]+)', text))
+    if not used:
+        return []
+    # the filters block: keys indented twelve spaces, ending at the next dedent
+    m = re.search('filters:\\s*[|]\\n(.*?)(?=\\n\\s{0,10}\\S)', text, re.S)
+    if not m:
+        return []
+    defined = set(re.findall('^ {12}([a-z_]+):', m.group(1), re.M))
+    return sorted(used - defined)
+
 def find_problems(text: str, check_required: bool = True) -> list[str]:
     problems: list[str] = []
     blocks = run_blocks(text)
@@ -682,6 +714,16 @@ def main(argv: list[str] | None = None) -> int:
         print()
         print("The runner starts with a bare Python. A local machine HAS these, so the import")
         print("succeeds here and cannot succeed there - add it to " + _REQ_FILE + ".")
+        print()
+        all_problems.append("a check above reported a problem")
+    orphan_filters = find_orphan_filter_outputs(ROOT)
+    if orphan_filters:
+        print(str(len(orphan_filters)) + " FILTER OUTPUT(S) WITH NO FILTER DEFINED:")
+        for x in orphan_filters:
+            print("  steps.filter.outputs." + x + "  - but filters: has no entry for it")
+        print()
+        print("An undefined key produces an EMPTY output, and an empty output reads exactly")
+        print("like 'nothing changed' - so the job is skipped on every run, silently.")
         print()
         all_problems.append("a check above reported a problem")
     undep = find_undeployable_jobs(ROOT)

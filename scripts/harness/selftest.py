@@ -426,6 +426,36 @@ try:
 except ValueError as _e:
     check("build() REFUSES an item outside the taxonomy", "not valid" in str(_e), str(_e)[:90])
 
+print("A FILTER OUTPUT WITH NO FILTER IS CAUGHT")
+# ROUND 140: changes.outputs.relay was wired to steps.filter.outputs.relay, and there was NO
+# relay: key in the filters block. **So the output was always empty and `deploy relay` was
+# skipped on every run since it existed.** The deployed relay still answered a global gate the
+# code had removed rounds earlier, and the site's authoring flow calls those endpoints.
+#
+# **A filter key that does not exist produces an empty output, and an empty output reads exactly
+# like 'nothing changed'.** The failure is silent by construction.
+#
+# THE FIXTURE IS THE REAL WORKFLOW WITH ONE KEY REMOVED, not a hand-written YAML. The first
+# version of this test built its own three-line filter block, and the block's INDENTATION did not
+# match what the extractor expects - so the test failed while the check worked. **A fixture that
+# reproduces a file's shape by hand is a second thing that can be wrong.**
+_fw = Path(_tf.mkdtemp())
+(_fw / ".github" / "workflows").mkdir(parents=True)
+_ftext = (ROOT / ".github" / "workflows" / "deploy.yml").read_text(encoding="utf-8-sig")
+(_fw / ".github" / "workflows" / "deploy.yml").write_text(_ftext, encoding="utf-8")
+check("the real deploy.yml wires every output to a filter",
+      _cires.find_orphan_filter_outputs(_fw) == [], str(_cires.find_orphan_filter_outputs(_fw))[:2])
+# now remove the relay filter key and its entries, as the bug had it
+_flines = _ftext.splitlines()
+_fi = next(k for k, l in enumerate(_flines) if l.strip() == 'relay:')
+_fj = _fi + 1
+while _fj < len(_flines) and _flines[_fj].strip().startswith('- '):
+    _fj += 1
+_fbroken = chr(10).join(_flines[:_fi] + _flines[_fj:])
+(_fw / ".github" / "workflows" / "deploy.yml").write_text(_fbroken, encoding="utf-8")
+_fo_p = _cires.find_orphan_filter_outputs(_fw)
+check("and a missing filter key IS caught, by name", _fo_p == ["relay"], str(_fo_p))
+
 print("A LINK TO A DELETED ROUTE IS CAUGHT")
 # FIVE ROUTES WERE DELETED IN ROUNDS 129 AND 132. The links were unwrapped BY HAND, and hand work
 # does not scale - a _src left pointing at a deleted route renders a dead link on a deployed site.
