@@ -6,7 +6,9 @@
   "dev": "wrangler dev",
   "deploy": "wrangler deploy",
   "typecheck": "tsc --noEmit",
-  "test": "bunx vitest run"
+  "test": "bunx vitest run",
+  "deploy:pinned": "bunx --bun wrangler@4.125.0 deploy",
+  "migrate:local": "wrangler d1 migrations apply agi-eval-questions --local"
  },
  "dependencies": {
   "ai": "^7.0.0",
