@@ -133,9 +133,14 @@ def find_steps_without_actions(base: pathlib.Path) -> list[dict]:
     for p in sorted((base / ".github" / "workflows").glob("*.yml")):
         lines = p.read_text(encoding="utf-8-sig", errors="ignore").splitlines()
         for i, line in enumerate(lines):
+            # ONLY A STEP STARTS WITH `- name:`. A bare scalar under `paths:` is a legitimate
+            # list item - a version of this check that did not know that reported 63 of them,
+            # and a version without this guard at all reported 912. **Both were the check
+            # being wrong about its own input**, which is why it stays simple: a step with no
+            # `run:` and no `uses:` is the bug that actually shipped (three times, in
+            # deploy.yml, and GitHub rejected the whole workflow for it).
             if not re.match(r"^\s+- name: ", line):
                 continue
-            # the step's own body: everything until the next `- ` at the same indent
             indent = len(line) - len(line.lstrip())
             body = [line]
             j = i + 1

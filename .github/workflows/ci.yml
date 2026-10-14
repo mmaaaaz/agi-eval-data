@@ -142,4 +142,3 @@ jobs:
       - name: Harness smoke (the full path, offline)
         run: python -m scripts.harness.smoke
 
-      - ".github/**"
