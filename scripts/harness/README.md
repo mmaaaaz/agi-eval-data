@@ -95,6 +95,7 @@ judge grade its own family.
 | Crop ladder (`run_crop`) | 6 fractions x items | paid calls |
 | Blind filter (`blind`) | 1 call per item, no image | paid calls |
 | **Everything else in the harness** — analyse, grade, ingest, the gates, both test suites | local | **0** |
+| `cleanroom.py` | Run every CI step against a `git worktree` of HEAD, where the private, gitignored tree is absent. **The thing to run before pushing.** Six defects shipped in one stretch and not one was findable by reading. |
 
 **The three attack tracks and the blind filter are model calls**, and they were absent from this
 table. `spend.py` is what stops any of them running without `--spend`.

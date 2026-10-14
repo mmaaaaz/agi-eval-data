@@ -30,6 +30,7 @@ Usage:
 from __future__ import annotations
 
 import argparse
+import ast
 import importlib
 import importlib.util
 import pathlib
@@ -154,6 +155,85 @@ def find_steps_without_actions(base: pathlib.Path) -> list[dict]:
             if "run:" not in text and "uses:" not in text:
                 out.append({"file": p.name, "line": i + 1, "step": line.strip()})
     return out
+
+
+# ---------------------------------------------------------------------------
+# A THIRD-PARTY IMPORT CI WOULD NOT HAVE
+# ---------------------------------------------------------------------------
+
+# FOUND IN ROUND 131, AND IT COST AN AFTERNOON.
+#
+# `selftest.py` does `from PIL import Image` for the GPS-detector check. **Nothing had ever
+# installed Pillow** - the runner starts with a bare Python - so the self-test died at 319 of 446
+# assertions with an ImportError. Every guard BEFORE it passed, so CI looked like it was testing
+# the project when it was testing a subset of it.
+#
+# A LOCAL MACHINE CANNOT SEE THIS. The bundled interpreter has Pillow, numpy and pandas, so the
+# import succeeds here and cannot succeed on the runner. It is exactly the class the cleanroom
+# script finds for FILES, and nothing found it for PACKAGES.
+#
+# So: every third-party import reachable from the modules CI runs must be in requirements.txt.
+# Reachable means the CI step scripts themselves plus `scripts/harness/`, because the self-test
+# loads harness and factory modules by path at run time.
+_REQ_FILE = "requirements.txt"
+
+
+def _declared_requirements(base: pathlib.Path) -> set[str]:
+    p = base / _REQ_FILE
+    if not p.exists():
+        return set()
+    names = set()
+    for line in p.read_text(encoding="utf-8-sig").splitlines():
+        line = line.split("#", 1)[0].strip()
+        if not line:
+            continue
+        names.add(re.split(r"[<>=!\[\s]", line, 1)[0].strip().lower())
+    return names
+
+
+# IMPORT NAME -> DISTRIBUTION NAME, where they differ. Pillow is the one that bit.
+_DIST = {"pil": "pillow", "yaml": "pyyaml", "sklearn": "scikit-learn", "cv2": "opencv-python"}
+
+
+def find_missing_requirements(base: pathlib.Path) -> list[dict]:
+    """A third-party import reachable from the CI steps that requirements.txt does not name."""
+    declared = _declared_requirements(base)
+    std = set(sys.stdlib_module_names)
+    roots = list((base / "scripts" / "harness").glob("*.py"))
+    for extra in ("scripts/factory/08_site_truthfulness.py", "scripts/factory/12_unwired.py",
+                  "scripts/factory/13_ci_resolves.py", "scripts/factory/14_pipeline_order.py",
+                  "scripts/factory/15_source_claims.py", "scripts/factory/03_verify.py",
+                  "scripts/factory/00_provenance.py", "scripts/factory/00_metadata_audit.py",
+                  "scripts/db/check_migrations.py"):
+        q = base / extra
+        if q.exists():
+            roots.append(q)
+    local = {p.stem for p in (base / "scripts").rglob("*.py")}
+    seen: dict[str, str] = {}
+    for p in roots:
+        try:
+            tree = ast.parse(p.read_text(encoding="utf-8-sig", errors="ignore"))
+        except SyntaxError:
+            continue
+        for node in ast.walk(tree):
+            if isinstance(node, ast.Import):
+                mods = [a.name.split(".")[0] for a in node.names]
+            elif isinstance(node, ast.ImportFrom):
+                mods = [(node.module or "").split(".")[0]]
+            else:
+                continue
+            for m in mods:
+                if not m or m in std or m in local or m == "scripts":
+                    continue
+                # CASE-INSENSITIVE, because the module is \`PIL\` and the distribution is
+                # \`pillow\`. **The first version of this check reported PIL as missing while
+                # requirements.txt named it on the line above** - a check wrong about its own input,
+                # which is the defect it was written to find.
+                low = m.lower()
+                if low in declared or _DIST.get(low, low) in declared:
+                    continue
+                seen.setdefault(m, p.relative_to(base).as_posix())
+    return [{"module": k, "file": v} for k, v in sorted(seen.items())]
 
 def find_problems(text: str, check_required: bool = True) -> list[str]:
     problems: list[str] = []
@@ -548,6 +628,16 @@ def main(argv: list[str] | None = None) -> int:
         print()
         print("A deploy that does not run the tests can ship a change whose tests fail. Running them")
         print("in the job makes it self-sufficient, whatever else is happening on the same push.")
+        print()
+        all_problems.append("a check above reported a problem")
+    req_problems = find_missing_requirements(ROOT)
+    if req_problems:
+        print(str(len(req_problems)) + " PACKAGE(S) CI DOES NOT INSTALL:")
+        for x in req_problems:
+            print("  " + x["module"] + "  (imported by " + x["file"] + ")")
+        print()
+        print("The runner starts with a bare Python. A local machine HAS these, so the import")
+        print("succeeds here and cannot succeed there - add it to " + _REQ_FILE + ".")
         print()
         all_problems.append("a check above reported a problem")
     step_problems = find_steps_without_actions(ROOT)

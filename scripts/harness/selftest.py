@@ -28,6 +28,66 @@ from pathlib import Path
 #    when the check FAILS, so passing a list or a dict crashes the FAIL branch. A check that
 #    cannot report is a check that cannot fail, and it has cost two rounds.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# EVERY GUARD MODULE, PRELOADED ONCE. THE ORDERING TRAP IS NOW STRUCTURALLY GONE.
+# ---------------------------------------------------------------------------
+#
+# RULE 1 ABOVE HAS BEEN VIOLATED TWENTY-FOUR TIMES. It was written in round 97 and has not
+# prevented a single instance, because **a rule in a comment is not a mechanism.** Each block
+# imported its own handle under a fresh name (`_src`, `_src2` ... `_src13`), so a block added
+# above an existing one silently referenced a name defined below it and crashed at import.
+#
+# These handles exist before the first check runs, so any block may use them. A new block should
+# NOT define its own - add the module here instead.
+import importlib.util as _preload  # noqa: E402
+
+ROOT = Path(__file__).resolve().parents[2]
+
+
+def _preload_module(name: str, rel: str):
+    """Load a repo script that is not an importable module."""
+    spec = _preload.spec_from_file_location(name, str(ROOT / rel))
+    mod = _preload.module_from_spec(spec)
+    sys.modules[name] = mod
+    spec.loader.exec_module(mod)
+    return mod
+
+
+GUARDS = {
+    "src": "scripts/factory/15_source_claims.py",
+    "mir": "scripts/factory/16_html_mirrors.py",
+    "plan": "scripts/factory/11_plan_truthfulness.py",
+    "unwired": "scripts/factory/12_unwired.py",
+    "cires": "scripts/factory/13_ci_resolves.py",
+    "porder": "scripts/factory/14_pipeline_order.py",
+    "migr": "scripts/db/check_migrations.py",
+    "site": "scripts/factory/08_site_truthfulness.py",
+    "pii": "scripts/factory/10_pii.py",
+    "gen": "scripts/factory/02_generate_questions.py",
+    "tags": "scripts/factory/04_tag_ground.py",
+}
+# Loaded lazily and tolerantly: a guard with a NEW third-party import must not turn this file into
+# an ImportError - 13_ci_resolves.py is the check that reports that, and it cannot run from here.
+M = {}
+for _k, _rel in GUARDS.items():
+    try:
+        M[_k] = _preload_module("_pre_" + _k, _rel)
+    except Exception as _e:  # noqa: BLE001
+        M[_k] = None
+        print("note: could not preload " + _rel + ": " + type(_e).__name__)
+
+# The names the blocks below already use. Kept so existing code keeps working while new code
+# reads from M.
+_src = _src2 = _src3 = _src4 = _src5 = _src6 = M.get("src")
+_mir = _mir2 = _mir3 = _mir4 = M.get("mir")
+_plan = _plan2 = _plan3 = M.get("plan")
+_unw = _unw2 = M.get("unwired")
+_cires = _cires2 = _cires3 = _cires4 = _cires5 = _cires6 = M.get("cires")
+_porder = _porder2 = M.get("porder")
+_cm = _cm2 = M.get("migr")
+_g8 = M.get("site")
+
 # ONE tempfile import for the whole file. There were FOUR, declared inside individual blocks
 # (`_tf2`, `_tf3`, `_tf7`, `_tf8`), and a block referring to one defined LATER raised NameError
 # FOUR TIMES in four rounds. `selftest.py` is append-only and now 1,100 lines, so "defined above"
@@ -365,6 +425,27 @@ try:
     check("build() REFUSES an item outside the taxonomy", False, "it built")
 except ValueError as _e:
     check("build() REFUSES an item outside the taxonomy", "not valid" in str(_e), str(_e)[:90])
+
+print("A PACKAGE CI DOES NOT INSTALL IS CAUGHT BEFORE THE PUSH")
+# selftest.py does `from PIL import Image`, and NOTHING HAD EVER INSTALLED PILLOW - the runner
+# starts with a bare Python, so the suite died at 319 of 446 assertions with an ImportError while
+# every guard before it passed. **A local machine has Pillow**, so the import succeeds here and
+# cannot succeed there. This is the package half of what cleanroom.py finds for files.
+_mr = Path(_tf.mkdtemp())
+(_mr / "scripts" / "harness").mkdir(parents=True)
+(_mr / "scripts" / "harness" / "x.py").write_text("import numpy\n", encoding="utf-8")
+_mr_p = _cires.find_missing_requirements(_mr)
+check("a third-party import CI does not install IS caught",
+      [x["module"] for x in _mr_p] == ["numpy"], str(_mr_p))
+(_mr / "requirements.txt").write_text("numpy>=1.0\n", encoding="utf-8")
+check("and naming it in requirements.txt clears it",
+      _cires.find_missing_requirements(_mr) == [], str(_cires.find_missing_requirements(_mr)))
+(_mr / "requirements.txt").write_text("Pillow>=10.0\n", encoding="utf-8")
+(_mr / "scripts" / "harness" / "x.py").write_text("from PIL import Image\n", encoding="utf-8")
+check("the DISTRIBUTION name matches the import name case-insensitively",
+      _cires.find_missing_requirements(_mr) == [], str(_cires.find_missing_requirements(_mr)))
+check("the real tree installs everything its CI steps import",
+      _cires.find_missing_requirements(ROOT) == [], str(_cires.find_missing_requirements(ROOT))[:2])
 
 print("A SPEND SURFACE THAT NAMES NO HOST IS CAUGHT TOO")
 # THE HOST SCAN COULD NOT SEE THE RELAY'S CHAT. It spends through
