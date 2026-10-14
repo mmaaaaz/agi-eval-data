@@ -235,6 +235,50 @@ def find_missing_requirements(base: pathlib.Path) -> list[dict]:
                 seen.setdefault(m, p.relative_to(base).as_posix())
     return [{"module": k, "file": v} for k, v in sorted(seen.items())]
 
+
+# ---------------------------------------------------------------------------
+# A DEPLOY THAT CANNOT BE TRIGGERED
+# ---------------------------------------------------------------------------
+#
+# ROUND 134 FOUND THE SITE HAD NOT DEPLOYED IN WEEKS while every run reported success:
+#
+#   * a push deploys only what its OWN DIFF touched, and the last changes were to scripts/
+#     and .github/, so the site was correctly skipped
+#   * a manual workflow_dispatch has NO DIFF AT ALL, so dorny/paths-filter returns empty
+#     outputs and every job condition is false
+#
+# There was NO WAY TO DEPLOY THE WEB APP ON DEMAND, and the workflow said so in its own
+# comment. The only evidence was a stale string in the live bundle - `Ask AI`, deleted from
+# the source two rounds earlier.
+#
+# So: a deploy workflow with workflow_dispatch must give EVERY conditional job a manual
+# escape, or the trigger is decoration.
+def find_undeployable_jobs(base: pathlib.Path) -> list[dict]:
+    """A deploy job gated on a path filter with no way to force it manually."""
+    p = base / ".github" / "workflows" / "deploy.yml"
+    if not p.exists():
+        return []
+    text = p.read_text(encoding='utf-8-sig', errors='ignore')
+    if 'workflow_dispatch:' not in text:
+        return []
+    out = []
+    lines = text.splitlines()
+    for i, line in enumerate(lines):
+        # a job-level condition sits at four spaces
+        if not line.startswith('    if: '):
+            continue
+        cond = line.split('if:', 1)[1]
+        if 'inputs.' in cond:
+            continue
+        job = '?'
+        for k in range(i - 1, -1, -1):
+            stripped = lines[k]
+            if (len(stripped) - len(stripped.lstrip())) == 2 and stripped.rstrip().endswith(':'):
+                job = stripped.strip().rstrip(':')
+                break
+        out.append({'job': job, 'cond': cond.strip()[:70]})
+    return out
+
 def find_problems(text: str, check_required: bool = True) -> list[str]:
     problems: list[str] = []
     blocks = run_blocks(text)
@@ -638,6 +682,17 @@ def main(argv: list[str] | None = None) -> int:
         print()
         print("The runner starts with a bare Python. A local machine HAS these, so the import")
         print("succeeds here and cannot succeed there - add it to " + _REQ_FILE + ".")
+        print()
+        all_problems.append("a check above reported a problem")
+    undep = find_undeployable_jobs(ROOT)
+    if undep:
+        print(str(len(undep)) + " DEPLOY JOB(S) THAT CANNOT BE TRIGGERED MANUALLY:")
+        for x in undep:
+            print("  " + x["job"] + "  if: " + x["cond"])
+        print()
+        print("A manual run has no diff, so a path filter is false there and the job is skipped.")
+        print("Every conditional deploy job needs an inputs.force_* escape, or the workflow_dispatch")
+        print("trigger does nothing for it.")
         print()
         all_problems.append("a check above reported a problem")
     step_problems = find_steps_without_actions(ROOT)

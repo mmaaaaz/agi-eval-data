@@ -426,6 +426,35 @@ try:
 except ValueError as _e:
     check("build() REFUSES an item outside the taxonomy", "not valid" in str(_e), str(_e)[:90])
 
+print("A DEPLOY THAT CANNOT BE TRIGGERED IS CAUGHT")
+# ROUND 134: THE SITE HAD NOT DEPLOYED IN WEEKS while every run reported SUCCESS. A push deploys
+# only what its own diff touched, and a manual workflow_dispatch has NO DIFF AT ALL - so every
+# job condition is false and the trigger is decoration. **There was no way to deploy the web app
+# on demand**, and the only evidence was a stale string in the live bundle.
+_dw = Path(_tf.mkdtemp())
+(_dw / ".github" / "workflows").mkdir(parents=True)
+(_dw / ".github" / "workflows" / "deploy.yml").write_text(
+    "on:\n  workflow_dispatch:\n"
+    "jobs:\n"
+    "  pages:\n"
+    "    needs: changes\n"
+    "    if: needs.changes.outputs.web == 'true'\n",
+    encoding="utf-8")
+_dw_p = _cires.find_undeployable_jobs(_dw)
+check("a deploy job with no manual escape IS caught",
+      _dw_p and _dw_p[0]["job"] == "pages", str(_dw_p))
+(_dw / ".github" / "workflows" / "deploy.yml").write_text(
+    "on:\n  workflow_dispatch:\n"
+    "jobs:\n"
+    "  pages:\n"
+    "    needs: changes\n"
+    "    if: inputs.force_all == true || needs.changes.outputs.web == 'true'\n",
+    encoding="utf-8")
+check("and an inputs.force_* escape clears it",
+      _cires.find_undeployable_jobs(_dw) == [], str(_cires.find_undeployable_jobs(_dw)))
+check("the real deploy.yml can deploy every job on demand",
+      _cires.find_undeployable_jobs(ROOT) == [], str(_cires.find_undeployable_jobs(ROOT)))
+
 print("A PACKAGE CI DOES NOT INSTALL IS CAUGHT BEFORE THE PUSH")
 # selftest.py does `from PIL import Image`, and NOTHING HAD EVER INSTALLED PILLOW - the runner
 # starts with a bare Python, so the suite died at 319 of 446 assertions with an ImportError while
