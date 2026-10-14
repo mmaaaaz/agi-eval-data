@@ -107,6 +107,49 @@ def run_blocks(text: str) -> list[tuple[int, str]]:
     return out
 
 
+
+# ---------------------------------------------------------------------------
+# A STEP WITH NO ACTION
+# ---------------------------------------------------------------------------
+
+# FOUND IN ROUND 130, AND IT HAD ALREADY BROKEN BOTH CI AND DEPLOY.
+#
+# `deploy.yml` contained THREE steps like this:
+#
+#     - name: Apply migrations (before the code that needs them)
+#     - name: Apply migrations (before the code that needs them)
+#       run: bunx --bun wrangler@4.125.0 d1 migrations apply ...
+#
+# The first is a step with NO `run:` and NO `uses:` - **not a valid GitHub Actions step.**
+# GitHub rejected the whole workflow, and a rejected run reports `jobs: 0` with conclusion
+# `failure`, which reads like a failing test rather than a file that never loaded.
+#
+# **This guard could not see it.** Every check here parses the YAML with regular expressions for
+# things it knows to look for - commands, guards, paths - and a step that is missing its action is
+# a shape nothing was looking at. Three of them shipped.
+def find_steps_without_actions(base: pathlib.Path) -> list[dict]:
+    """A workflow step that has neither `run:` nor `uses:`."""
+    out = []
+    for p in sorted((base / ".github" / "workflows").glob("*.yml")):
+        lines = p.read_text(encoding="utf-8-sig", errors="ignore").splitlines()
+        for i, line in enumerate(lines):
+            if not re.match(r"^\s+- name: ", line):
+                continue
+            # the step's own body: everything until the next `- ` at the same indent
+            indent = len(line) - len(line.lstrip())
+            body = [line]
+            j = i + 1
+            while j < len(lines):
+                nxt = lines[j]
+                if nxt.strip() and (len(nxt) - len(nxt.lstrip())) <= indent:
+                    break
+                body.append(nxt)
+                j += 1
+            text = chr(10).join(body)
+            if "run:" not in text and "uses:" not in text:
+                out.append({"file": p.name, "line": i + 1, "step": line.strip()})
+    return out
+
 def find_problems(text: str, check_required: bool = True) -> list[str]:
     problems: list[str] = []
     blocks = run_blocks(text)
@@ -204,8 +247,8 @@ def find_env_mismatches(root: pathlib.Path) -> list[dict]:
 # the owner's decision - and a guard that is red for reasons unrelated to your change is one
 # somebody turns off. **Recording it keeps the finding visible and keeps a NEW one failing.**
 #
-# \`apps/metro-relay\` is a separate project with its own D1 database, a \`schema.sql\` applied by hand,
-# and no \`migrations/\` directory. Giving it a migration path is its own piece of work, and creating
+# `apps/metro-relay` is a separate project with its own D1 database, a `schema.sql` applied by hand,
+# and no `migrations/` directory. Giving it a migration path is its own piece of work, and creating
 # one unasked would be a bigger change than the finding.
 ACCEPTED_NO_MIGRATIONS_DIR = {
     "apps/metro-relay": "separate project; schema.sql applied by hand since before this session. "
@@ -232,15 +275,15 @@ def find_deploy_order_problems(root: pathlib.Path) -> list[str]:
     body = "\n".join(l for l in p.read_text(encoding="utf-8-sig").splitlines()
                      if not l.strip().startswith("#"))
     # ONLY AN APP WITH A D1 BINDING NEEDS MIGRATIONS. The first version flagged every deploy and
-    # reported three, including \`grip-sync\`, which uses KV and has no schema at all. **A check
+    # reported three, including `grip-sync`, which uses KV and has no schema at all. **A check
     # that flags a correct workflow is one somebody turns off** - and the two real ones
-    # (\`relay\` and \`metro-relay\`) were buried in the noise.
+    # (`relay` and `metro-relay`) were buried in the noise.
     for m in __import__("re").finditer(r"wrangler@[\d.]+ deploy", body):
         before = body[: m.start()]
         # the working-directory of THIS step, searching backwards for the nearest one
         # THE working-directory COMES AFTER run:, NOT BEFORE. Searching backwards found the
         # PREVIOUS step's directory, so the check read the wrong app for every deploy and passed
-        # \`metro-relay\` - which has a D1 database and, like the relay, was never migrated.
+        # `metro-relay` - which has a D1 database and, like the relay, was never migrated.
         after = body[m.end(): m.end() + 400]
         wm = __import__("re").search(r"working-directory:\s*(\S+)", after)
         wd = wm.group(1) if wm else None
@@ -500,6 +543,17 @@ def main(argv: list[str] | None = None) -> int:
         print()
         print("A deploy that does not run the tests can ship a change whose tests fail. Running them")
         print("in the job makes it self-sufficient, whatever else is happening on the same push.")
+        print()
+        all_problems.append("a check above reported a problem")
+    step_problems = find_steps_without_actions(ROOT)
+    if step_problems:
+        print(str(len(step_problems)) + " WORKFLOW STEP(S) WITH NO ACTION:")
+        for x in step_problems:
+            print("  " + x["file"] + ":" + str(x["line"]) + "  " + x["step"])
+        print()
+        print("A step needs `run:` or `uses:`. Without either, GitHub REJECTS THE WHOLE")
+        print("WORKFLOW - and a rejected run reports `jobs: 0` with conclusion `failure`, which")
+        print("reads like a failing test rather than a file that never loaded.")
         print()
         all_problems.append("a check above reported a problem")
     order_problems = find_deploy_order_problems(ROOT)

@@ -158,14 +158,12 @@ jobs:
         run: python3 scripts/db/check_migrations.py > /dev/null
 
       - name: Apply migrations (before the code that needs them)
-      - name: Apply migrations (before the code that needs them)
         run: bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --remote
         working-directory: apps/relay
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-      - name: Deploy relay
       - name: Deploy relay
         run: bunx --bun wrangler@4.125.0 deploy
         working-directory: apps/relay
@@ -233,7 +231,6 @@ jobs:
       - name: Test
         run: bunx turbo run test
 
-      - name: Deploy metro relay
       - name: Deploy metro relay
         run: bunx --bun wrangler@4.125.0 deploy
         working-directory: apps/metro-relay
