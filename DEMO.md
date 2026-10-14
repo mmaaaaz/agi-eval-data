@@ -11,7 +11,7 @@
 | Photographs in the corpus | **56,285** |
 | Survive the technical filters | **55,527** |
 | **Selected for annotation** | **600**, stratified by resolution |
-| Questions written | **0** — this is what the tooling is for |
+| **Questions authored (LIVE, in D1)** | **1** — approved, with 1 model evaluation |
 
 **The 600 were chosen against a quota, not at random**, because the corpus is badly skewed:
 **68% of images share one stored long edge**. Random choice drifts to the common band and the rare
@@ -71,7 +71,9 @@ number the data does not support.
 
 ## The honest state
 
-- **No questions exist yet.** The tooling to write them works; the writing has not happened.
+- **One question is authored and one model evaluation recorded** (live in D1, visible at
+  `/api/questions`). The tooling works end to end; the volume is what is missing.
+- **One contributor, three tags, one evaluation.** The pipeline is proven and nearly empty.
 - **No image has recorded consent, and none has been PII-reviewed.** Nothing is releasable until
   that moves — it needs conversations, not code.
 - **Nothing has been measured against a model**, because no questions exist to measure.
