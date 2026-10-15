@@ -45,8 +45,24 @@ MIGRATIONS = ROOT / "apps" / "relay" / "migrations"
 ADD_COL = re.compile(r"ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)", re.I)
 
 
+def _wrangler() -> list[str]:
+    """The workspace's wrangler if it is installed, else bunx.
+
+    PREFER THE LOCAL BINARY. `bunx --bun wrangler@4.125.0` fails on at least one machine with a
+    bun resolution bug ("git clone for @/.../wrangler-dist/cli.js failed"), and the first version of
+    this script used it unconditionally. **So the script could not read the remote here at all, and
+    it never said so** - it printed its friendly "no credentials" note and returned 0.
+
+    `bun install` puts wrangler in `apps/relay/node_modules`, which is what the runner has too.
+    """
+    local = ROOT / "apps" / "relay" / "node_modules" / "wrangler" / "bin" / "wrangler.js"
+    if local.exists():
+        return ["node", str(local)]
+    return ["bunx", "--bun", "wrangler@4.125.0"]
+
+
 def d1(args: list[str], db: str, remote: bool) -> tuple[int, str]:
-    cmd = ["bunx", "--bun", "wrangler@4.125.0", "d1", *args, db,
+    cmd = [*_wrangler(), "d1", *args, db,
            "--remote" if remote else "--local", "--json"]
     p = subprocess.run(cmd, capture_output=True, text=True,
                        cwd=str(ROOT / "apps" / "relay"))
@@ -71,6 +87,17 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--db", default="agi-eval-questions")
     ap.add_argument("--remote", action="store_true", default=True)
+    # IN THE DEPLOY JOB, NOT BEING ABLE TO READ IS A FAILURE.
+    #
+    # The first version of this script printed a friendly note and returned 0 when it could not
+    # reach the remote - **so it reported success in the deploy job even with no credentials at
+    # all.** That made its green tick meaningless: it was the "check that cannot fail" class,
+    # inside the check written to stop guessing.
+    #
+    # Round 150 caught it by reading the code path rather than the result. With this flag the
+    # deploy step FAILS if it cannot read, which is the answer we needed three rounds ago.
+    ap.add_argument("--require-remote", action="store_true",
+                    help="fail instead of warning when the remote cannot be read")
     args = ap.parse_args(argv)
 
     rc, out = d1(["migrations", "list"], args.db, True)
@@ -85,6 +112,14 @@ def main(argv: list[str] | None = None) -> int:
     if not applied:
         print("could not read the applied list from the remote (no credentials, or no database).")
         print("run this inside the deploy job, where CLOUDFLARE_API_TOKEN is set.")
+        # A GRACEFUL PASS IS ONLY RIGHT OUTSIDE THE DEPLOY JOB. There, an unreadable remote is
+        # exactly the failure this step exists to name, and returning 0 hides it.
+        if args.require_remote:
+            print()
+            print("REFUSING: --require-remote was given and the remote could not be read. That is a")
+            print("credentials or connectivity failure, not an absence of migrations, and it is why")
+            print("the step after this one would fail with an unexplained SQLite error.")
+            return 1
         return 0
 
     all_files = sorted(p.name for p in MIGRATIONS.glob("*.sql"))

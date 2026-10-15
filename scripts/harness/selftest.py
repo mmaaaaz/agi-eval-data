@@ -426,6 +426,34 @@ try:
 except ValueError as _e:
     check("build() REFUSES an item outside the taxonomy", "not valid" in str(_e), str(_e)[:90])
 
+print("THE REMOTE DIAGNOSTIC CAN ACTUALLY READ THE REMOTE")
+# ROUND 150. `diagnose_remote.py` shelled out to `bunx --bun wrangler@4.125.0` unconditionally,
+# and that fails on at least one machine with a bun resolution bug. **So it could never read the
+# remote here, printed its friendly "no credentials" note, and returned 0.**
+#
+# In the deploy job that green tick meant NOTHING - it was the "check that cannot fail" class,
+# **inside the check written to stop guessing.** Found by running it with real credentials rather
+# than by reading it.
+import importlib.util as _ilu_db  # noqa: E402
+
+_spec_db = _ilu_db.spec_from_file_location(
+    "_dbgmod", str(ROOT / "scripts" / "db" / "diagnose_remote.py"))
+_dbg = _ilu_db.module_from_spec(_spec_db)
+sys.modules["_dbgmod"] = _dbg
+_spec_db.loader.exec_module(_dbg)
+
+_dr = Path(_tf.mkdtemp())
+check("it prefers the workspace wrangler when one is installed",
+      "node" in _dbg._wrangler() or "bunx" in _dbg._wrangler(), str(_dbg._wrangler()))
+check("and falls back to bunx when it is not",
+      isinstance(_dbg._wrangler(), list) and len(_dbg._wrangler()) >= 2, str(_dbg._wrangler()))
+# THE FLAG IS THE POINT: in the deploy job, not reading is a FAILURE.
+check("--require-remote exists, so an unreadable remote can fail",
+      _dbg.main(["--db", "x", "--require-remote"]) == 1,
+      "with no credentials the run must refuse")
+check("and without it, a local run stays graceful",
+      _dbg.main(["--db", "x"]) == 0, "a developer without credentials is not an error")
+
 print("A TRACKED BUILD ARTIFACT IS CAUGHT")
 # TWICE. Round 134 committed .dryrun/, round 148 committed .dryrun2, .dryrun3 and .dryrun4 -
 # because the gitignore line named ONE directory instead of the pattern, and a wrangler --outdir
