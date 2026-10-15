@@ -62,11 +62,12 @@ jobs:
         run: bunx turbo run build --filter=@metro/web
         env:
           VITE_REPO_METRO: ${{ github.repository }}
-
-      - name: Build grip (includes the open-models report)
-        run: |
-          python scripts/open_models_public.py
-          bunx turbo run build --filter=@grip/web
+      # THE GRIP BUILD IS GONE FROM CI, BY THE OWNER'S DECISION: the grip paper is published
+      # and grip needs nothing more. It ran `open_models_public.py` and a full Vite build on
+      # EVERY push to main, for a site whose data no longer changes.
+      #
+      # The DEPLOY is untouched - `deploy.yml`'s `grip-pages` job still builds and publishes
+      # grip when grip's own paths change, so the site stays live and rebuildable.
 
       # Every package's tests, not just grip's. The task existed and CI never called
       # it, so 169 tests only ever ran on a developer's machine.

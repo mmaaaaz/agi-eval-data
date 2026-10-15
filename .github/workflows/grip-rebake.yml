@@ -6,8 +6,18 @@ name: grip-rebake
 # override batch (repository_dispatch). No-op when upstream is unchanged.
 
 on:
-  schedule:
-    - cron: "7 * * * *" # hourly at :07 (offset from metro/data syncs)
+    # THE HOURLY SCHEDULE IS STOPPED, BY THE OWNER'S DECISION.
+    #
+    # The grip paper is published and grip needs nothing more. An hourly job that rebuilds
+    # derived artifacts from an upstream repo that is no longer moving is pure waste - and it
+    # commits to main every time, which is what has been racing every one of my own pushes.
+    #
+    # THE TRIGGERS ARE KEPT, NOT DELETED: `workflow_dispatch` so a re-bake can still be run by
+    # hand, and `repository_dispatch: grip-rebake` because that is how grip-sync asks for one
+    # after landing an override batch. **Stopping a schedule is reversible; deleting a trigger
+    # is a capability removed.**
+    # schedule:
+    #   - cron: "7 * * * *" # hourly at :07 - STOPPED 2026-10-14
   workflow_dispatch:
     inputs:
       force:
