@@ -227,7 +227,29 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-        run: python scripts/db/diagnose_remote.py --db agi-eval-questions --require-remote
+        run: |
+          # THE OUTPUT GOES TO THE JOB SUMMARY, NOT ONLY THE LOG.
+          #
+          # The repository is private, so reading the runner log needs a token. The summary is
+          # visible to anyone who opens the run - **and it is where the owner can copy the cause
+          # from.** A refusal that can only be read by someone with a token is half a check.
+          set +e
+          python scripts/db/diagnose_remote.py --db agi-eval-questions --require-remote \
+            2>&1 | tee /tmp/diag.log
+          rc=${PIPESTATUS[0]}
+          if [ $rc -ne 0 ]; then
+            {
+              echo '## The relay deploy cannot read the remote database'
+              echo ''
+              echo 'This is why `Apply migrations` fails. It is **not** a schema problem:'
+              echo 'the diagnostic reads the applied list before anything else, and it could not.'
+              echo ''
+              echo '```'
+              tail -25 /tmp/diag.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $rc
       - name: Apply migrations (before the code that needs them)
         # CAPTURE THE OUTPUT AND REPORT IT, BECAUSE THE LOG IS NOT ALWAYS READABLE.
         #

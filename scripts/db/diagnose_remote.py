@@ -112,6 +112,15 @@ def main(argv: list[str] | None = None) -> int:
     if not applied:
         print("could not read the applied list from the remote (no credentials, or no database).")
         print("run this inside the deploy job, where CLOUDFLARE_API_TOKEN is set.")
+        # SAY WHY, NOT JUST THAT. Round 150 made this a failure and the step went red without
+        # anyone able to see the reason - **the wrangler output was captured into a variable and
+        # never printed.** A refusal that does not name its cause is only half a check.
+        print()
+        print("the command was: " + " ".join(_wrangler()) + " d1 execute ... --remote --json")
+        print("wrangler said:")
+        for line in (out2 or out or "").splitlines()[-12:]:
+            if line.strip():
+                print("  | " + line.rstrip())
         # A GRACEFUL PASS IS ONLY RIGHT OUTSIDE THE DEPLOY JOB. There, an unreadable remote is
         # exactly the failure this step exists to name, and returning 0 hides it.
         if args.require_remote:
