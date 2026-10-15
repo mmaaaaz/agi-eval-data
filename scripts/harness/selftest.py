@@ -448,6 +448,15 @@ check("it prefers the workspace wrangler when one is installed",
 check("and falls back to bunx when it is not",
       isinstance(_dbg._wrangler(), list) and len(_dbg._wrangler()) >= 2, str(_dbg._wrangler()))
 # THE FLAG IS THE POINT: in the deploy job, not reading is a FAILURE.
+# AND IT MUST EXIT THE SAME WAY IN CI AS IT DOES HERE. Round 151 found a second silent defect:
+# `subprocess.run(text=True)` uses the PLATFORM encoding, cp1252 on Windows, and **wrangler's
+# output is not cp1252** - so the reader thread died and the failure path exited -1 instead of 1.
+# **A check whose failure path crashes reports neither success nor failure.** Both calls now name
+# utf-8 explicitly.
+_dsrc = (ROOT / "scripts" / "db" / "diagnose_remote.py").read_text(encoding="utf-8-sig")
+check("every subprocess call names its encoding",
+      _dsrc.count("encoding=\"utf-8\"") >= _dsrc.count("subprocess.run"),
+      str(_dsrc.count("encoding=\"utf-8\"")) + " vs " + str(_dsrc.count("subprocess.run")))
 check("--require-remote exists, so an unreadable remote can fail",
       _dbg.main(["--db", "x", "--require-remote"]) == 1,
       "with no credentials the run must refuse")

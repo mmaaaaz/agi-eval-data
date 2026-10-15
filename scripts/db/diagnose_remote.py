@@ -33,6 +33,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import pathlib
 import re
 import subprocess
@@ -43,6 +44,12 @@ MIGRATIONS = ROOT / "apps" / "relay" / "migrations"
 
 # columns each migration ADDs, read from the file itself rather than written down twice
 ADD_COL = re.compile(r"ALTER\s+TABLE\s+(\w+)\s+ADD\s+COLUMN\s+(\w+)", re.I)
+
+
+def _run(cmd: list[str], timeout: int = 60) -> tuple[int, str]:
+    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
+                       cwd=str(ROOT / "apps" / "relay"), timeout=timeout)
+    return p.returncode, (p.stdout or "") + (p.stderr or "")
 
 
 def _wrangler() -> list[str]:
@@ -64,7 +71,7 @@ def _wrangler() -> list[str]:
 def d1(args: list[str], db: str, remote: bool) -> tuple[int, str]:
     cmd = [*_wrangler(), "d1", *args, db,
            "--remote" if remote else "--local", "--json"]
-    p = subprocess.run(cmd, capture_output=True, text=True,
+    p = subprocess.run(cmd, capture_output=True, text=True, encoding="utf-8", errors="replace",
                        cwd=str(ROOT / "apps" / "relay"))
     return p.returncode, (p.stdout or "") + (p.stderr or "")
 
@@ -116,7 +123,20 @@ def main(argv: list[str] | None = None) -> int:
         # anyone able to see the reason - **the wrangler output was captured into a variable and
         # never printed.** A refusal that does not name its cause is only half a check.
         print()
+        # WHICH WRANGLER, AND WHICH ACCOUNT. Both distinguish the two causes, and neither needs a
+        # token to read once it is printed - **the repository is private, so this output is the
+        # only thing the owner can see without one.**
         print("the command was: " + " ".join(_wrangler()) + " d1 execute ... --remote --json")
+        local = ROOT / "apps" / "relay" / "node_modules" / "wrangler" / "bin" / "wrangler.js"
+        print("workspace wrangler present: " + ("yes" if local.exists() else "NO - fell back to bunx"))
+        print("CLOUDFLARE_ACCOUNT_ID set: " + ("yes" if os.environ.get("CLOUDFLARE_ACCOUNT_ID") else "no")
+              + "   token set: " + ("yes" if os.environ.get("CLOUDFLARE_API_TOKEN") else "no"))
+        # THE ACCOUNT THE TOKEN ACTUALLY BELONGS TO. A token for account A against a database in
+        # account B is the likeliest single cause, and it is one line to see.
+        rc_w, out_w = _run([*_wrangler(), "whoami"], timeout=60)
+        for line in (out_w or "").splitlines():
+            if re.search(r"associated with|Account Name|Account ID|logged in|\|", line):
+                print("whoami | " + line.strip())
         print("wrangler said:")
         for line in (out2 or out or "").splitlines()[-12:]:
             if line.strip():
