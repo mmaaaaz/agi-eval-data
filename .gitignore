@@ -106,4 +106,7 @@ data/drive/
 
 # a `wrangler deploy --dry-run` output directory. It is a BUILD ARTIFACT and was
 # committed by accident in round 134 - the dry-run is useful and its output is not source.
-.dryrun/
+.dryrun*/
+# THE WILDCARD, NOT THE NAME. Round 134 added `.dryrun/` and round 148 committed
+# `.dryrun2/`, `.dryrun3/` and `.dryrun4/` - **the same class, because the fix matched one
+# directory instead of the pattern.** A wrangler dry-run writes wherever `--outdir` points.

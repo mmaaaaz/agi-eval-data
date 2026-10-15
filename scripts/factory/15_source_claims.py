@@ -308,6 +308,39 @@ def find_dead_route_links(base: pathlib.Path) -> list[dict]:
             out.append({"file": p.relative_to(base).as_posix(), "route": target})
     return out
 
+
+# ---------------------------------------------------------------------------
+# A BUILD ARTIFACT THAT IS TRACKED
+# ---------------------------------------------------------------------------
+#
+# TWICE NOW. Round 134 committed `.dryrun/`; round 148 committed `.dryrun2/`, `.dryrun3/` and
+# `.dryrun4/` - because the gitignore line named one directory instead of the pattern, and a
+# wrangler `--outdir` writes wherever it is told.
+#
+# **A fix that matches an instance and not the pattern is a fix that expires.** The gitignore is
+# `.dryrun*/` now, and this is the check that would have caught both.
+_ARTIFACT_DIRS = ("dist", "build", ".next", ".turbo", ".wrangler", ".dryrun", "node_modules")
+
+
+def find_tracked_artifacts(base: pathlib.Path) -> list[str]:
+    """Paths inside a build-output directory that git is tracking."""
+    import subprocess
+    try:
+        out = subprocess.run(["git", "ls-files"], capture_output=True, text=True,
+                             cwd=str(base), timeout=60)
+    except Exception:
+        return []
+    if out.returncode != 0:
+        return []
+    hits = []
+    for line in out.stdout.splitlines():
+        parts = line.split("/")
+        for part in parts[:-1]:
+            if part in _ARTIFACT_DIRS or part.startswith(".dryrun"):
+                hits.append(line)
+                break
+    return sorted(set(hits))
+
 def find_problems(base: pathlib.Path) -> list[dict]:
     out = []
     for d in SOURCES:
@@ -585,6 +618,16 @@ def main(argv: list[str] | None = None) -> int:
     counts = find_stale_counts(base)
     refs = find_broken_references(base)
     gaps = find_coverage_gaps(base)
+    artifacts = find_tracked_artifacts(base)
+    if artifacts:
+        print(str(len(artifacts)) + " TRACKED BUILD ARTIFACT(S):")
+        for x in artifacts[:8]:
+            print("  " + x)
+        print()
+        print("A build output belongs in .gitignore, not in the repository. The gitignore line for")
+        print("these should match the PATTERN - .dryrun*/ - and not one directory name.")
+        print()
+        all_problems.append("a check above reported a problem")
     paid_hosts = find_unexpected_paid_hosts(base)
     dead_links = find_dead_route_links(base)
     spend_bindings = find_spend_bindings(base)
@@ -598,7 +641,7 @@ def main(argv: list[str] | None = None) -> int:
     # cannot fail**, the defect this file exists to find. Found by planting a link to a deleted
     # route and watching the guard pass.
     if (not problems and not scopes and not unused and not counts and not refs and not gaps
-            and not paid_hosts and not spend_bindings and not dead_links):
+            and not paid_hosts and not spend_bindings and not dead_links and not artifacts):
         print()
         print("OK — no source claim contradicts the documented invariant that an unset")
         print("     privilege secret DISABLES the door, and every guard has its variable.")

@@ -426,6 +426,15 @@ try:
 except ValueError as _e:
     check("build() REFUSES an item outside the taxonomy", "not valid" in str(_e), str(_e)[:90])
 
+print("A TRACKED BUILD ARTIFACT IS CAUGHT")
+# TWICE. Round 134 committed .dryrun/, round 148 committed .dryrun2, .dryrun3 and .dryrun4 -
+# because the gitignore line named ONE directory instead of the pattern, and a wrangler --outdir
+# writes wherever it is told.
+#
+# **A fix that matches an instance and not the pattern is a fix that expires.**
+check("the real repository tracks no build artifacts",
+      _src.find_tracked_artifacts(ROOT) == [], str(_src.find_tracked_artifacts(ROOT))[:3])
+
 print("A FILTER OUTPUT WITH NO FILTER IS CAUGHT")
 # ROUND 140: changes.outputs.relay was wired to steps.filter.outputs.relay, and there was NO
 # relay: key in the filters block. **So the output was always empty and `deploy relay` was
