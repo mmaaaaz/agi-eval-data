@@ -1,0 +1,247 @@
+{
+  "generated_from": "https://openrouter.ai/api/v1/models",
+  "generated_at": "2026-10-15T17:09:13Z",
+  "note": "The panel is a DATED SNAPSHOT. gemini-4-argon shipped 2026-10-13 and nemotron-3.5 on 2026-10-15: a list in a script goes stale in weeks. The harness reads THIS file.",
+  "models": [
+    {
+      "id": "nvidia/nemotron-3.5-super-vl",
+      "name": "NVIDIA Nemotron 3.5 Super VL",
+      "tier": "open-weight",
+      "created": "2026-10-15",
+      "knowledge_cutoff": null,
+      "context_length": 1048576,
+      "pricing_per_million": {
+        "prompt": 0.15,
+        "completion": 0.5
+      },
+      "hugging_face_id": "nvidia/NVIDIA-Nemotron-3.5-Super-VL",
+      "runs_on": "cluster (vLLM)",
+      "cost_tier": "free"
+    },
+    {
+      "id": "google/gemma-4-31b-it",
+      "name": "Gemma 4 31B",
+      "tier": "open-weight",
+      "created": "2026-04-02",
+      "knowledge_cutoff": null,
+      "context_length": 262144,
+      "pricing_per_million": {
+        "prompt": 0.2,
+        "completion": 0.4
+      },
+      "hugging_face_id": "google/gemma-4-31B-it",
+      "runs_on": "cluster (vLLM)",
+      "cost_tier": "free"
+    },
+    {
+      "id": "google/gemma-4-26b-a4b-it",
+      "name": "Gemma 4 26B A4B (MoE)",
+      "tier": "open-weight",
+      "created": "2026-04-03",
+      "knowledge_cutoff": null,
+      "context_length": 262144,
+      "pricing_per_million": {
+        "prompt": 0.09,
+        "completion": 0.3
+      },
+      "hugging_face_id": "google/gemma-4-26B-A4B-it",
+      "runs_on": "cluster (vLLM)",
+      "cost_tier": "free"
+    },
+    {
+      "id": "thinkingmachines/inkling",
+      "name": "Inkling",
+      "tier": "open-weight",
+      "created": "2026-07-17",
+      "knowledge_cutoff": null,
+      "context_length": 524288,
+      "pricing_per_million": {
+        "prompt": 1.0,
+        "completion": 4.05
+      },
+      "hugging_face_id": "thinkingmachines/Inkling",
+      "runs_on": "cluster (vLLM)",
+      "cost_tier": "free"
+    },
+    {
+      "id": "thinkingmachines/inkling-small",
+      "name": "Inkling Small",
+      "tier": "open-weight",
+      "created": "2026-07-30",
+      "knowledge_cutoff": null,
+      "context_length": 524288,
+      "pricing_per_million": {
+        "prompt": 0.45,
+        "completion": 1.2
+      },
+      "hugging_face_id": "thinkingmachines/Inkling-Small",
+      "runs_on": "cluster (vLLM)",
+      "cost_tier": "free"
+    },
+    {
+      "id": "dots-studio/dots-3-note-preview",
+      "name": "Dots 3 Note",
+      "tier": "open-weight",
+      "created": "2026-08-14",
+      "knowledge_cutoff": null,
+      "context_length": 512000,
+      "pricing_per_million": {
+        "prompt": 0.0,
+        "completion": 0.0
+      },
+      "hugging_face_id": null,
+      "runs_on": "cluster (vLLM)",
+      "cost_tier": "free"
+    },
+    {
+      "id": "anthropic/claude-haiku-5.5",
+      "name": "Claude Haiku 5.5",
+      "tier": "cheap-closed",
+      "created": "2026-10-07",
+      "knowledge_cutoff": null,
+      "context_length": 1000000,
+      "pricing_per_million": {
+        "prompt": 0.1,
+        "completion": 0.5
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "cheap"
+    },
+    {
+      "id": "openai/gpt-6-luna",
+      "name": "GPT-6 Luna",
+      "tier": "cheap-closed",
+      "created": "2026-09-22",
+      "knowledge_cutoff": null,
+      "context_length": 1050000,
+      "pricing_per_million": {
+        "prompt": 0.1,
+        "completion": 0.5
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "cheap"
+    },
+    {
+      "id": "cohere/command-a-plus",
+      "name": "Command A+",
+      "tier": "cheap-closed",
+      "created": "2026-09-22",
+      "knowledge_cutoff": null,
+      "context_length": 192000,
+      "pricing_per_million": {
+        "prompt": 0.3,
+        "completion": 1.5
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "cheap"
+    },
+    {
+      "id": "mistralai/mistral-large-4-0",
+      "name": "Mistral Large 4.0",
+      "tier": "cheap-closed",
+      "created": "2026-10-06",
+      "knowledge_cutoff": null,
+      "context_length": 1048576,
+      "pricing_per_million": {
+        "prompt": 0.68,
+        "completion": 2.09
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "cheap"
+    },
+    {
+      "id": "perceptron/perceptron-mk1.5",
+      "name": "Perceptron MK1.5",
+      "tier": "cheap-closed",
+      "created": "2026-09-25",
+      "knowledge_cutoff": null,
+      "context_length": 36864,
+      "pricing_per_million": {
+        "prompt": 0.15,
+        "completion": 1.5
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "cheap"
+    },
+    {
+      "id": "google/gemini-4-argon",
+      "name": "Gemini 4 Argon",
+      "tier": "frontier-closed",
+      "created": "2026-10-13",
+      "knowledge_cutoff": null,
+      "context_length": 1048576,
+      "pricing_per_million": {
+        "prompt": 2.0,
+        "completion": 10.0
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "frontier"
+    },
+    {
+      "id": "openai/gpt-6.1-sol",
+      "name": "GPT-6.1 Sol",
+      "tier": "frontier-closed",
+      "created": "2026-09-29",
+      "knowledge_cutoff": null,
+      "context_length": 1050000,
+      "pricing_per_million": {
+        "prompt": 2.0,
+        "completion": 10.0
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "frontier"
+    },
+    {
+      "id": "anthropic/claude-sonnet-5.5",
+      "name": "Claude Sonnet 5.5",
+      "tier": "frontier-closed",
+      "created": "2026-09-28",
+      "knowledge_cutoff": null,
+      "context_length": 1000000,
+      "pricing_per_million": {
+        "prompt": 2.0,
+        "completion": 10.0
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "frontier"
+    },
+    {
+      "id": "qwen/qwen3.8-max-prime",
+      "name": "Qwen3.8 Max Prime",
+      "tier": "frontier-closed",
+      "created": "2026-09-23",
+      "knowledge_cutoff": null,
+      "context_length": 1000000,
+      "pricing_per_million": {
+        "prompt": 4.0,
+        "completion": 12.0
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "frontier"
+    },
+    {
+      "id": "meta/muse-wonder",
+      "name": "Muse Wonder",
+      "tier": "frontier-closed",
+      "created": "2026-10-12",
+      "knowledge_cutoff": null,
+      "context_length": 1048576,
+      "pricing_per_million": {
+        "prompt": 4.0,
+        "completion": 20.0
+      },
+      "hugging_face_id": null,
+      "runs_on": "openrouter",
+      "cost_tier": "frontier"
+    }
+  ]
+}
