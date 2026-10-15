@@ -65,7 +65,18 @@ export interface QuestionsApiDeps {
 export const CORS_HEADERS: Record<string, string> = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Methods": "POST, GET, DELETE, OPTIONS",
-  "Access-Control-Allow-Headers": "Content-Type, X-Access-Code, X-Questions-Code",
+    // EVERY HEADER THE CLIENT ACTUALLY SENDS, OR THE BROWSER REFUSES THE REQUEST.
+    //
+    // **THIS IS THE SECOND "SINGLE SOURCE OF CORS" IN THIS REPOSITORY.**
+    // `apps/relay/src/http.ts` says the same thing about itself, and it was fixed first -
+    // while the deployed preflight kept returning THIS list. Two files, each believing it is
+    // the one, and the one that serves the API is this one.
+    //
+    // Found in round 152 from the owner's report that /choose showed
+    // "NetworkError when attempting to fetch resource": `call()` attaches `x-actor` and
+    // `x-actor-name` to every request, and neither was allowed.
+    "Access-Control-Allow-Headers":
+      "Content-Type, X-Access-Code, X-Questions-Code, X-Harness-Code, X-Actor, X-Actor-Name",
   "Access-Control-Max-Age": "86400",
 };
 

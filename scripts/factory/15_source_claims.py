@@ -341,6 +341,62 @@ def find_tracked_artifacts(base: pathlib.Path) -> list[str]:
                 break
     return sorted(set(hits))
 
+
+# ---------------------------------------------------------------------------
+# A HEADER THE CLIENT SENDS AND CORS DOES NOT ALLOW
+# ---------------------------------------------------------------------------
+#
+# FOUND IN ROUND 152, FROM THE OWNER: "/choose shows NetworkError when attempting to fetch
+# resource."
+#
+# `call()` in packages/site/src/questions.ts attaches `x-actor` and `x-actor-name` to EVERY
+# request, including plain GETs. `Access-Control-Allow-Headers` listed neither. **So every
+# request from the browser failed a preflight** - not just that page.
+#
+# **No test caught it because a preflight is performed by a BROWSER, and no test here is one.**
+# The API was correct, the handler tests passed, and the site was unusable.
+#
+# So the two lists are compared directly: whatever the relay client sends, CORS must allow.
+_RELAY_CLIENT = "packages/site/src/questions.ts"
+# BOTH FILES. Two CORS lists exist, each labelled "single source", and the first version of this
+# check looked at only one of them - the one that was already fixed - so it passed while the
+# deployed preflight still refused. **A check that reads one of two sources of truth is a check
+# that agrees with itself.**
+_CORS_FILES = ("apps/relay/src/http.ts", "packages/questions-api/src/index.ts")
+# headers the client sends SOMEWHERE ELSE (OpenRouter, browser-direct) and that the relay never
+# sees. Named with the reason, like every other allowlist here.
+_NON_RELAY_HEADERS = {
+    "x-ai": "sent to OpenRouter, browser-direct - not to the relay",
+    "x-title": "sent to OpenRouter, browser-direct - not to the relay",
+}
+
+
+def find_cors_gaps(base: pathlib.Path) -> list[dict]:
+    """A header the relay client sends that Access-Control-Allow-Headers does not list."""
+    client = base / _RELAY_CLIENT
+    if not client.exists():
+        return []
+    sent = {m.lower() for m in re.findall(r'"(x-[a-z-]+)"',
+                                          client.read_text(encoding="utf-8-sig"))}
+    out = []
+    for rel in _CORS_FILES:
+        cors = base / rel
+        if not cors.exists():
+            continue
+        text = cors.read_text(encoding="utf-8-sig")
+        # READ THE VALUE, WHEREVER IT SITS. The header is written across two lines, and the first
+        # regex here matched the key's own closing quote and found nothing - **so the check
+        # reported every header as missing while all of them were present.** A check wrong about
+        # its own input, once more.
+        m = re.search(r"Access-Control-Allow-Headers\W+(.*?)(?:,\s*\n|\n\s*\"Access-Control-Max)",
+                      text, re.S)
+        blob = m.group(1) if m else ""
+        allowed = {a.lower() for a in re.findall(r"[Xx]-[A-Za-z-]+", blob)}
+        allowed |= {"content-type"}
+        for h in sorted(sent - allowed - set(_NON_RELAY_HEADERS)):
+            out.append({"header": h, "file": rel})
+    return out
+
 def find_problems(base: pathlib.Path) -> list[dict]:
     out = []
     for d in SOURCES:
@@ -612,12 +668,32 @@ def main(argv: list[str] | None = None) -> int:
     if not (base / "apps").exists() and not (base / "packages").exists():
         print("nothing to scan under " + str(base), file=sys.stderr)
         return 2
+    # THE LIST EVERY CHECK APPENDS TO, INITIALISED BEFORE ANY OF THEM RUNS.
+    #
+    # Found in round 152: it was never assigned anywhere in this file, so **every check that
+    # appends to it crashed with NameError instead of reporting a problem.** The CORS check was
+    # simply the first one to ever fire, which is why the bug had survived.
+    #
+    # A check whose reporting path raises reports neither the finding nor a clean run - the
+    # same shape as the encoding crash in diagnose_remote.py, in a different file.
+    all_problems: list[str] = []
     problems = find_problems(base)
     scopes = find_scope_problems(base)
     unused = find_unused_imports(base)
     counts = find_stale_counts(base)
     refs = find_broken_references(base)
     gaps = find_coverage_gaps(base)
+    cors_gaps = find_cors_gaps(base)
+    if cors_gaps:
+        print(str(len(cors_gaps)) + " HEADER(S) THE RELAY CLIENT SENDS AND CORS REFUSES:")
+        for x in cors_gaps:
+            print("  " + x["header"] + "   (" + x.get("file", "?") + ")")
+        print()
+        print("A CORS preflight is performed by a BROWSER, so no handler test can see this. The")
+        print("site fails with 'NetworkError when attempting to fetch resource' and the API looks")
+        print("perfectly correct. Add the header to Access-Control-Allow-Headers.")
+        print()
+        all_problems.append("a check above reported a problem")
     artifacts = find_tracked_artifacts(base)
     if artifacts:
         print(str(len(artifacts)) + " TRACKED BUILD ARTIFACT(S):")
@@ -641,7 +717,8 @@ def main(argv: list[str] | None = None) -> int:
     # cannot fail**, the defect this file exists to find. Found by planting a link to a deleted
     # route and watching the guard pass.
     if (not problems and not scopes and not unused and not counts and not refs and not gaps
-            and not paid_hosts and not spend_bindings and not dead_links and not artifacts):
+            and not paid_hosts and not spend_bindings and not dead_links and not artifacts
+            and not cors_gaps):
         print()
         print("OK — no source claim contradicts the documented invariant that an unset")
         print("     privilege secret DISABLES the door, and every guard has its variable.")
