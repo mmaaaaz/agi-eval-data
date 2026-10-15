@@ -229,7 +229,36 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
         run: python scripts/db/diagnose_remote.py --db agi-eval-questions
       - name: Apply migrations (before the code that needs them)
-        run: bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --remote
+        # CAPTURE THE OUTPUT AND REPORT IT, BECAUSE THE LOG IS NOT ALWAYS READABLE.
+        #
+        # This step failed on every deploy run from round 140 onward while the migrations were
+        # in fact applied - verified by reading d1_migrations from the remote, and by running
+        # the same command locally, which exits 0. **The repository is private, so the runner's
+        # log needs a token the owner holds and I do not.**
+        #
+        # So the step now writes wrangler's own output into the JOB SUMMARY on failure. That is
+        # the one place a person sees without opening anything, and it means the next failure
+        # explains itself instead of needing another round of guessing.
+        run: |
+          set +e
+          bunx --bun wrangler@4.125.0 d1 migrations apply agi-eval-questions --remote 2>&1 | tee /tmp/migrate.log
+          rc=${PIPESTATUS[0]}
+          if [ $rc -ne 0 ]; then
+            {
+              echo '## Apply migrations FAILED'
+              echo ''
+              echo 'wrangler exited '\''$rc'\''. Its output:'
+              echo ''
+              echo '```'
+              tail -40 /tmp/migrate.log
+              echo '```'
+              echo ''
+              echo 'The migrations themselves were applied on 2026-10-14 and `d1_migrations` holds'
+              echo 'all eight. If this fails while `Diagnose the remote schema` succeeded, the'
+              echo 'cause is in the text above and not in the schema.'
+            } >> "$GITHUB_STEP_SUMMARY"
+          fi
+          exit $rc
         working-directory: apps/relay
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
