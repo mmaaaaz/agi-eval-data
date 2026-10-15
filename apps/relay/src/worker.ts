@@ -24,7 +24,6 @@ interface Env {
   HARNESS_CODE?: string;
   /** signs the server-issued actor id. Unset = fall back to the client's id. */
   ACTOR_SECRET?: string;
-  GATEWAY_MODEL?: string;
   ACCESS_CODE?: string;
   RATE_LIMIT_PER_IP?: string;
 }

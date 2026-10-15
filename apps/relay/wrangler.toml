@@ -18,8 +18,11 @@ database_id = "0d90cf33-9334-42ae-995a-d15805b95bdc"
 migrations_dir = "migrations"
 
 [vars]
-FORCE_FALLBACK = "0"
-GATEWAY_MODEL = "openai/gpt-5-nano"
+ # GATEWAY_MODEL AND FORCE_FALLBACK WERE REMOVED HERE. Both belonged to the chat relay:
+ # the model it reached and the flag that bypassed its gateway. The route and the [ai] binding
+ # are gone, nothing reads either var, and GATEWAY_MODEL named a PAID model in a deployed
+ # Worker that can no longer call one. **A stale binding is a spend surface that reads as
+ # configuration.**
 RATE_LIMIT_PER_IP = "101"
 
 # ---------------------------------------------------------------------------
