@@ -26,6 +26,10 @@ import type { Row } from "./data";
  * quota progress and filter only by contributor, which meant the rare bands were still
  * lost to random choice: a progress bar that shows you are ignoring the scarce images is
  * not steering. Steering can be switched off.
+ *
+ * 2026-10-16: this keyboard screen is now the POWER MODE of Select (/contribute/triage).
+ * The grid at /contribute is the primary door; this stays for whoever prefers one key
+ * per decision. Both write the same selections.
  */
 
 export interface TriageSite {
@@ -36,7 +40,9 @@ export interface TriageSite {
 type SelState = "proposed" | "nominated" | "chosen" | "excluded";
 interface Sel { file_id: string; state: SelState; reason?: string }
 
-const TARGET = 2500;
+// The 2,000-image test split (2026-10-16 decision: 500 hand-written core + 1,500
+// generated·reviewed). Was 2,500 before the split was settled.
+const TARGET = 2000;
 const RARE_FLOOR = 25;
 
 function bandOf(mp: number | null): string {
@@ -226,7 +232,7 @@ export function GalleryTriage({ site }: { site: TriageSite }) {
     <div>
       <div className="mb-4 flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight text-white">Choose images</h1>
+          <h1 className="text-2xl font-semibold tracking-tight text-white">Keyboard triage</h1>
           <p className="mt-1 font-mono text-[11px] text-[#666]">
             {chosenCount} chosen of {TARGET} · {queue.length} left in this filter
           </p>

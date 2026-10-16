@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ChooseRouteImport } from './routes/choose'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as ResultsRouteImport } from './routes/results'
@@ -18,6 +19,8 @@ import { Route as StatusRouteImport } from './routes/status'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
 import { Route as ContributeReviewRouteImport } from './routes/contribute.review'
 import { Route as ContributeRulesRouteImport } from './routes/contribute.rules'
+import { Route as ContributeTriageRouteImport } from './routes/contribute.triage'
+import { Route as ContributeWriteRouteImport } from './routes/contribute.write'
 import { Route as GalleryIndexRouteImport } from './routes/gallery.index'
 import { Route as GalleryDuplicatesRouteImport } from './routes/gallery.duplicates'
 import { Route as GalleryInsightsRouteImport } from './routes/gallery.insights'
@@ -31,6 +34,11 @@ import { Route as GalleryOptimizationOwnerRouteImport } from './routes/gallery.o
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChooseRoute = ChooseRouteImport.update({
+  id: '/choose',
+  path: '/choose',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContributeRoute = ContributeRouteImport.update({
@@ -71,6 +79,16 @@ const ContributeReviewRoute = ContributeReviewRouteImport.update({
 const ContributeRulesRoute = ContributeRulesRouteImport.update({
   id: '/rules',
   path: '/rules',
+  getParentRoute: () => ContributeRoute,
+} as any)
+const ContributeTriageRoute = ContributeTriageRouteImport.update({
+  id: '/triage',
+  path: '/triage',
+  getParentRoute: () => ContributeRoute,
+} as any)
+const ContributeWriteRoute = ContributeWriteRouteImport.update({
+  id: '/write',
+  path: '/write',
   getParentRoute: () => ContributeRoute,
 } as any)
 const GalleryIndexRoute = GalleryIndexRouteImport.update({
@@ -125,6 +143,7 @@ const GalleryOptimizationOwnerRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/choose': typeof ChooseRoute
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
   '/results': typeof ResultsRoute
@@ -132,6 +151,8 @@ export interface FileRoutesByFullPath {
   '/status': typeof StatusRoute
   '/contribute/review': typeof ContributeReviewRoute
   '/contribute/rules': typeof ContributeRulesRoute
+  '/contribute/triage': typeof ContributeTriageRoute
+  '/contribute/write': typeof ContributeWriteRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
   '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
@@ -145,11 +166,14 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/choose': typeof ChooseRoute
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/contribute/review': typeof ContributeReviewRoute
   '/contribute/rules': typeof ContributeRulesRoute
+  '/contribute/triage': typeof ContributeTriageRoute
+  '/contribute/write': typeof ContributeWriteRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
   '/gallery/triage': typeof GalleryTriageRoute
@@ -163,6 +187,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/choose': typeof ChooseRoute
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
   '/results': typeof ResultsRoute
@@ -170,6 +195,8 @@ export interface FileRoutesById {
   '/status': typeof StatusRoute
   '/contribute/review': typeof ContributeReviewRoute
   '/contribute/rules': typeof ContributeRulesRoute
+  '/contribute/triage': typeof ContributeTriageRoute
+  '/contribute/write': typeof ContributeWriteRoute
   '/gallery/duplicates': typeof GalleryDuplicatesRoute
   '/gallery/insights': typeof GalleryInsightsRoute
   '/gallery/optimization': typeof GalleryOptimizationRouteWithChildren
@@ -185,6 +212,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/choose'
     | '/contribute'
     | '/gallery'
     | '/results'
@@ -192,6 +220,8 @@ export interface FileRouteTypes {
     | '/status'
     | '/contribute/review'
     | '/contribute/rules'
+    | '/contribute/triage'
+    | '/contribute/write'
     | '/gallery/duplicates'
     | '/gallery/insights'
     | '/gallery/optimization'
@@ -205,11 +235,14 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/choose'
     | '/results'
     | '/settings'
     | '/status'
     | '/contribute/review'
     | '/contribute/rules'
+    | '/contribute/triage'
+    | '/contribute/write'
     | '/gallery/duplicates'
     | '/gallery/insights'
     | '/gallery/triage'
@@ -222,6 +255,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/choose'
     | '/contribute'
     | '/gallery'
     | '/results'
@@ -229,6 +263,8 @@ export interface FileRouteTypes {
     | '/status'
     | '/contribute/review'
     | '/contribute/rules'
+    | '/contribute/triage'
+    | '/contribute/write'
     | '/gallery/duplicates'
     | '/gallery/insights'
     | '/gallery/optimization'
@@ -243,6 +279,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ChooseRoute: typeof ChooseRoute
   ContributeRoute: typeof ContributeRouteWithChildren
   GalleryRoute: typeof GalleryRouteWithChildren
   ResultsRoute: typeof ResultsRoute
@@ -257,6 +294,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/choose': {
+      id: '/choose'
+      path: '/choose'
+      fullPath: '/choose'
+      preLoaderRoute: typeof ChooseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contribute': {
@@ -313,6 +357,20 @@ declare module '@tanstack/react-router' {
       path: '/rules'
       fullPath: '/contribute/rules'
       preLoaderRoute: typeof ContributeRulesRouteImport
+      parentRoute: typeof ContributeRoute
+    }
+    '/contribute/triage': {
+      id: '/contribute/triage'
+      path: '/triage'
+      fullPath: '/contribute/triage'
+      preLoaderRoute: typeof ContributeTriageRouteImport
+      parentRoute: typeof ContributeRoute
+    }
+    '/contribute/write': {
+      id: '/contribute/write'
+      path: '/write'
+      fullPath: '/contribute/write'
+      preLoaderRoute: typeof ContributeWriteRouteImport
       parentRoute: typeof ContributeRoute
     }
     '/gallery/': {
@@ -384,12 +442,16 @@ declare module '@tanstack/react-router' {
 interface ContributeRouteChildren {
   ContributeReviewRoute: typeof ContributeReviewRoute
   ContributeRulesRoute: typeof ContributeRulesRoute
+  ContributeTriageRoute: typeof ContributeTriageRoute
+  ContributeWriteRoute: typeof ContributeWriteRoute
   ContributeIndexRoute: typeof ContributeIndexRoute
 }
 
 const ContributeRouteChildren: ContributeRouteChildren = {
   ContributeReviewRoute: ContributeReviewRoute,
   ContributeRulesRoute: ContributeRulesRoute,
+  ContributeTriageRoute: ContributeTriageRoute,
+  ContributeWriteRoute: ContributeWriteRoute,
   ContributeIndexRoute: ContributeIndexRoute,
 }
 
@@ -435,6 +497,7 @@ const GalleryRouteWithChildren =
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ChooseRoute: ChooseRoute,
   ContributeRoute: ContributeRouteWithChildren,
   GalleryRoute: GalleryRouteWithChildren,
   ResultsRoute: ResultsRoute,

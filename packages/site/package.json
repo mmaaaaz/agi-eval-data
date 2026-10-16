@@ -15,6 +15,7 @@
     "./authoring": "./src/authoring.tsx",
     "./review": "./src/review.tsx",
     "./triage": "./src/triage.tsx",
+    "./select": "./src/SelectGrid.tsx",
     "./actor": "./src/ActorBar.tsx",
     "./livesync": "./src/useLiveSync.ts",
     "./anchor": "./src/AnchorBox.tsx",

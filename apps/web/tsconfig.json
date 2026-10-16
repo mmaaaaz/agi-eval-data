@@ -54,6 +54,9 @@
       "@site/virtual": [
         "../../packages/site/src/VirtualGallery.tsx"
       ],
+      "@site/select": [
+        "../../packages/site/src/SelectGrid.tsx"
+      ],
       "@site/section": [
         "../../packages/site/src/Section.tsx"
       ],

@@ -1,9 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import { GalleryTriage } from "@site/triage";
-import { loadSettings, saveSettings } from "../lib/ai/settings";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
-export const Route = createFileRoute("/gallery/triage")({ component: Triage });
-
-function Triage() {
-  return <GalleryTriage site={{ loadSettings, saveSettings }} />;
-}
+// SELECTION LIVES IN ONE PLACE NOW: /contribute (the Select tab). This old URL stays as a
+// redirect so every shared link and every bit of muscle memory still lands on the door.
+export const Route = createFileRoute("/gallery/triage")({
+  beforeLoad: () => {
+    throw redirect({ to: "/contribute", replace: true });
+  },
+});

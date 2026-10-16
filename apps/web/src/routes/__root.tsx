@@ -5,11 +5,12 @@ import { AppShell, NotFound } from "@site/shell";
 // holds the tools that do that plus the progress they check. **Method, Prior art, Alternatives
 // and Project are gone** - they are reading pages, and they were asked for by name.
 //
-// Choose first: it is the fast keyboard triage screen.
+// ONE DOOR (2026-10-16): selection, authoring and review all live under /contribute as
+// Select → Write → Review → Guide. The old "Choose" nav item retired into Contribute; its URL
+// (/gallery/triage) redirects, and the keyboard mode stays unadvertised at /contribute/triage.
 const NAV = [
-  { to: "/gallery/triage", label: "Choose" },
-  { to: "/gallery", label: "Gallery" },
   { to: "/contribute", label: "Contribute" },
+  { to: "/gallery", label: "Gallery" },
   { to: "/results", label: "Results" },
   { to: "/status", label: "Status" },
 ];
@@ -31,8 +32,9 @@ const PAGE_TITLES: Record<string, string> = {
   "/gallery/insights": "Insights",
   "/gallery/duplicates": "Duplicates",
   "/gallery/contributors": "Contributors",
-  "/gallery/triage": "Choose images",
   "/contribute": "Contribute",
+  "/contribute/write": "Write questions",
+  "/contribute/triage": "Keyboard triage",
   "/contribute/review": "Review",
   "/contribute/rules": "Writing rules",
   "/results": "Results",
@@ -90,7 +92,7 @@ export const Route = createRootRoute({
       mobileHints={{
         "/": "dataset overview",
         "/gallery": "browse the images",
-        "/contribute": "author questions",
+        "/contribute": "select · write · review",
         "/settings": "relay · access code · key",
       }}
     />

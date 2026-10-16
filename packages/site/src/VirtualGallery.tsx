@@ -6,9 +6,11 @@ import { ThumbImage } from "./ThumbImage";
 interface Props {
   rows: Row[];
   dupSet: Set<string>;
-  onOpen: (index: number) => void;
+  onOpen?: (index: number) => void;
   /** optional per-image badge (e.g. question count) rendered beside the caption */
   badge?: (row: Row) => ReactNode;
+  /** full custom tile — receives the same sizing the default tile uses */
+  renderTile?: (row: Row, index: number, size: { colW: number; imgH: number }) => ReactNode;
 }
 
 const MIN_COL = 168;
@@ -16,7 +18,7 @@ const GAP = 8;
 const CAPTION = 30;
 
 /** Windowed responsive thumbnail grid — handles 20k+ rows smoothly. */
-export function VirtualGallery({ rows, dupSet, onOpen, badge }: Props) {
+export function VirtualGallery({ rows, dupSet, onOpen, badge, renderTile }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -62,11 +64,18 @@ export function VirtualGallery({ rows, dupSet, onOpen, badge }: Props) {
                 const idx = vi.index * cols + c;
                 const r = rows[idx];
                 if (!r) return null;
+                if (renderTile) {
+                  return (
+                    <div key={r[0]} style={{ width: colW, flex: "0 0 auto" }}>
+                      {renderTile(r, idx, { colW, imgH })}
+                    </div>
+                  );
+                }
                 const isDup = r[6] !== "" && dupSet.has(r[6]);
                 return (
                   <button
                     key={r[0]}
-                    onClick={() => onOpen(idx)}
+                    onClick={() => onOpen?.(idx)}
                     className="group cursor-pointer text-left"
                     style={{ width: colW }}
                   >

@@ -22,6 +22,7 @@ export default defineConfig({
       "@site/authoring": path.resolve(__dirname, "../../packages/site/src/authoring.tsx"),
       "@site/review": path.resolve(__dirname, "../../packages/site/src/review.tsx"),
       "@site/triage": path.resolve(__dirname, "../../packages/site/src/triage.tsx"),
+      "@site/select": path.resolve(__dirname, "../../packages/site/src/SelectGrid.tsx"),
       "@site/actor": path.resolve(__dirname, "../../packages/site/src/ActorBar.tsx"),
       "@site/livesync": path.resolve(__dirname, "../../packages/site/src/useLiveSync.ts"),
       "@site/anchor": path.resolve(__dirname, "../../packages/site/src/AnchorBox.tsx"),
