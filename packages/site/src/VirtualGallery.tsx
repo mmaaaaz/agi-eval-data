@@ -11,6 +11,9 @@ interface Props {
   badge?: (row: Row) => ReactNode;
   /** full custom tile — receives the same sizing the default tile uses */
   renderTile?: (row: Row, index: number, size: { colW: number; imgH: number }) => ReactNode;
+  /** extra px per row for a renderTile that draws BELOW the caption (action buttons).
+   *  Without this the virtualizer budgets image+caption only and clips the row. */
+  rowExtraPx?: number;
 }
 
 const MIN_COL = 168;
@@ -18,7 +21,7 @@ const GAP = 8;
 const CAPTION = 30;
 
 /** Windowed responsive thumbnail grid — handles 20k+ rows smoothly. */
-export function VirtualGallery({ rows, dupSet, onOpen, badge, renderTile }: Props) {
+export function VirtualGallery({ rows, dupSet, onOpen, badge, renderTile, rowExtraPx }: Props) {
   const parentRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
 
@@ -34,7 +37,7 @@ export function VirtualGallery({ rows, dupSet, onOpen, badge, renderTile }: Prop
   const cols = Math.max(2, Math.floor((width - GAP) / (MIN_COL + GAP)) || 2);
   const colW = width ? Math.floor((width - GAP * (cols - 1)) / cols) : MIN_COL;
   const imgH = Math.round(colW * 0.72);
-  const rowH = imgH + CAPTION + GAP;
+  const rowH = imgH + CAPTION + GAP + (rowExtraPx ?? 0);
   const rowCount = Math.ceil(rows.length / cols);
 
   const virt = useVirtualizer({

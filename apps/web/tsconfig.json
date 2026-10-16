@@ -57,6 +57,9 @@
       "@site/select": [
         "../../packages/site/src/SelectGrid.tsx"
       ],
+      "@site/nominated": [
+        "../../packages/site/src/NominationBoard.tsx"
+      ],
       "@site/section": [
         "../../packages/site/src/Section.tsx"
       ],

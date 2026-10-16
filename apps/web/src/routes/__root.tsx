@@ -6,8 +6,9 @@ import { AppShell, NotFound } from "@site/shell";
 // and Project are gone** - they are reading pages, and they were asked for by name.
 //
 // ONE DOOR (2026-10-16): selection, authoring and review all live under /contribute as
-// Select → Write → Review → Guide. The old "Choose" nav item retired into Contribute; its URL
-// (/gallery/triage) redirects, and the keyboard mode stays unadvertised at /contribute/triage.
+// Select → Nominated → Questions → Review → Guide. The old "Choose" nav item retired into
+// Contribute; its URL (/gallery/triage) redirects, and the keyboard mode stays unadvertised
+// at /contribute/triage.
 const NAV = [
   { to: "/contribute", label: "Contribute" },
   { to: "/gallery", label: "Gallery" },
@@ -33,7 +34,8 @@ const PAGE_TITLES: Record<string, string> = {
   "/gallery/duplicates": "Duplicates",
   "/gallery/contributors": "Contributors",
   "/contribute": "Contribute",
-  "/contribute/write": "Write questions",
+  "/contribute/nominated": "Nominated",
+  "/contribute/write": "Questions",
   "/contribute/triage": "Keyboard triage",
   "/contribute/review": "Review",
   "/contribute/rules": "Writing rules",
@@ -92,7 +94,7 @@ export const Route = createRootRoute({
       mobileHints={{
         "/": "dataset overview",
         "/gallery": "browse the images",
-        "/contribute": "select · write · review",
+        "/contribute": "select · questions · review",
         "/settings": "relay · access code · key",
       }}
     />

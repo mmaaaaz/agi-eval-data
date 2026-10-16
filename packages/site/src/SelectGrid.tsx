@@ -208,11 +208,11 @@ export function SelectGrid({ site }: { site: SelectSite }) {
         <span className="min-w-0 flex-1 truncate font-mono text-[10px] text-[#666]" title={r[1]}>{r[1]}</span>
         <span className="shrink-0 font-mono text-[9px] text-[#555]">{bandMap.get(r[0]) ?? ""}</span>
       </div>
-      <div className="mt-1 flex gap-1">
+      <div className="mt-1 grid grid-cols-3 gap-1">
         <button
           onClick={() => void decide(r[0], "chosen")}
           disabled={busyIds.has(r[0])}
-          className="flex-1 rounded border border-[#0cce6b]/60 px-1.5 py-1 font-mono text-[9px] text-[#0cce6b] transition-colors hover:bg-[#0cce6b] hover:text-black disabled:opacity-30"
+          className="whitespace-nowrap rounded border border-[#0cce6b]/60 px-1 py-1 text-center font-mono text-[9px] text-[#0cce6b] transition-colors hover:bg-[#0cce6b] hover:text-black disabled:opacity-30"
           title="select — into the benchmark"
         >
           ✓ select
@@ -220,15 +220,15 @@ export function SelectGrid({ site }: { site: SelectSite }) {
         <button
           onClick={() => void decide(r[0], "nominated")}
           disabled={busyIds.has(r[0])}
-          className="flex-1 rounded border border-[#262626] px-1.5 py-1 font-mono text-[9px] text-[#a1a1a1] transition-colors hover:border-accent hover:text-accent disabled:opacity-30"
-          title="maybe — flag for a second look"
+          className="whitespace-nowrap rounded border border-[#262626] px-1 py-1 text-center font-mono text-[9px] text-[#a1a1a1] transition-colors hover:border-accent hover:text-accent disabled:opacity-30"
+          title="maybe — flag for a second look (appears in Nominated for votes)"
         >
           ~ maybe
         </button>
         <button
           onClick={() => setExcludeFor(r[0])}
           disabled={busyIds.has(r[0])}
-          className="flex-1 rounded border border-danger/60 px-1.5 py-1 font-mono text-[9px] text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-30"
+          className="whitespace-nowrap rounded border border-danger/60 px-1 py-1 text-center font-mono text-[9px] text-danger transition-colors hover:bg-danger hover:text-white disabled:opacity-30"
           title="exclude — never use this image (reason required)"
         >
           ✕
@@ -296,7 +296,7 @@ export function SelectGrid({ site }: { site: SelectSite }) {
         </p>
       )}
 
-      <VirtualGallery rows={pool as Row[]} dupSet={new Set<string>()} onOpen={() => {}} renderTile={renderTile} />
+      <VirtualGallery rows={pool as Row[]} dupSet={new Set<string>()} onOpen={() => {}} renderTile={renderTile} rowExtraPx={30} />
 
       {pool.length === 0 && !error && undecidedOnly && (
         <p className="mt-4 rounded-lg border border-[#262626] bg-[#0a0a0a]/60 p-6 font-mono text-[11px] text-[#a1a1a1]">

@@ -42,7 +42,7 @@ MIGRATIONS = ROOT / "apps" / "relay" / "migrations"
 # The shape the schema is supposed to have. NOT a guess: these are what the migration set
 # produces today, so a change to them is a change to the database contract - which should be a
 # deliberate edit here, not a silent drift.
-EXPECTED = {"table": 13, "view": 9, "trigger": 11}
+EXPECTED = {"table": 14, "view": 9, "trigger": 11}
 
 # A QUERY THAT MUST RUN. Counting objects proves they exist; running one proves they work.
 #

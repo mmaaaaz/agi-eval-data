@@ -1,12 +1,13 @@
 import { Link, createFileRoute, Outlet } from "@tanstack/react-router";
 import { Eyebrow } from "@site/section";
 
-// ONE DOOR: Select → Write → Review → Guide. The separate Choose page retired into the
-// Select tab (2026-10-16 decision); the keyboard triage persists for power use,
-// unadvertised, at /contribute/triage.
+// ONE DOOR: Select → Nominated → Questions → Review → Guide. The separate Choose page
+// retired into the Select tab (2026-10-16 decision); the keyboard triage persists for
+// power use, unadvertised, at /contribute/triage.
 const TABS = [
   { to: "/contribute", label: "Select", exact: true },
-  { to: "/contribute/write", label: "Write", exact: false },
+  { to: "/contribute/nominated", label: "Nominated", exact: false },
+  { to: "/contribute/write", label: "Questions", exact: false },
   { to: "/contribute/review", label: "Review", exact: false },
   { to: "/contribute/rules", label: "Guide", exact: false },
 ];

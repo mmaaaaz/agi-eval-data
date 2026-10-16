@@ -145,6 +145,16 @@ async function overWriteLimit(db: D1Database, actorId: string, limit = 60): Prom
   }
 }
 
+/** Two distinct votes promote a nomination; one below that demotes it again. */
+const VOTES_TO_PROMOTE = 2;
+
+async function voteCount(db: D1Database, fileId: string): Promise<number> {
+  const row = await db.prepare(
+    "SELECT COUNT(*) AS n FROM selection_votes WHERE file_id = ?1",
+  ).bind(fileId).first<{ n: number }>();
+  return Number(row?.n ?? 0);
+}
+
 async function readBody<T>(request: Request): Promise<T> {
   return await request.json() as T;
 }
@@ -1088,11 +1098,11 @@ const ROUTES: Route[] = [
       const upsert = isProposal
         ? `INSERT INTO selections (file_id, state, reason, stratum, actor_id, actor_name, updated_at)
            VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'))
-           ON CONFLICT(file_id) DO UPDATE SET state = ?2, reason = ?3, stratum = ?4, actor_id = ?5, actor_name = ?6, updated_at = datetime('now')
+           ON CONFLICT(file_id) DO UPDATE SET state = ?2, reason = ?3, stratum = ?4, actor_id = ?5, actor_name = ?6, promoted_by = NULL, updated_at = datetime('now')
            WHERE selections.state = 'proposed'`
         : `INSERT INTO selections (file_id, state, reason, stratum, actor_id, actor_name, updated_at)
            VALUES (?1, ?2, ?3, ?4, ?5, ?6, datetime('now'))
-           ON CONFLICT(file_id) DO UPDATE SET state = ?2, reason = ?3, stratum = ?4, actor_id = ?5, actor_name = ?6, updated_at = datetime('now')`;
+           ON CONFLICT(file_id) DO UPDATE SET state = ?2, reason = ?3, stratum = ?4, actor_id = ?5, actor_name = ?6, promoted_by = NULL, updated_at = datetime('now')`;
       const res = await db.prepare(upsert)
         .bind(fileId, state, (body.reason ?? "").trim(), (body.stratum ?? "").trim(), actor.id, actor.name)
         .run();
@@ -1110,6 +1120,10 @@ const ROUTES: Route[] = [
       const fileId = (url.searchParams.get("file_id") ?? "").trim();
       if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
       const actor = actorOf(request);
+      // The decision is gone; its votes go with it. An orphaned vote could
+      // otherwise resurrect vote arithmetic for a file that no longer carries
+      // a selection at all.
+      await db.prepare("DELETE FROM selection_votes WHERE file_id = ?1").bind(fileId).run();
       await db.prepare("DELETE FROM selections WHERE file_id = ?1").bind(fileId).run();
       return jsonResponse({ ok: true, file_id: fileId, state: null, by: actor.id });
     },
@@ -1149,6 +1163,88 @@ const ROUTES: Route[] = [
         file_ids: ids,
         note: "frozen snapshot: the hash covers the sorted ids, so a set that changes hashes differently",
       });
+    },
+  },
+  {
+    // ------------------------------------------------------- nomination votes
+    // The 2026-10-16 rule: a nomination becomes `chosen` on TWO distinct votes
+    // from people other than the nominator, and a retraction below two undoes
+    // ONLY a promotion this endpoint performed (promoted_by = 'votes'). A
+    // human's direct pick has promoted_by = NULL and is never demoted by vote
+    // arithmetic. Identity is the server-forwarded x-actor (attribution, not
+    // authentication), so one person cannot vote twice by renaming themselves.
+    method: "GET",
+    pattern: /^\/api\/selections\/votes$/,
+    handler: async ({ db, url }) => {
+      const limit = Math.min(20000, Number(url.searchParams.get("limit") ?? 20000));
+      const res = await db.prepare(
+        "SELECT file_id, actor_id, actor_name, created_at FROM selection_votes ORDER BY created_at DESC LIMIT ?1",
+      ).bind(limit).all<Record<string, unknown>>();
+      return jsonResponse({ votes: res.results, threshold: VOTES_TO_PROMOTE });
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/selections\/votes$/,
+    handler: async ({ request, db }) => {
+      const actor = actorOf(request);
+      if (!actor.id) return jsonResponse({ error: "x-actor required" }, 400);
+      if (await overWriteLimit(db, actor.id, 600)) {
+        return jsonResponse({ error: "too many writes in the last minute — slow down" }, 429);
+      }
+      const body = await readBody<{ file_id?: string }>(request);
+      const fileId = (body.file_id ?? "").trim();
+      if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
+      const row = await db.prepare(
+        "SELECT file_id, state, actor_id, promoted_by FROM selections WHERE file_id = ?1",
+      ).bind(fileId).first<{ file_id: string; state: string; actor_id: string; promoted_by: string | null }>();
+      if (!row) return jsonResponse({ error: "not nominated — there is nothing to vote on" }, 404);
+      const votable = row.state === "nominated" || (row.state === "chosen" && row.promoted_by === "votes");
+      if (!votable) return jsonResponse({ error: `a ${row.state} image is not open for votes` }, 409);
+      if (row.actor_id && row.actor_id === actor.id) {
+        return jsonResponse({ error: "the nominator cannot vote for their own nomination" }, 400);
+      }
+      await db.prepare(
+        `INSERT INTO selection_votes (file_id, actor_id, actor_name, created_at)
+         VALUES (?1, ?2, ?3, datetime('now'))
+         ON CONFLICT(file_id, actor_id) DO NOTHING`,
+      ).bind(fileId, actor.id, actor.name).run();
+      const n = await voteCount(db, fileId);
+      let state = row.state;
+      if (n >= VOTES_TO_PROMOTE && row.state !== "chosen") {
+        // Guarded on the current state so a concurrent exclusion cannot be
+        // clobbered by vote arithmetic.
+        await db.prepare(
+          "UPDATE selections SET state = 'chosen', promoted_by = 'votes', updated_at = datetime('now') WHERE file_id = ?1 AND state = 'nominated'",
+        ).bind(fileId).run();
+        state = "chosen";
+      }
+      return jsonResponse({ ok: true, file_id: fileId, votes: n, state, threshold: VOTES_TO_PROMOTE });
+    },
+  },
+  {
+    method: "DELETE",
+    pattern: /^\/api\/selections\/votes$/,
+    handler: async ({ request, db, url }) => {
+      const actor = actorOf(request);
+      if (!actor.id) return jsonResponse({ error: "x-actor required" }, 400);
+      const fileId = (url.searchParams.get("file_id") ?? "").trim();
+      if (!fileId) return jsonResponse({ error: "file_id required" }, 400);
+      await db.prepare(
+        "DELETE FROM selection_votes WHERE file_id = ?1 AND actor_id = ?2",
+      ).bind(fileId, actor.id).run();
+      const n = await voteCount(db, fileId);
+      const row = await db.prepare(
+        "SELECT state, promoted_by FROM selections WHERE file_id = ?1",
+      ).bind(fileId).first<{ state: string; promoted_by: string | null }>();
+      let state = row?.state ?? null;
+      if (row && n < VOTES_TO_PROMOTE && row.state === "chosen" && row.promoted_by === "votes") {
+        await db.prepare(
+          "UPDATE selections SET state = 'nominated', promoted_by = NULL, updated_at = datetime('now') WHERE file_id = ?1 AND promoted_by = 'votes'",
+        ).bind(fileId).run();
+        state = "nominated";
+      }
+      return jsonResponse({ ok: true, file_id: fileId, votes: n, state, threshold: VOTES_TO_PROMOTE });
     },
   },
   {

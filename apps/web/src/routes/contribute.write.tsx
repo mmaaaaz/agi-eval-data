@@ -22,6 +22,11 @@ function ContributeQuestions() {
         existingWording: "existing questions",
         loadSettings,
         ownerName,
+        // The Questions tab authors the SELECTED set — 500 hand-picked images,
+        // five questions each. Filtering the whole corpus here was the
+        // friction: nobody should scroll 57k images to find their 500.
+        restrictToChosen: true,
+        showCountFilter: true,
       }}
     />
   );

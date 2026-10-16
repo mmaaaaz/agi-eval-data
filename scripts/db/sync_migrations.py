@@ -17,6 +17,7 @@ plan = [
     ("schema_v5d_eval_truth.sql", "0006_v5d_eval_truth.sql", "v5d: errors, sample counts and instability on an evaluation, so the site cannot publish a different number than the paper."),
     ("schema_v5f_run_summary.sql", "0008_v5f_run_summary.sql", "v5f: the leaderboard reads a summary row instead of scanning every evaluation — 445,000 rows per page load against a 5M/day allowance was 11 page loads."),
     ("schema_v5e_run_key.sql", "0007_v5e_run_key.sql", "v5e: the run is part of the identity of a measurement, so a ladder can be published without its conditions overwriting each other."),
+    ("schema_v5g_selection_votes.sql", "0009_v5g_selection_votes.sql", "v5g: two distinct votes promote a nomination to chosen, and retracting below two undoes only a vote-promotion (promoted_by), never a human's own pick."),
 ]
 head = ("-- CANONICAL MIGRATION. Apply with:  npx wrangler d1 migrations apply agi-eval-questions --remote\n"
         "-- Source of truth for this file is apps/relay/{src}; edit there, then re-run scripts/db/sync_migrations.py.\n"

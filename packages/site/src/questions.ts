@@ -431,6 +431,18 @@ export const questionsApi = {
   unselect(relay: string, code: string, fileId: string): Promise<{ ok: boolean; file_id: string; state: null }> {
     return call(relay, code, `/api/selections?file_id=${encodeURIComponent(fileId)}`, { method: "DELETE" });
   },
+  /** All nomination votes. The nominated board joins these by file_id. */
+  votes(relay: string, limit = 20000): Promise<{ votes: { file_id: string; actor_id: string; actor_name: string; created_at: string }[]; threshold: number }> {
+    return call(relay, "", `/api/selections/votes?limit=${limit}`);
+  },
+  /** Upvote a nomination. Two distinct votes move it to chosen. */
+  vote(relay: string, code: string, fileId: string): Promise<{ ok: boolean; file_id: string; votes: number; state: string; threshold: number }> {
+    return call(relay, code, "/api/selections/votes", { method: "POST", body: JSON.stringify({ file_id: fileId }) });
+  },
+  /** Retract your vote — below two, a vote-promotion goes back to nominated. */
+  unvote(relay: string, code: string, fileId: string): Promise<{ ok: boolean; file_id: string; votes: number; state: string; threshold: number }> {
+    return call(relay, code, `/api/selections/votes?file_id=${encodeURIComponent(fileId)}`, { method: "DELETE" });
+  },
   remove(relay: string, code: string, id: number): Promise<{ ok: boolean }> {
     return call(relay, code, `/api/questions?id=${id}`, { method: "DELETE" });
   },

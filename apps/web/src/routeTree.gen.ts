@@ -17,6 +17,7 @@ import { Route as ResultsRouteImport } from './routes/results'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
+import { Route as ContributeNominatedRouteImport } from './routes/contribute.nominated'
 import { Route as ContributeReviewRouteImport } from './routes/contribute.review'
 import { Route as ContributeRulesRouteImport } from './routes/contribute.rules'
 import { Route as ContributeTriageRouteImport } from './routes/contribute.triage'
@@ -69,6 +70,11 @@ const StatusRoute = StatusRouteImport.update({
 const ContributeIndexRoute = ContributeIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => ContributeRoute,
+} as any)
+const ContributeNominatedRoute = ContributeNominatedRouteImport.update({
+  id: '/nominated',
+  path: '/nominated',
   getParentRoute: () => ContributeRoute,
 } as any)
 const ContributeReviewRoute = ContributeReviewRouteImport.update({
@@ -149,6 +155,7 @@ export interface FileRoutesByFullPath {
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
+  '/contribute/nominated': typeof ContributeNominatedRoute
   '/contribute/review': typeof ContributeReviewRoute
   '/contribute/rules': typeof ContributeRulesRoute
   '/contribute/triage': typeof ContributeTriageRoute
@@ -170,6 +177,7 @@ export interface FileRoutesByTo {
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
+  '/contribute/nominated': typeof ContributeNominatedRoute
   '/contribute/review': typeof ContributeReviewRoute
   '/contribute/rules': typeof ContributeRulesRoute
   '/contribute/triage': typeof ContributeTriageRoute
@@ -193,6 +201,7 @@ export interface FileRoutesById {
   '/results': typeof ResultsRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
+  '/contribute/nominated': typeof ContributeNominatedRoute
   '/contribute/review': typeof ContributeReviewRoute
   '/contribute/rules': typeof ContributeRulesRoute
   '/contribute/triage': typeof ContributeTriageRoute
@@ -218,6 +227,7 @@ export interface FileRouteTypes {
     | '/results'
     | '/settings'
     | '/status'
+    | '/contribute/nominated'
     | '/contribute/review'
     | '/contribute/rules'
     | '/contribute/triage'
@@ -239,6 +249,7 @@ export interface FileRouteTypes {
     | '/results'
     | '/settings'
     | '/status'
+    | '/contribute/nominated'
     | '/contribute/review'
     | '/contribute/rules'
     | '/contribute/triage'
@@ -261,6 +272,7 @@ export interface FileRouteTypes {
     | '/results'
     | '/settings'
     | '/status'
+    | '/contribute/nominated'
     | '/contribute/review'
     | '/contribute/rules'
     | '/contribute/triage'
@@ -343,6 +355,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/contribute/'
       preLoaderRoute: typeof ContributeIndexRouteImport
+      parentRoute: typeof ContributeRoute
+    }
+    '/contribute/nominated': {
+      id: '/contribute/nominated'
+      path: '/nominated'
+      fullPath: '/contribute/nominated'
+      preLoaderRoute: typeof ContributeNominatedRouteImport
       parentRoute: typeof ContributeRoute
     }
     '/contribute/review': {
@@ -440,6 +459,7 @@ declare module '@tanstack/react-router' {
 }
 
 interface ContributeRouteChildren {
+  ContributeNominatedRoute: typeof ContributeNominatedRoute
   ContributeReviewRoute: typeof ContributeReviewRoute
   ContributeRulesRoute: typeof ContributeRulesRoute
   ContributeTriageRoute: typeof ContributeTriageRoute
@@ -448,6 +468,7 @@ interface ContributeRouteChildren {
 }
 
 const ContributeRouteChildren: ContributeRouteChildren = {
+  ContributeNominatedRoute: ContributeNominatedRoute,
   ContributeReviewRoute: ContributeReviewRoute,
   ContributeRulesRoute: ContributeRulesRoute,
   ContributeTriageRoute: ContributeTriageRoute,

@@ -43,6 +43,10 @@ export interface AuthorSite {
   titleFor?: (row: Row) => string;
   /** optional overlay for the selected sheet's image (Lightbox relative container, disabled for PDFs) */
   overlayFor?: (row: Row) => React.ReactNode;
+  /** show only images already chosen for the benchmark (the Questions tab) */
+  restrictToChosen?: boolean;
+  /** offer a filter by questions-per-image (none / 1 / 2 / 3 / 4 / 5+) */
+  showCountFilter?: boolean;
 }
 /** Fixed question taxonomy. A suite needs a closed set, not free-form tags:
  *  results cannot be grouped by domain without one, and two annotators will
@@ -147,6 +151,8 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
   const [excluded, setExcluded] = useState<{ file_id: string; reason: string }[]>([]);
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<Sort>("needs");
+  const [countFilter, setCountFilter] = useState<"any" | "0" | "1" | "2" | "3" | "4" | "5p">("any");
+  const [chosenIds, setChosenIds] = useState<Set<string> | null>(site.restrictToChosen ? null : new Set<string>());
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [existing, setExisting] = useState<QRow[]>([]);
 
@@ -199,6 +205,20 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
     questionsApi.tags(relay, code).then((r) => setAllTags(r.tags)).catch(() => {});
   }, [refreshCounts, refreshExcluded, relay, code]);
 
+  /* The chosen set: the Questions tab works the selected images, nothing else.
+     Null until it loads, so the restricted grid cannot flash the whole corpus. */
+  useEffect(() => {
+    if (!site.restrictToChosen) return;
+    questionsApi.selections(relay, "chosen", 20000)
+      .then((r) => {
+        const s = new Set(
+          (r.selections as { file_id?: string }[]).map((x) => String(x.file_id ?? "")).filter(Boolean),
+        );
+        setChosenIds(s);
+      })
+      .catch((e) => setApiError(e instanceof Error ? e.message : String(e)));
+  }, [relay, site.restrictToChosen]);
+
   /* my batch: a bounded, deterministic slice so nobody duplicates anyone else */
   const [myBatchOnly, setMyBatchOnly] = useState(false);
   const actorId = useMemo(() => getActor().id, []);
@@ -210,10 +230,19 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
 
   /* grid rows: images, not excluded, sorted */
   const rows = useMemo(() => {
-    if (!data || !countsLoaded) return [];
+    // The chosen-set load gates the restricted grid; until it lands (or on an
+    // API failure, where it stays null) showing the whole corpus would be a lie.
+    if (!data || !countsLoaded || (site.restrictToChosen && chosenIds === null)) return [];
     const s = search.trim().toLowerCase();
     const items = data.files
       .filter((r) => r[7] === "i" && !excludedSet.has(r[0]))
+      .filter((r) => !site.restrictToChosen || (chosenIds?.has(r[0]) ?? false))
+      .filter((r) => {
+        if (countFilter === "any") return true;
+        const n = counts[r[0]] ?? 0;
+        if (countFilter === "5p") return n >= 5;
+        return n === Number(countFilter);
+      })
       .filter((r) => !myBatchOnly || myBatch.has(r[0]))
       .filter((r) => !s || r[1].toLowerCase().includes(s) || (site.searchText?.(r) ?? "").toLowerCase().includes(s));
     const cmp: Record<Sort, (a: (typeof items)[0], b: (typeof items)[0]) => number> = {
@@ -222,7 +251,7 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
       name: (a, b) => a[1].localeCompare(b[1]),
     };
     return items.sort(cmp[sort]);
-  }, [data, search, counts, countsLoaded, excludedSet, sort, site.searchText, myBatchOnly, myBatch]);
+  }, [data, search, counts, countsLoaded, excludedSet, sort, site.searchText, myBatchOnly, myBatch, chosenIds, countFilter, site.restrictToChosen]);
 
   const selected = useMemo(
     () => (data && selectedId ? data.files.find((r) => r[0] === selectedId) ?? null : null),
@@ -550,7 +579,7 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
         <h1 className="text-2xl font-semibold tracking-tight text-white">
           Author questions
           <span className="ml-3 font-mono text-sm font-normal tabular-nums text-[#666]">
-            {fmtN(rows.length)} {site.imageLabel}
+            {fmtN(rows.length)} {site.restrictToChosen ? "selected images" : site.imageLabel}
           </span>
         </h1>
         <div className="flex flex-wrap items-center gap-2">
@@ -569,6 +598,22 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
             <option value="recent">recent first</option>
             <option value="name">name A–Z</option>
           </select>
+          {site.showCountFilter && (
+            <select
+              value={countFilter}
+              onChange={(e) => setCountFilter(e.target.value as typeof countFilter)}
+              className="rounded-md border border-[#262626] bg-[#0a0a0a] px-2.5 py-1.5 font-mono text-xs text-[#ededed] outline-none focus:border-accent"
+              title="filter by how many questions an image already has"
+            >
+              <option value="any">any questions</option>
+              <option value="0">no questions</option>
+              <option value="1">1 question</option>
+              <option value="2">2 questions</option>
+              <option value="3">3 questions</option>
+              <option value="4">4 questions</option>
+              <option value="5p">5+ questions</option>
+            </select>
+          )}
           {excluded.length > 0 && (
             <button
               onClick={() => navigate({ to: site.navigateMarkedTo })}
@@ -617,7 +662,23 @@ export function AuthorQuestions({ site }: { site: AuthorSite }) {
             ))}
           </div>
         ) : (
-          <VirtualGallery rows={rows} dupSet={new Set()} onOpen={(i) => setSelectedId(rows[i][0])} badge={badgeFor} />
+          <>
+            <VirtualGallery rows={rows} dupSet={new Set()} onOpen={(i) => setSelectedId(rows[i][0])} badge={badgeFor} />
+            {site.restrictToChosen && chosenIds !== null && chosenIds.size === 0 && (
+              <p className="mt-4 rounded-lg border border-[#262626] bg-[#0a0a0a]/60 p-6 font-mono text-[11px] text-[#a1a1a1]">
+                Nothing has been selected yet — choose images first in the{" "}
+                <a href="/contribute" className="text-accent underline decoration-dotted hover:no-underline">
+                  Select tab
+                </a>
+                . Questions are written on the selected set.
+              </p>
+            )}
+            {site.restrictToChosen && chosenIds !== null && chosenIds.size > 0 && rows.length === 0 && (
+              <p className="mt-4 rounded-lg border border-[#262626] bg-[#0a0a0a]/60 p-6 font-mono text-[11px] text-[#a1a1a1]">
+                No selected image matches this filter — loosen the count filter or the search.
+              </p>
+            )}
+          </>
         )}
       </div>
 

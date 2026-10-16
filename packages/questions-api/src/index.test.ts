@@ -753,6 +753,127 @@ describe("selections", () => {
   });
 });
 
+describe("nomination votes: two distinct votes promote, retraction reverses", () => {
+  const selRow = (state: string, actorId = "nominator-id", promotedBy: string | null = null) => (sql: string) => {
+    if (sql.includes("FROM selections WHERE file_id")) {
+      return { file_id: "img_1", state, actor_id: actorId, promoted_by: promotedBy };
+    }
+    if (sql.includes("COUNT(*) AS n FROM selection_votes")) return { n: 1 };
+    return null;
+  };
+
+  it("refuses a vote with no identity", async () => {
+    const r = await call(api(makeDb()), "/api/selections/votes", {
+      method: "POST",
+      body: JSON.stringify({ file_id: "img_1" }),
+    });
+    expect(r.status).toBe(400);
+  });
+
+  it("the nominator cannot vote for their own nomination", async () => {
+    const a = api(makeDb(selRow("nominated")));
+    const r = await call(a, "/api/selections/votes", {
+      method: "POST",
+      headers: { "x-actor": "nominator-id", "x-actor-name": "Bilal" },
+      body: JSON.stringify({ file_id: "img_1" }),
+    });
+    expect(r.status).toBe(400);
+    expect(String(r.body.error)).toMatch(/nominator/);
+  });
+
+  it("records the vote against the server-forwarded actor", async () => {
+    const db = makeDb(selRow("nominated"));
+    const r = await call(api(db), "/api/selections/votes", {
+      method: "POST",
+      headers: { "x-actor": "voter-1", "x-actor-name": "Ana" },
+      body: JSON.stringify({ file_id: "img_1" }),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.votes).toBe(1);
+    expect(db.binds.some((b) => b.sql.includes("INSERT INTO selection_votes") && b.args[1] === "voter-1")).toBe(true);
+  });
+
+  it("ONE vote is not enough — the image stays nominated", async () => {
+    const db = makeDb(selRow("nominated"));
+    const r = await call(api(db), "/api/selections/votes", {
+      method: "POST",
+      headers: { "x-actor": "voter-1", "x-actor-name": "Ana" },
+      body: JSON.stringify({ file_id: "img_1" }),
+    });
+    expect(r.body.state).toBe("nominated");
+    expect(db.seen.join(" ")).not.toContain("promoted_by = 'votes'");
+  });
+
+  it("TWO votes promote the nomination to chosen, and record WHY", async () => {
+    const db = makeDb((sql) => {
+      if (sql.includes("FROM selections WHERE file_id")) {
+        return { file_id: "img_1", state: "nominated", actor_id: "nominator-id", promoted_by: null };
+      }
+      if (sql.includes("COUNT(*) AS n FROM selection_votes")) return { n: 2 };
+      return null;
+    });
+    const r = await call(api(db), "/api/selections/votes", {
+      method: "POST",
+      headers: { "x-actor": "voter-2", "x-actor-name": "Sara" },
+      body: JSON.stringify({ file_id: "img_1" }),
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe("chosen");
+    expect(db.seen.join(" ")).toContain("promoted_by = 'votes'");
+  });
+
+  it("a vote on a non-votable state is refused", async () => {
+    const a = api(makeDb(selRow("excluded", "someone")));
+    const r = await call(a, "/api/selections/votes", {
+      method: "POST",
+      headers: { "x-actor": "voter-1" },
+      body: JSON.stringify({ file_id: "img_1" }),
+    });
+    expect(r.status).toBe(409);
+  });
+
+  it("retracting below two undoes a vote-promotion", async () => {
+    const db = makeDb((sql) => {
+      if (sql.includes("COUNT(*) AS n FROM selection_votes")) return { n: 1 };
+      if (sql.includes("SELECT state, promoted_by")) return { state: "chosen", promoted_by: "votes" };
+      return null;
+    });
+    const r = await call(api(db), "/api/selections/votes?file_id=img_1", {
+      method: "DELETE",
+      headers: { "x-actor": "voter-1", "x-actor-name": "Ana" },
+    });
+    expect(r.status).toBe(200);
+    expect(r.body.state).toBe("nominated");
+    expect(db.seen.join(" ")).toContain("state = 'nominated', promoted_by = NULL");
+  });
+
+  it("retracting NEVER demotes a human's own pick", async () => {
+    const db = makeDb((sql) => {
+      if (sql.includes("COUNT(*) AS n FROM selection_votes")) return { n: 0 };
+      if (sql.includes("SELECT state, promoted_by")) return { state: "chosen", promoted_by: null };
+      return null;
+    });
+    const r = await call(api(db), "/api/selections/votes?file_id=img_1", {
+      method: "DELETE",
+      headers: { "x-actor": "voter-1" },
+    });
+    expect(r.body.state).toBe("chosen");
+    expect(db.seen.join(" ")).not.toContain("state = 'nominated'");
+  });
+
+  it("serves the vote ledger", async () => {
+    const db = makeDb(undefined, (sql) =>
+      sql.includes("FROM selection_votes")
+        ? [{ file_id: "img_1", actor_id: "voter-1", actor_name: "Ana", created_at: "2026-10-16 12:00:00" }]
+        : [],
+    );
+    const r = await call(api(db), "/api/selections/votes");
+    expect(r.status).toBe(200);
+    expect((r.body.votes as unknown[]).length).toBe(1);
+    expect(r.body.threshold).toBe(2);
+  });
+});
+
 describe("the Python seeder can actually propose", () => {
   it("accepts the exact payload scripts/factory/00b_seed_selections.py sends", async () => {
     // Shape copied from the seeder. This is the seam between the stratified
