@@ -40,8 +40,13 @@ export interface ShellProps {
   children?: ReactNode;
 }
 
-function Loader({ progress, brand }: { progress: number | null; brand: string }) {
+function Loader({ progress, brand, onRetry }: { progress: number | null; brand: string; onRetry?: () => void }) {
   const pct = progress != null ? Math.round(progress * 100) : null;
+  const [slow, setSlow] = useState(false);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSlow(true), 15_000);
+    return () => window.clearTimeout(t);
+  }, []);
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-8">
       <h1 className="sheen font-mono text-sm uppercase tracking-[0.35em]">{brand}</h1>
@@ -58,6 +63,22 @@ function Loader({ progress, brand }: { progress: number | null; brand: string })
         )}
       </div>
       <p className="font-mono text-[10px] text-[#666]">fetching dataset metadata · nothing else downloads</p>
+      {slow && (
+        <div className="flex max-w-xs flex-col items-center gap-3 text-center">
+          <p className="font-mono text-[10px] leading-4 text-[#a1a1a1]">
+            slower than usual — a weak connection can stall this fetch. It retries automatically, and the
+            source switches if one stalls; you can also restart it now.
+          </p>
+          {onRetry && (
+            <button
+              onClick={onRetry}
+              className="rounded border border-[#262626] px-3 py-1.5 font-mono text-[10px] text-[#ededed] transition-colors hover:border-[#404040]"
+            >
+              RETRY NOW
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -124,12 +145,12 @@ function Shell({
   }, [pathname]);
 
   if (loadingFirst && !data && !error) {
-    return <Loader progress={progress} brand={props.brand.name} />;
+    return <Loader progress={progress} brand={props.brand.name} onRetry={refresh} />;
   }
   if (error && !data) {
     return <ErrorCard message={error} onRetry={refresh} />;
   }
-  if (!data) return <Loader progress={null} brand={props.brand.name} />;
+  if (!data) return <Loader progress={null} brand={props.brand.name} onRetry={refresh} />;
 
   const mobileItems = [...props.nav, ...(props.mobileExtra ?? [])];
 
@@ -186,7 +207,7 @@ function Shell({
                 </div>
               )}
               <div className="flex items-center gap-2">
-                <SyncChip scheduleLabel={props.syncSchedule} defaultCron={props.syncCron} />
+                <SyncChip scheduleLabel={props.syncSchedule} defaultCron={props.syncCron} ledgerScannedAt={data?.meta.scannedAt ?? null} />
                 <Link
                   to="/settings"
                   aria-label="Settings"

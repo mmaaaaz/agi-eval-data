@@ -9,24 +9,37 @@ interface Props {
   defaultCron?: string;
   /** human label for the tooltip's schedule, e.g. "daily at 06:00 UTC" */
   scheduleLabel?: string;
+  /**
+   * scannedAt (ISO) of the ledger the app actually loaded. The baked version.json
+   * goes stale between deploys, so freshness is judged against whichever of the
+   * two is newer — never against the baked file alone.
+   */
+  ledgerScannedAt?: string | null;
 }
+
+/** parse an ISO timestamp, tolerating values missing the trailing Z */
+const toMs = (s: string): number => Date.parse(s.endsWith("Z") ? s : `${s}Z`);
 
 /**
  * Sync pill — counts down to the next data sync and polls the baked
  * version.json (same-origin, ~200 bytes) every minute. When a newer sync
  * lands, the pill becomes a hard-refresh button. No GitHub API, no
- * multi-megabyte requests.
+ * multi-megabyte requests. Freshness is judged against the *loaded ledger's*
+ * scannedAt when the app has one (the baked file can lag it by days).
  */
 export function SyncChip({
   versionUrl = "/data/version.json",
   defaultCron = "0 6 * * *",
   scheduleLabel = "daily at 06:00 UTC",
+  ledgerScannedAt = null,
 }: Props) {
   const [now, setNow] = useState(() => Date.now());
   const [scannedAt, setScannedAt] = useState<string | null>(null);
   const [cron, setCron] = useState(defaultCron);
   const [update, setUpdate] = useState(false);
   const [checkFailed, setCheckFailed] = useState(false);
+
+  const ledgerMs = ledgerScannedAt ? toMs(ledgerScannedAt) : null;
 
   // 1s tick for the countdown
   useEffect(() => {
@@ -47,7 +60,11 @@ export function SyncChip({
         setCheckFailed(false);
         setCron(v.cron ?? defaultCron);
         setScannedAt((prev) => {
-          if (prev && v.scannedAt !== prev) setUpdate(true);
+          const changed = prev != null && v.scannedAt !== prev;
+          // Only announce "new data" when the poll is newer than what this
+          // session actually loaded — a stale baked file never counts.
+          const newer = ledgerMs == null || toMs(v.scannedAt) > ledgerMs;
+          if (changed && newer) setUpdate(true);
           return v.scannedAt;
         });
       } catch {
@@ -65,18 +82,17 @@ export function SyncChip({
       window.clearInterval(t);
       document.removeEventListener("visibilitychange", onVis);
     };
-  }, [versionUrl, defaultCron]);
+  }, [versionUrl, defaultCron, ledgerMs]);
 
-  const scannedAtMs = scannedAt
-    ? Date.parse(scannedAt.endsWith("Z") ? scannedAt : `${scannedAt}Z`)
-    : null;
-  const next = scannedAtMs ? nextSlotAfter(cron, new Date(Math.max(now, scannedAtMs))) : null;
+  const polledMs = scannedAt ? toMs(scannedAt) : null;
+  const freshMs = Math.max(polledMs ?? 0, ledgerMs ?? 0) || null;
+  const next = freshMs ? nextSlotAfter(cron, new Date(Math.max(now, freshMs))) : null;
   const secsLeft = next ? Math.max(0, Math.floor((next.getTime() - now) / 1000)) : null;
-  const minsSince = scannedAtMs ? Math.floor((now - scannedAtMs) / 60000) : 0;
+  const minsSince = freshMs ? Math.floor((now - freshMs) / 60000) : 0;
   const delayed = minsSince > 26 * 60 && !update;
 
-  const tooltip = scannedAt
-    ? `last data sync ${timeAgo(new Date(scannedAtMs ?? now).toISOString())} · ${scheduleLabel} · checks every minute`
+  const tooltip = freshMs
+    ? `last data sync ${timeAgo(new Date(freshMs).toISOString())} · ${scheduleLabel} · checks every minute`
     : "waiting for sync data";
 
   if (update) {
@@ -97,10 +113,10 @@ export function SyncChip({
 
   const dot = delayed
     ? "bg-danger"
-    : scannedAt
+    : freshMs
       ? "bg-[#0cce6b] animate-pulse"
       : "bg-[#666]";
-  const label = !scannedAt
+  const label = !freshMs
     ? "sync ?"
     : delayed
       ? "sync delayed"

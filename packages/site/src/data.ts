@@ -148,35 +148,60 @@ function putCached(cfg: DataConfig, l: Latest): void {
 
 /* ---------- network ---------- */
 
+/** If no bytes arrive for this long, the connection is dead — abort and retry. */
+const STALL_MS = 20_000;
+
 async function fetchWithProgress(
   url: string,
   onProgress: (frac: number | null) => void,
 ): Promise<Latest> {
-  const res = await fetch(url);
-  if (!res.ok) throw new Error(`HTTP ${res.status}`);
-  let text: string;
-  if (!res.body) {
-    text = await res.text();
-  } else {
-    const reader = res.body.getReader();
-    const dec = new TextDecoder();
-    let received = 0;
-    const total = Number(res.headers.get("content-length")) || 0;
-    const parts: string[] = [];
-    for (;;) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      received += value.byteLength;
-      parts.push(dec.decode(value, { stream: true }));
-      onProgress(total ? Math.min(1, received / total) : null);
+  const ctrl = new AbortController();
+  let stalled = false;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  // Reset the stall clock on every chunk; a dead connection can otherwise
+  // hang `reader.read()` forever (observed live on throttled links).
+  const arm = () => {
+    clearTimeout(timer);
+    timer = setTimeout(() => {
+      stalled = true;
+      ctrl.abort();
+    }, STALL_MS);
+  };
+  try {
+    arm();
+    const res = await fetch(url, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    arm(); // give the body its own window once headers arrived
+    let text: string;
+    if (!res.body) {
+      text = await res.text();
+    } else {
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let received = 0;
+      const total = Number(res.headers.get("content-length")) || 0;
+      const parts: string[] = [];
+      for (;;) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        arm(); // bytes arrived — reset the stall clock
+        received += value.byteLength;
+        parts.push(dec.decode(value, { stream: true }));
+        onProgress(total ? Math.min(1, received / total) : null);
+      }
+      parts.push(dec.decode());
+      text = parts.join("");
+      onProgress(1);
     }
-    parts.push(dec.decode());
-    text = parts.join("");
-    onProgress(1);
+    const parsed = JSON.parse(text) as Latest;
+    if (!isValid(parsed)) throw new Error("malformed artifact");
+    return parsed;
+  } catch (e) {
+    if (stalled) throw new Error(`connection stalled — no data for ${STALL_MS / 1000}s`);
+    throw e;
+  } finally {
+    clearTimeout(timer);
   }
-  const parsed = JSON.parse(text) as Latest;
-  if (!isValid(parsed)) throw new Error("malformed artifact");
-  return parsed;
 }
 
 export async function fetchLatest(cfg: DataConfig, onProgress: (frac: number | null) => void): Promise<Latest> {
@@ -187,8 +212,9 @@ export async function fetchLatest(cfg: DataConfig, onProgress: (frac: number | n
     return await fetchWithProgress(primary, onProgress);
   } catch (e) {
     console.warn("primary source failed, trying jsDelivr:", e);
-    return fetchWithProgress(fallback, onProgress);
   }
+  onProgress(null); // the fallback starts from zero — show the indeterminate bar
+  return fetchWithProgress(fallback, onProgress);
 }
 
 /* ---------- hook ---------- */
