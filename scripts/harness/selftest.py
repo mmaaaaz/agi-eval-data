@@ -1876,9 +1876,14 @@ _removed = _ci_text.replace("python scripts/factory/12_unwired.py", "python -c p
 check("a REMOVED guard is caught, not just a typo",
       any("NOT RUN IN CI" in x for x in _ci.find_problems(_removed)),
       str(_ci.find_problems(_removed))[:160])
-# and a multi-line run: block must be read, not skipped
+# and a multi-line run: block must be read, not skipped.
+#
+# The marker here used to be `open_models_public.py` — until the grip build left ci.yml
+# (21bd4de, 2026-10-15). The string survived only in a comment, the assertion could never
+# pass again, and CI sat red on main for two pushes. A marker must name a command that
+# RUNS in ci.yml — this one anchors on the multi-line local-D1 migration step.
 check("multi-line run blocks are read",
-      any(ln > 50 and "open_models_public.py" in b for ln, b in _ci.run_blocks(_ci_text)),
+      any(ln > 50 and "d1 migrations apply" in b for ln, b in _ci.run_blocks(_ci_text)),
       _ci.run_blocks(_ci_text)[:2])
 
 print("THE ITEM SHAPE IS PART OF THE FREEZE, NOT ONLY OF THE GENERATOR")
