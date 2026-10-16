@@ -260,7 +260,7 @@ export function GalleryTriage({ site }: { site: TriageSite }) {
           ) : (
             <>
               <div className="relative overflow-hidden rounded-lg border border-[#262626] bg-[#050505]">
-                <ThumbImage fileId={current[0]} w={1600} alt={current[1]} eager className="max-h-[62vh] w-full" />
+                <ThumbImage fileId={current[0]} w={1600} alt={current[1]} eager fit="contain" className="h-[62vh] w-full" />
                 {sels[current[0]] && (
                   <span className="absolute left-3 top-3 rounded-full border border-accent/60 bg-black/70 px-2.5 py-1 font-mono text-[10px] text-accent">
                     {sels[current[0]]}

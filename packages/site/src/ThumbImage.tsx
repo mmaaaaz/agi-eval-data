@@ -14,6 +14,8 @@ interface Props {
   eager?: boolean;
   className?: string;
   style?: CSSProperties;
+  /** how the image fills its box — "cover" crops (thumbs), "contain" letterboxes (decision surfaces) */
+  fit?: "cover" | "contain";
   /** "o" = PDF: Google renders the first page via its thumbnail endpoint */
   kind?: "i" | "o";
 }
@@ -21,7 +23,7 @@ interface Props {
 /** Google-CDN hotlinked thumbnail with shimmer → fade → placeholder lifecycle.
  *  PDFs (kind "o") use Google's thumbnail endpoint — verified to render the
  *  PDF's first page as a PNG. */
-export function ThumbImage({ fileId, w = 400, alt, eager = false, className = "", style, kind = "i" }: Props) {
+export function ThumbImage({ fileId, w = 400, alt, eager = false, className = "", style, fit = "cover", kind = "i" }: Props) {
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
@@ -49,7 +51,7 @@ export function ThumbImage({ fileId, w = 400, alt, eager = false, className = ""
         draggable={false}
         onLoad={() => setLoaded(true)}
         onError={() => setFailed(true)}
-        className={`h-full w-full object-cover transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
+        className={`h-full w-full ${fit === "contain" ? "object-contain" : "object-cover"} transition-opacity duration-500 ${loaded ? "opacity-100" : "opacity-0"}`}
       />
     </div>
   );
