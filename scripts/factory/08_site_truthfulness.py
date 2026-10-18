@@ -24,6 +24,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 WEB_SRC = ROOT / "apps" / "web"
 SITE_PKG = ROOT / "packages" / "site" / "src"
+EXPLAINER_SRC = ROOT / "apps" / "explainer" / "src"
 
 # (regex, why it is forbidden, where it is allowed to appear)
 #
@@ -85,7 +86,7 @@ CURRENT = {
 def collect() -> list[Path]:
     out: list[Path] = []
     skip = {"dist", "node_modules", ".turbo", ".vite"}
-    for base in (WEB_SRC, SITE_PKG):
+    for base in (WEB_SRC, SITE_PKG, EXPLAINER_SRC):
         if base.exists():
             out += [p for p in base.rglob("*.tsx") if p.is_file() and not (skip & set(p.parts))]
             out += [p for p in base.rglob("*.ts") if p.is_file() and not (skip & set(p.parts))]
