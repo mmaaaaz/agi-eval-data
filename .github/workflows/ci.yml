@@ -81,6 +81,12 @@ jobs:
       - name: Guard (no unsupported claims on the site)
         run: python scripts/factory/08_site_truthfulness.py
 
+      # The site mirrors the taxonomy as TypeScript; this guard is what makes the mirror
+      # safe. Two copies of a taxonomy is two taxonomies, and this repo has shipped that
+      # defect before (round 81). Drift in either direction fails here.
+      - name: Guard (the explainer taxonomy mirrors the pipeline)
+        run: python scripts/factory/17_explainer_taxonomy.py
+
       # A thing that is never called is indistinguishable from a thing that does not exist.
       # This project has produced that defect repeatedly — image_edit had a comment and no
       # writer, 06_break_the_model could only --demo, the Phase 5 analyses lived in a print

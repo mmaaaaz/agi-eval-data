@@ -63,6 +63,7 @@ GUARDS = {
     "porder": "scripts/factory/14_pipeline_order.py",
     "migr": "scripts/db/check_migrations.py",
     "site": "scripts/factory/08_site_truthfulness.py",
+    "tax": "scripts/factory/17_explainer_taxonomy.py",
     "pii": "scripts/factory/10_pii.py",
     "gen": "scripts/factory/02_generate_questions.py",
     "tags": "scripts/factory/04_tag_ground.py",
@@ -2940,6 +2941,15 @@ attacked = [
 a = asr(clean, attacked)
 check("ASR denominator counts only clean-correct items", a["n_clean_correct"] == 2, str(a))
 check("ASR = 1 flipped of 2", abs(a["asr"] - 0.5) < 1e-9, str(a["asr"]))
+
+# ---------------------------------------------------------------------------
+# THE EXPLAINER TAXONOMY GUARD AGREES WITH THE CODE'S CLOSED SETS.
+# ---------------------------------------------------------------------------
+if M.get("tax") is not None:
+    _tax_rc = M["tax"].main()
+    check("explainer taxonomy mirrors scripts/harness/taxonomy.py", _tax_rc == 0, "rc=" + str(_tax_rc))
+else:
+    check("explainer taxonomy guard preloaded", False, "could not preload 17_explainer_taxonomy.py")
 
 print()
 if FAILS:

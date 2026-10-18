@@ -4,7 +4,7 @@ import { renderAt } from "../test/renderRoute";
 describe("home page", () => {
   it("shows the thesis, four short-version bullets, status chips and the references", async () => {
     const { container, findByText } = renderAt("/");
-    expect(await findByText(/A benchmark of 5,000 real photographs/)).toBeInTheDocument();
+    expect(await findByText(/A benchmark built on 50,000 real photographs/)).toBeInTheDocument();
     expect(container.querySelectorAll(".shortbox li").length).toBe(4);
     expect(container.querySelectorAll(".chip").length).toBeGreaterThanOrEqual(4);
     expect(await findByText(/BBQ-V/)).toBeInTheDocument();

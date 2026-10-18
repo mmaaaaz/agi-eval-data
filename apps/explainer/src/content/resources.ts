@@ -23,13 +23,6 @@ export const RESOURCES: DocRef[] = [
       "The current state of the art in visual stereotype-bias benchmarking: 14,144 image-question pairs over 9 categories with real, multi-actor images, and a finding that reasoning models can amplify bias in their chains. Our forced-choice probes are designed next to this work.",
   },
   {
-    id: "grip",
-    label: "GRIP, prior work",
-    kind: "reference",
-    href: "https://arxiv.org/abs/2610.16170",
-    blurb: "The group's geometric-reasoning benchmark.",
-  },
-  {
     id: "realworld",
     label: "They See It, They Don't Get It",
     kind: "reference",

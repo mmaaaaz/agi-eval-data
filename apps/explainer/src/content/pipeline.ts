@@ -9,36 +9,31 @@ export interface PipelineStep {
 export const PIPELINE: PipelineStep[] = [
   {
     n: "01",
-    title: "Select the 500.",
-    note: "A rarity-stratified, logged choice, so no band of the corpus dominates.",
+    title: "Draft across the dataset.",
+    note: `${FACTS.generationModel.name} drafts candidate questions for photographs across the whole corpus.`,
   },
   {
     n: "02",
-    title: "Write five questions per image.",
-    note: "One capability each, with ground truth and a recorded reason for every exclusion.",
+    title: "Tag every candidate.",
+    note: "Each candidate carries its capability code, its reasoning level and the image's scene domain.",
   },
   {
     n: "03",
-    title: "Fine-tune an open model on the hand-written set.",
-    note: `${FACTS.generationModel.name} is the current target; the 500 × 5 authored items become its training data.`,
+    title: "Review and pick.",
+    note: `People review candidates and pick the ones that enter the benchmark. ${n(FACTS.dataset.handPicked)} hand-picked images form the curated set.`,
   },
   {
     n: "04",
-    title: "Generate questions across the wider corpus.",
-    note: "The fine-tuned model drafts items for the remaining photographs.",
+    title: "Fix up.",
+    note: "Editors repair wording and ground truth. No item enters the set unreviewed.",
   },
   {
     n: "05",
-    title: `Select ${n(FACTS.benchmark.selectedFromGenerated)} more by a fixed rule.`,
-    note: "A pre-declared, seeded allocation picks the images. Question quality is a fixup gate, never a selection criterion.",
+    title: "Leave the rest open.",
+    note: `The remaining ${n(FACTS.dataset.communityOpen)} images stay open for the community to contribute to.`,
   },
   {
     n: "06",
-    title: "Fix up and verify everything generated.",
-    note: "No item enters the set unreviewed.",
-  },
-  {
-    n: "07",
     title: "Freeze, then evaluate.",
     note: "The frozen release is hashed, and the model panel runs against it alone.",
   },

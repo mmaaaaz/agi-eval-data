@@ -8,8 +8,8 @@ export const STATUS = [
     text: "Measurement harness: runs locally and returns results to the site. Only model inference costs money.",
   },
   {
-    label: "published",
-    text: "GRIP, the group's geometric-reasoning benchmark (arXiv 2610.16170).",
+    label: "planned",
+    text: "Question drafting across the whole dataset, with human review on every admitted item.",
   },
   {
     label: "target",

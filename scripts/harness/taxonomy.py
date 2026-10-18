@@ -22,8 +22,8 @@ artifact does.
 """
 from __future__ import annotations
 
-# G  geometry and physical reasoning   P  perception and measurement
-# B  behavioural and social            PERC  the perception control rung
+# G  geometry                          P  physics
+# B  bridge pairs (geometry + physics on one anchor)   PERC  the perception control rung
 VALID_CAPABILITIES = (
     {("G%d" % i) for i in range(1, 9)}
     | {("P%d" % i) for i in range(1, 9)}

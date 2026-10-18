@@ -1,15 +1,14 @@
 import { describe, expect, it } from "vitest";
 import { FACTS } from "./facts";
-import { FAMILIES } from "./families";
 import { PIPELINE } from "./pipeline";
-import { EVAL_TESTS } from "./evalTests";
 import { FAQ } from "./faq";
-import { CATEGORIES } from "./categories";
 import { MILESTONES } from "./roadmap";
 import { STATUS } from "./status";
 import { RESOURCES } from "./resources";
 import { PANEL, panelWithStatus } from "./models";
 import { SAMPLES } from "./samples";
+import { CAPABILITY_GROUPS, DOMAINS, LEVELS } from "./taxonomy";
+import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "./experiments";
 
 const allStrings = (v: unknown): string[] => {
   if (typeof v === "string") return [v];
@@ -19,20 +18,31 @@ const allStrings = (v: unknown): string[] => {
 };
 
 /** Every content surface a reader can see. Extended as content files land. */
-export const EMDASH_WALK: unknown[] = [FACTS, FAMILIES, PIPELINE, EVAL_TESTS, FAQ, CATEGORIES, MILESTONES, STATUS, RESOURCES, SAMPLES];
+export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, MILESTONES, STATUS, RESOURCES, SAMPLES];
 
 describe("content invariants", () => {
-  it("computes total and QA pairs from their parts", () => {
-    expect(FACTS.benchmark.total).toBe(5000);
+  it("computes the dataset split from its parts", () => {
+    expect(FACTS.dataset.total).toBe(50000);
+    expect(FACTS.dataset.handPicked).toBe(5000);
+    expect(FACTS.dataset.communityOpen).toBe(45000);
     expect(FACTS.benchmark.qaPairs).toBe(25000);
-    expect(FACTS.benchmark.families).toBe(FAMILIES.length);
   });
 
-  it("six families with real examples, nine tests, seven steps", () => {
-    expect(FAMILIES.length).toBe(6);
-    for (const f of FAMILIES) expect(f.example.length).toBeGreaterThan(15);
-    expect(EVAL_TESTS.length).toBe(9);
-    expect(PIPELINE.length).toBe(7);
+  it("mirrors the full taxonomy: 21 capabilities, 5 levels, 11 domains", () => {
+    expect(CAPABILITY_GROUPS.length).toBe(4);
+    expect(CAPABILITY_GROUPS.flatMap((g) => g.codes).length).toBe(21);
+    expect(LEVELS.length).toBe(5);
+    expect(DOMAINS.length).toBe(11);
+    for (const c of CAPABILITY_GROUPS.flatMap((g) => g.codes)) {
+      expect(c.label.length).toBeGreaterThan(2);
+      expect(c.note.length).toBeGreaterThan(10);
+    }
+  });
+
+  it("covers bias, adversarial and honesty experiments", () => {
+    expect(BIAS_TRACK.items.length).toBeGreaterThanOrEqual(3);
+    expect(ADVERSARIAL_TRACK.items.length).toBeGreaterThanOrEqual(2);
+    expect(HONESTY.length).toBe(9);
   });
 
   it("twenty FAQ entries, all real answers", () => {
@@ -41,12 +51,6 @@ describe("content invariants", () => {
       expect(e.q.endsWith("?")).toBe(true);
       expect(e.a.length).toBeGreaterThan(60);
     }
-  });
-
-  it("ten categories, unique ids, all marked planned for now", () => {
-    expect(CATEGORIES.length).toBe(10);
-    expect(new Set(CATEGORIES.map((c) => c.id)).size).toBe(10);
-    for (const c of CATEGORIES) expect(c.planned).toBe(true);
   });
 
   it("five milestones with at least two items each", () => {
@@ -66,19 +70,16 @@ describe("content invariants", () => {
     expect(PANEL.some((m) => m.id === "google/gemma-4-31b-it")).toBe(true);
   });
 
-  it("has ten samples across categories, covering all six families", () => {
+  it("has ten samples with valid, varied domains", () => {
     expect(SAMPLES.length).toBe(10);
-    const cats = new Set(SAMPLES.map((s) => s.category));
-    expect(cats.size).toBeGreaterThanOrEqual(7);
     for (const s of SAMPLES) {
+      expect(DOMAINS.some((d) => d.id === s.domain)).toBe(true);
       expect(s.questions.length).toBeGreaterThanOrEqual(3);
-      expect(CATEGORIES.some((c) => c.id === s.category)).toBe(true);
       expect(s.thumbUrl).toMatch(/^https:\/\/lh3\.googleusercontent\.com\/d\/.+=w\d+$/);
       expect(s.sourceUrl).toMatch(/^https:\/\/agi-eval-data\.pages\.dev\/gallery\?q=/);
       expect(s.sighted.length).toBeGreaterThan(30);
     }
-    const fams = new Set(SAMPLES.flatMap((s) => s.questions.map((q) => q.family)));
-    expect(fams.size).toBe(6);
+    expect(new Set(SAMPLES.map((s) => s.domain)).size).toBeGreaterThanOrEqual(5);
   });
 
   it("contains no em dash anywhere in visible copy", () => {

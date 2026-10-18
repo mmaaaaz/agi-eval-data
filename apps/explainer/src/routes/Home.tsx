@@ -11,9 +11,11 @@ export function HomePage() {
           Seen but <em>Not Grasped</em>
         </h1>
         <p className="thesis">
-          A benchmark of {n(FACTS.benchmark.total)} real photographs, five questions each. It measures the gap
-          between seeing and understanding. The counts, positions and plain scene facts a model can look
-          straight at and still get wrong.
+          A benchmark built on {n(FACTS.dataset.total)} real photographs. It measures the gap between
+          seeing and understanding: the counts, positions and plain scene facts a model can look
+          straight at and still get wrong. Questions are drafted by an open model we run ourselves,
+          reviewed and picked by people, and {n(FACTS.dataset.handPicked)} hand-picked images form the
+          curated set.
         </p>
         <div className="byline">
           <span>
@@ -28,17 +30,16 @@ export function HomePage() {
           <span className="lbl">The short version</span>
           <ul>
             <li>
-              <b>{n(FACTS.benchmark.total)} real photographs.</b> Five questions each, every answer read off
-              the image alone.
+              <b>{n(FACTS.dataset.total)} real photographs.</b> Questions are drafted across the full
+              dataset, about five per image, and every admitted item is reviewed by a person.
             </li>
             <li>
-              <b>{n(FACTS.benchmark.manual)} images selected and annotated by hand.</b>{" "}
-              {n(FACTS.benchmark.selectedFromGenerated)} written by an open model we fine-tune, then reviewed
-              item by item.
+              <b>{n(FACTS.dataset.handPicked)} hand-picked images.</b> The curated benchmark, with
+              balanced coverage of scene domains and codes on every item.
             </li>
             <li>
-              The contribution site is <b>live</b> and image selection is underway. The wider{" "}
-              {n(FACTS.corpus.size)}-image corpus follows on {FACTS.corpus.communityRelease}.
+              <b>{n(FACTS.dataset.communityOpen)} images stay open.</b> The remaining images remain
+              available for the community to contribute to.
             </li>
             <li>
               This site is the shared reference for everyone working on the benchmark, and for anyone

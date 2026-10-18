@@ -1,25 +1,30 @@
 /**
  * SINGLE SOURCE OF TRUTH for every number on the site. Never write a count twice.
- * Locked 2026-10-18: 500 manual, 4,500 selected from the generated pool, 5,000 total.
+ * Locked 2026-10-18 (owner): one 50,000-image dataset; questions are drafted by the
+ * model across the corpus and reviewed/picked by people; 5,000 hand-picked images form
+ * the curated benchmark; the remaining 45,000 stay open for the community.
  */
+const TOTAL = 50000;
+const HAND_PICKED = 5000;
+
 export const FACTS = {
-  benchmark: {
-    manual: 500,
-    selectedFromGenerated: 4500,
-    get total(): number {
-      return this.manual + this.selectedFromGenerated;
+  dataset: {
+    total: TOTAL,
+    handPicked: HAND_PICKED,
+    get communityOpen(): number {
+      return TOTAL - HAND_PICKED;
     },
+  },
+  benchmark: {
     questionsPerImage: 5,
     get qaPairs(): number {
-      return this.total * this.questionsPerImage;
+      return HAND_PICKED * this.questionsPerImage;
     },
-    families: 6,
   },
-  corpus: { size: 50000, communityRelease: "Hugging Face" },
   generationModel: {
     name: "Gemma 4 31B",
     panelId: "google/gemma-4-31b-it",
-    role: "fine-tuned on the hand-written set, then used to draft questions for the wider corpus",
+    role: "drafts candidate questions across the corpus for review",
   },
   team: {
     names: "Muhammad Maaz · Bilal Jawaid · Osama Farooqi",

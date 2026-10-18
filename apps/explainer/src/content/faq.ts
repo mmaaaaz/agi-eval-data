@@ -6,7 +6,7 @@ export interface FaqEntry {
 export const FAQ: FaqEntry[] = [
   {
     q: "What is Seen but Not Grasped?",
-    a: "A benchmark of 5,000 real photographs, each with five questions. Every question is answerable from the photograph alone, and every one is designed to be easy for a person and hard for a model. It measures the gap between seeing and understanding.",
+    a: "A benchmark built on 50,000 real photographs, with about five questions each across the set. Every question is drafted by an open model we run ourselves, and every admitted item is reviewed by a person. 5,000 hand-picked images form the curated benchmark; the rest stay open for the community.",
   },
   {
     q: "What makes it different from other vision benchmarks?",
@@ -17,36 +17,36 @@ export const FAQ: FaqEntry[] = [
     a: "Studio images and renders remove the clutter, odd lighting and small text where failures actually happen. Our photographs are lived scenes: kitchens, streets, shops, games. A model that can describe a cathedral can still miscount the chairs inside one.",
   },
   {
-    q: "Why 5,000 images?",
-    a: "Five thousand gives every question family and every image category enough items to be reported on its own, with confidence intervals that survive splitting. A paired design needs about 1,440 items to spot a two-point gap; 5,000 leaves room for the sub-analyses the paper needs.",
+    q: "Why 5,000 hand-picked images?",
+    a: "Five thousand gives every capability, level and domain enough items to be reported with confidence intervals that survive splitting. A paired design needs about 1,440 items to spot a two-point gap; the curated set is sized well past that so each axis clears its own reporting floor.",
   },
   {
     q: "How were the images selected?",
-    a: "500 images are selected by hand on the contribution site, under rarity-balanced quotas so no band of the corpus dominates. 4,500 more are picked from the wider corpus by a pre-declared, seeded rule. The selection rule was fixed before question quality was looked at: quality is a fixup gate, never a selection criterion.",
+    a: "The model drafts questions across the whole 50,000-image dataset. Reviewers pick the images whose items hold up, under balanced coverage of scene domains (D1 to D11), and 5,000 hand-picked images form the curated benchmark. Selection rules are recorded as they are used.",
   },
   {
     q: "Who writes the questions?",
-    a: "The first 500 images get five questions each, written by the team by hand. The remaining 4,500 start as drafts from the fine-tuned open model, and every generated item is reviewed and fixed up by a person before admission. No unreviewed item enters the set.",
+    a: "The model drafts every candidate; people review and pick. Nothing enters the benchmark without a recorded human review, and no unreviewed item is ever admitted.",
   },
   {
-    q: "What is the machine-generated tier of questions, and who reviews it?",
-    a: "Drafts come from Gemma 4 31B after fine-tuning on the hand-written set. Every draft goes through a fixup queue where a reviewer edits, accepts or rejects it, and the decision is recorded. The released set labels which tier each question came from.",
+    q: "What happens to a model-drafted question before it enters the set?",
+    a: "It goes through review: a person edits, accepts or rejects it, and the decision is recorded. Accepted items carry their capability, level and domain codes.",
   },
   {
-    q: "Which model generates questions, and what is fine-tuned on what?",
-    a: "Gemma 4 31B is fine-tuned on the 2,500 hand-written items, which is 500 images times five questions. It then drafts items for the wider corpus. The fine-tune and the generation both run on the group's own cluster at no cost.",
+    q: "Which model drafts the questions?",
+    a: "Gemma 4 31B, run on the group's own cluster. The model proposes; people decide.",
   },
   {
-    q: "What are the six question families?",
-    a: "Counting (exact counts, often under clutter), scene text (signs, plates, receipts), spatial (relative position of two things), attribute binding (which object carries the property), absent entity (questions about things not in the photo), and knowledge boundary (questions the photo cannot supply, scored in their own group). The Questions page shows each with an example.",
+    q: "What do the codes on each item mean?",
+    a: "Every item carries a capability code (G1 to G8 for geometry, P1 to P8 for physics, B1 to B4 for bridge pairs, and PERC as a perception control) and a reasoning level (L1 to L5). Every image carries one or more scene domains (D1 to D11). The Taxonomy page lists all of them.",
   },
   {
-    q: "How are images categorized, and who decides a category?",
-    a: "Categories describe what a photograph shows: people, sports, indoor, outdoors, food, documents and signs, vehicles, animals, city and architecture, everyday objects. A category is assigned as part of selection and recorded with the image. The taxonomy is open to review while selection is running.",
+    q: "How are images tagged?",
+    a: "Each image is tagged with one or more scene domains from a closed list of eleven, D1 to D11. Tagging is done by a model looking at the pixels, and domains are used for balanced coverage, never for scoring.",
   },
   {
-    q: "Do the categories and the question families line up one to one?",
-    a: "No. Families describe what a question tests; categories describe what a photograph shows. A sports photograph can carry a counting question and a spatial one. The Samples page shows the pairing in practice on real photographs.",
+    q: "What is a bridge pair?",
+    a: "Some questions come in pairs on the same object: one asks about the geometry of the layout, its partner asks what would happen physically in that same layout. B1 to B4 name these bridge capabilities, and the pair is scored as one unit.",
   },
   {
     q: "What is the forced-choice design, and why is there no unknown option in those probes?",
@@ -58,11 +58,11 @@ export const FAQ: FaqEntry[] = [
   },
   {
     q: "Which models are being run, and why a mix of open and frontier models?",
-    a: "Open-weight models run on the group's own cluster, fine-tuning included, at no cost. A costed subset of frontier models runs through APIs. Frontier models are expected to refuse the adversarial probes often, and a refusal is reported rather than used to leave a model out. The full panel is on the Models page.",
+    a: "Open-weight models run on the group's own cluster, at no cost. A costed subset of frontier models runs through APIs. Frontier models are expected to refuse the adversarial probes often, and a refusal is reported rather than used to leave a model out. The full panel is on the Models page.",
   },
   {
     q: "What does the project cost, and where does the money go?",
-    a: "The only planned spending is model inference on images. Everything else, from the contribution site to the fine-tune to this website, runs on free tiers or the group's own hardware. Every frontier run is costed before it starts.",
+    a: "The only planned spending is model inference on images. Everything else, from the contribution site to this website, runs on free tiers or the group's own hardware. Every frontier run is costed before it starts.",
   },
   {
     q: "How is the evaluation kept honest?",
@@ -73,12 +73,12 @@ export const FAQ: FaqEntry[] = [
     a: "ECE, expected calibration error, measures how far a model's stated confidence is from its actual accuracy. The Brier score is a squared-error scoring rule over the same probabilities. Together they answer one question: does the model know when it is unsure?",
   },
   {
-    q: "What happens to the rest of the 50,000-image corpus?",
-    a: "The wider 50,000-image corpus is planned for release to the community on Hugging Face, so others can build on the same photographs. The 5,000 benchmark images are the curated, frozen subset with reviewed questions.",
+    q: "What happens to the rest of the dataset?",
+    a: "The remaining 45,000 images stay open for the community to contribute to, so the same corpus can keep growing beyond the curated benchmark.",
   },
   {
     q: "What is the timeline, and what ships when?",
-    a: "Results freeze is targeted for 1 November 2026, ahead of the research submission. The Roadmap page shows the order: select and author, fine-tune, generate and fix up, run the panel, then freeze and write.",
+    a: "Results freeze is targeted for 1 November 2026, ahead of the research submission. The Roadmap page shows the order: draft and review, run the panel, then freeze and write.",
   },
   {
     q: "How can I contribute?",

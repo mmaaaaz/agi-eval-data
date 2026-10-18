@@ -134,12 +134,15 @@ ol.pipeline li::before {
 ol.pipeline strong { font-weight: 600; }
 ol.pipeline .sub { display: block; color: var(--ink-soft); font-size: 15px; margin-top: 3px; }
 
-/* family cards */
-.families { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; margin-top: 24px; }
-.family { padding: 16px 0; border-bottom: 1px solid var(--rule); }
-.family .name { font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; color: var(--accent-deep); text-transform: lowercase; }
-.family .hint { margin-top: 4px; font-size: 15px; color: var(--ink-soft); }
-.family .example { margin-top: 6px; font-size: 14.5px; color: var(--ink); font-style: italic; }
+/* taxonomy page */
+.tax-group { margin-top: 30px; }
+.tax-group h3 { margin-top: 0; }
+.tax-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; margin-top: 10px; }
+.tax { padding: 12px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 24px; }
+.tax .code { font-family: var(--mono); font-size: 12.5px; color: var(--accent-deep); }
+.tax .lbl { font-weight: 600; margin-left: 8px; }
+.tax .note { font-size: 14.5px; color: var(--ink-soft); margin-top: 2px; }
+@media (max-width: 720px) { .tax-grid { grid-template-columns: 1fr; } }
 
 /* numbered questions, checks */
 ol.qa { counter-reset: q; list-style: none; margin: 24px 0 0; padding: 0; display: grid; gap: 14px; }
@@ -182,7 +185,6 @@ footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; align-items: basel
 footer .mono { font-size: 11.5px; letter-spacing: .1em; }
 
 @media (max-width: 720px) {
-  .families { grid-template-columns: 1fr; }
   .link-row { grid-template-columns: 1fr; gap: 3px; }
   ol.pipeline li { grid-template-columns: 44px 1fr; }
 }
@@ -196,7 +198,7 @@ footer .mono { font-size: 11.5px; letter-spacing: .1em; }
   a { color: inherit; }
   .link-row .url { color: #444; font-size: 9pt; }
   h1 { font-size: 34pt; }
-  section, .ws, ol.pipeline li, .family, table, .shortbox { break-inside: avoid; }
+  section, .ws, ol.pipeline li, table, .shortbox { break-inside: avoid; }
 }
 
 /* ---- site chrome (new for the multi-page site) ---- */
@@ -224,16 +226,10 @@ main.wrap > section:first-child .eyebrow { margin-top: 0; }
 .sample ul.examples li { border-left: 3px solid var(--ochre); padding-left: 12px; }
 .sample .q { font-weight: 600; }
 .sample .a { color: var(--ink-soft); }
-.sample .fam { font-family: var(--mono); font-size: 11px; color: var(--accent); margin-right: 8px; }
 .sample .see { font-family: var(--mono); font-size: 12px; margin-top: 12px; display: inline-block; }
 
-/* ---- category grid (categories page) ---- */
-.cat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 0 40px; margin-top: 24px; }
-@media (max-width: 720px) { .cat-grid { grid-template-columns: 1fr; } }
-.cat { padding: 16px 0; border-bottom: 1px solid var(--rule); scroll-margin-top: 24px; }
-.cat .name { font-family: var(--mono); font-size: 12.5px; letter-spacing: .06em; color: var(--accent-deep); }
-.cat .note { margin-top: 4px; font-size: 15px; color: var(--ink-soft); }
-.cat .planned { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ochre); }
+/* small tag used by the roadmap for undated milestones */
+.planned { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ochre); }
 
 /* ---- FAQ (native details) ---- */
 .faq { margin-top: 24px; display: grid; gap: 0; }
