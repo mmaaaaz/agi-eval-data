@@ -111,5 +111,5 @@ data/drive/
 # `.dryrun2/`, `.dryrun3/` and `.dryrun4/` - **the same class, because the fix matched one
 # directory instead of the pattern.** A wrangler dry-run writes wherever `--outdir` points.
 
-# The explainer site ships the public briefing download (linked from Its home page).
+# The explainer site ships the public briefing download (linked from the Home page).
 !apps/explainer/public/docs/*.docx
