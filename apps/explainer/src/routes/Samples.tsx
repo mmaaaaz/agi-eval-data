@@ -1,6 +1,19 @@
+import { useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { SAMPLES } from "../content/samples";
 import { CATEGORIES } from "../content/categories";
+
+function SampleThumb({ src, alt }: { src: string; alt: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="thumb-fallback" role="img" aria-label={alt}>
+        The photograph could not be loaded here. Open it in the dataset gallery instead.
+      </div>
+    );
+  }
+  return <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
+}
 
 export function SamplesPage() {
   return (
@@ -21,7 +34,7 @@ export function SamplesPage() {
             <article className="sample" key={s.id}>
               <div>
                 <div className="thumb">
-                  <img src={s.thumbUrl} alt={s.sighted} loading="lazy" decoding="async" />
+                  <SampleThumb src={s.thumbUrl} alt={s.sighted} />
                 </div>
                 <p className="sighted">{s.sighted}</p>
                 <a className="see" href={s.sourceUrl}>
