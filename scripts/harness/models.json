@@ -242,6 +242,21 @@
       "hugging_face_id": null,
       "runs_on": "openrouter",
       "cost_tier": "frontier"
+    },
+    {
+      "id": "deepseek/deepseek-v4.1-flash-1017",
+      "name": "DeepSeek-V4.1-Flash-1017",
+      "tier": "open-weight",
+      "created": "2026-10-17",
+      "knowledge_cutoff": null,
+      "context_length": 1000000,
+      "pricing_per_million": {
+        "prompt": 0.15,
+        "completion": 0.6
+      },
+      "hugging_face_id": "deepseek-ai/DeepSeek-V4.1-Flash-1017",
+      "runs_on": "cluster (vLLM); API via DeepSeek",
+      "cost_tier": "cheap"
     }
   ]
 }
