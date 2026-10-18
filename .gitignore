@@ -110,3 +110,6 @@ data/drive/
 # THE WILDCARD, NOT THE NAME. Round 134 added `.dryrun/` and round 148 committed
 # `.dryrun2/`, `.dryrun3/` and `.dryrun4/` - **the same class, because the fix matched one
 # directory instead of the pattern.** A wrangler dry-run writes wherever `--outdir` points.
+
+# The explainer site ships the public briefing download (linked from Its home page).
+!apps/explainer/public/docs/*.docx
