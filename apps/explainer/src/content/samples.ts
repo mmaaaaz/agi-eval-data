@@ -101,7 +101,7 @@ export const SAMPLES: Sample[] = [
   {
     id: "1ypNERjZ9A6NTGE0EeoD287u2SGOvSkP3",
     name: "large_stadium_structure_1841.jpg",
-    domain: "D10",
+    domain: "D3",
     sighted:
       "The brick and glass exterior of a sports stadium on a sunny day, its name in large letters over the main entrance, with trees framing the view and a road in the foreground.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1ypNERjZ9A6NTGE0EeoD287u2SGOvSkP3=w512",
