@@ -8,6 +8,8 @@ import { CATEGORIES } from "./categories";
 import { MILESTONES } from "./roadmap";
 import { STATUS } from "./status";
 import { RESOURCES } from "./resources";
+import { PANEL, panelWithStatus } from "./models";
+import { SAMPLES } from "./samples";
 
 const allStrings = (v: unknown): string[] => {
   if (typeof v === "string") return [v];
@@ -17,7 +19,7 @@ const allStrings = (v: unknown): string[] => {
 };
 
 /** Every content surface a reader can see. Extended as content files land. */
-export const EMDASH_WALK: unknown[] = [FACTS, FAMILIES, PIPELINE, EVAL_TESTS, FAQ, CATEGORIES, MILESTONES, STATUS, RESOURCES];
+export const EMDASH_WALK: unknown[] = [FACTS, FAMILIES, PIPELINE, EVAL_TESTS, FAQ, CATEGORIES, MILESTONES, STATUS, RESOURCES, SAMPLES];
 
 describe("content invariants", () => {
   it("computes total and QA pairs from their parts", () => {
@@ -55,6 +57,28 @@ describe("content invariants", () => {
   it("resources include BBQ-V and only safe hrefs", () => {
     expect(RESOURCES.some((r) => r.id === "bbq-v")).toBe(true);
     for (const r of RESOURCES) expect(/^(https:\/\/|\/)/.test(r.href)).toBe(true);
+  });
+
+  it("reads the harness panel, shows every model, and includes DeepSeek-V4.1-Flash-1017", () => {
+    expect(PANEL.length).toBeGreaterThanOrEqual(17);
+    expect(panelWithStatus.length).toBe(PANEL.length);
+    expect(PANEL.some((m) => m.id.includes("deepseek-v4.1-flash-1017"))).toBe(true);
+    expect(PANEL.some((m) => m.id === "google/gemma-4-31b-it")).toBe(true);
+  });
+
+  it("has ten samples across categories, covering all six families", () => {
+    expect(SAMPLES.length).toBe(10);
+    const cats = new Set(SAMPLES.map((s) => s.category));
+    expect(cats.size).toBeGreaterThanOrEqual(7);
+    for (const s of SAMPLES) {
+      expect(s.questions.length).toBeGreaterThanOrEqual(3);
+      expect(CATEGORIES.some((c) => c.id === s.category)).toBe(true);
+      expect(s.thumbUrl).toMatch(/^https:\/\/lh3\.googleusercontent\.com\/d\/.+=w\d+$/);
+      expect(s.sourceUrl).toMatch(/^https:\/\/agi-eval-data\.pages\.dev\/gallery\?q=/);
+      expect(s.sighted.length).toBeGreaterThan(30);
+    }
+    const fams = new Set(SAMPLES.flatMap((s) => s.questions.map((q) => q.family)));
+    expect(fams.size).toBe(6);
   });
 
   it("contains no em dash anywhere in visible copy", () => {

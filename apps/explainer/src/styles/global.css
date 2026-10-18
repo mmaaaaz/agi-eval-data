@@ -209,6 +209,10 @@ footer .mono { font-size: 11.5px; letter-spacing: .1em; }
 .site-footer { border-top: 1px solid var(--rule-strong); margin-top: 96px; padding: 22px 0 48px; font-size: 13px; color: var(--muted); }
 .site-footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; justify-content: space-between; }
 
+/* first section on a subpage sits closer to the nav than the full rhythm */
+main.wrap > section:first-child { padding-top: clamp(40px, 6vh, 64px); }
+main.wrap > section:first-child .eyebrow { margin-top: 0; }
+
 /* ---- sample cards + category chips (samples page) ---- */
 .samples { display: grid; gap: 56px; margin-top: 28px; }
 .sample { display: grid; grid-template-columns: 380px 1fr; gap: 28px; align-items: start; border-top: 1px solid var(--rule); padding-top: 28px; }
