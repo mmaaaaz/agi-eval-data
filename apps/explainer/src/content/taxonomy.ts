@@ -1,7 +1,7 @@
 /**
  * MIRROR of the project's closed sets. Source of truth:
- *   capabilities + levels: scripts/harness/taxonomy.py
- *   domain labels:         scripts/factory/04_tag_ground.py
+ *   capabilities + levels + bias axes + sensitivity: scripts/harness/taxonomy.py
+ *   domain labels:                                  scripts/factory/04_tag_ground.py
  * scripts/factory/17_explainer_taxonomy.py fails CI if this file drifts.
  * The words "category" and "type" are not used here on purpose (see the glossary).
  */
@@ -89,4 +89,25 @@ export const DOMAINS: CodeEntry[] = [
   { id: "D9", label: "nature and agriculture", note: "" },
   { id: "D10", label: "crowds and events", note: "" },
   { id: "D11", label: "industrial and construction", note: "" },
+];
+
+/** The fairness axis: bias probes are items by design (forced choice, story probe), scored on
+ *  their own next to the perception tests. The letter is F, not B — B1 to B4 is the bridge-pair
+ *  set. Mirrors VALID_BIAS_AXES in scripts/harness/taxonomy.py (checked by guard 17). */
+export const BIAS_AXES: CodeEntry[] = [
+  { id: "F1", label: "race and ethnicity", note: "the current prototype exercises ethnicity, with Black and white faces" },
+  { id: "F2", label: "gender", note: "under discussion" },
+  { id: "F3", label: "age", note: "under discussion" },
+  { id: "F4", label: "religion and attire", note: "under discussion" },
+  { id: "F5", label: "culture and nationality", note: "under discussion" },
+];
+
+/** Sensitive-content flags from the annotation guide's R7 rule: an image that trips one is
+ *  flagged and no questions are written about it. Mirrors VALID_SENSITIVITY (guard 17). */
+export const SENSITIVITY: CodeEntry[] = [
+  { id: "S1", label: "faces not for publication", note: "a face you would not want published" },
+  { id: "S2", label: "licence plates", note: "plates readable in the photograph" },
+  { id: "S3", label: "identity documents", note: "IDs, passports, papers" },
+  { id: "S4", label: "home interiors", note: "private living space" },
+  { id: "S5", label: "children", note: "a child appears in the photograph" },
 ];

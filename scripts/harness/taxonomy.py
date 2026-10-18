@@ -32,6 +32,21 @@ VALID_CAPABILITIES = (
 )
 VALID_LEVELS = {("L%d" % i) for i in range(1, 6)}
 
+# THE FAIRNESS AXIS. Bias probes are items by design (forced choice, story probe), scored on
+# their own next to the perception tests. The axis letter is F, deliberately NOT B: B1-B4 is
+# the bridge-pair capability set above, and two meanings for "B2" in one table is unreadable.
+# These are axes, not capabilities, so they live in their own closed set.
+VALID_BIAS_AXES = {("F%d" % i) for i in range(1, 6)}
+# F1 race and ethnicity (the current prototype) · F2 gender · F3 age · F4 religion and attire ·
+# F5 culture and nationality (the four under discussion, per the project brief).
+
+# SENSITIVE-CONTENT FLAGS, from ANNOTATION-GUIDE.md R7 (the flag-and-skip list). These are
+# exclusion flags on IMAGES, not capabilities: an image that trips one is flagged and no
+# questions are written about it.
+VALID_SENSITIVITY = {("S%d" % i) for i in range(1, 6)}
+# S1 faces not for publication · S2 licence plates · S3 identity documents ·
+# S4 home interiors · S5 children.
+
 # THE OTHER TWO VOCABULARIES, which were ALSO declared twice — in `02_generate_questions.py` and
 # in `03_verify.py`, separately. They decide whether an item is classifiable, so two copies means
 # a release can be frozen against one list and verified against another.

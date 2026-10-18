@@ -1,4 +1,4 @@
-import { CAPABILITY_GROUPS, DOMAINS, LEVELS } from "../content/taxonomy";
+import { BIAS_AXES, CAPABILITY_GROUPS, DOMAINS, LEVELS, SENSITIVITY } from "../content/taxonomy";
 
 export function TaxonomyPage() {
   return (
@@ -57,6 +57,42 @@ export function TaxonomyPage() {
           ))}
         </div>
         <p className="table-note">Domains are used for balanced coverage during selection, never for scoring.</p>
+      </section>
+
+      <section className="sec-rule">
+        <span className="eyebrow">04.3 · Bias and fairness</span>
+        <h2>What a model assumes about people</h2>
+        <div className="tax-grid">
+          {BIAS_AXES.map((c) => (
+            <div className="tax" key={c.id} id={c.id.toLowerCase()}>
+              <span className="code">{c.id}</span>
+              <span className="lbl">{c.label}</span>
+              <div className="note">{c.note}</div>
+            </div>
+          ))}
+        </div>
+        <p className="table-note">
+          Bias probes are scored on their own, next to the perception tests. The axis letter is F:
+          B1 to B4 is the bridge-pair set. The Experiments page carries the probe designs.
+        </p>
+      </section>
+
+      <section className="sec-rule">
+        <span className="eyebrow">04.4 · Sensitive content</span>
+        <h2>What gets flagged before questions are written</h2>
+        <div className="tax-grid">
+          {SENSITIVITY.map((c) => (
+            <div className="tax" key={c.id} id={c.id.toLowerCase()}>
+              <span className="code">{c.id}</span>
+              <span className="lbl">{c.label}</span>
+              <div className="note">{c.note}</div>
+            </div>
+          ))}
+        </div>
+        <p className="table-note">
+          An image that trips any of these is flagged in the annotation record and no questions are
+          written about it.
+        </p>
       </section>
     </>
   );

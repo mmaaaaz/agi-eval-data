@@ -7,7 +7,7 @@ import { STATUS } from "./status";
 import { RESOURCES } from "./resources";
 import { PANEL, panelWithStatus } from "./models";
 import { SAMPLES } from "./samples";
-import { CAPABILITY_GROUPS, DOMAINS, LEVELS } from "./taxonomy";
+import { BIAS_AXES, CAPABILITY_GROUPS, DOMAINS, LEVELS, SENSITIVITY } from "./taxonomy";
 import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "./experiments";
 
 const allStrings = (v: unknown): string[] => {
@@ -18,7 +18,7 @@ const allStrings = (v: unknown): string[] => {
 };
 
 /** Every content surface a reader can see. Extended as content files land. */
-export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, MILESTONES, STATUS, RESOURCES, SAMPLES];
+export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_AXES, SENSITIVITY, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, MILESTONES, STATUS, RESOURCES, SAMPLES];
 
 describe("content invariants", () => {
   it("computes the dataset split from its parts", () => {
@@ -37,6 +37,20 @@ describe("content invariants", () => {
       expect(c.label.length).toBeGreaterThan(2);
       expect(c.note.length).toBeGreaterThan(10);
     }
+  });
+
+  it("adds the fairness axis and the sensitivity flags, all codes unique", () => {
+    expect(BIAS_AXES.length).toBe(5);
+    expect(SENSITIVITY.length).toBe(5);
+    const ids = [
+      ...CAPABILITY_GROUPS.flatMap((g) => g.codes),
+      ...LEVELS,
+      ...DOMAINS,
+      ...BIAS_AXES,
+      ...SENSITIVITY,
+    ].map((c) => c.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    for (const c of [...BIAS_AXES, ...SENSITIVITY]) expect(c.note.length).toBeGreaterThan(10);
   });
 
   it("covers bias, adversarial and honesty experiments", () => {
