@@ -2028,10 +2028,13 @@ check("the benchmark tree has no unwired machinery",
 # sharding, merge, lane watcher). Each has a distinct role and a written reason; they are not
 # pipeline stages and cannot be wired into run_pipeline honestly. A seventh tool trips this
 # again on purpose: the next exemption has to be argued, not added.
+# MOVED 18 -> 20 for the review room's two hand-run tools: the candidate ingester and the
+# local demo proxy. Both are one-command utilities, neither is a pipeline stage, and both
+# write only where their own docstrings say. The next entry trips this again.
 # Raised rather than removed: a bound that never moves is a bound nobody revisits, and a bound
 # with no bound at all lets the list grow unattended.
 check("every allowlist entry states a reason, and the list is bounded",
-      all(len(v) > 20 for v in _unwired.ALLOWED.values()) and len(_unwired.ALLOWED) <= 18,
+      all(len(v) > 20 for v in _unwired.ALLOWED.values()) and len(_unwired.ALLOWED) <= 20,
       str(sorted(_unwired.ALLOWED)) + " n=" + str(len(_unwired.ALLOWED)))
 check("most of the allowlist is guards, which is what it is FOR",
       sum(1 for v in _unwired.ALLOWED.values() if "guard" in v.lower()) >= 5,
