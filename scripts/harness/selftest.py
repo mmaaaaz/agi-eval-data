@@ -2024,10 +2024,14 @@ check("the benchmark tree has no unwired machinery",
 # — a guard has a CI or pipeline runner but is not a pipeline stage, which is exactly what this
 # allowlist is for. What the assertion protects is that an exemption cannot be SILENT, so the
 # property it really checks is that EVERY ENTRY STATES A REASON.
+# MOVED AGAIN 15 -> 18 for the drafting programme's six tools (runner, driver, preview,
+# sharding, merge, lane watcher). Each has a distinct role and a written reason; they are not
+# pipeline stages and cannot be wired into run_pipeline honestly. A seventh tool trips this
+# again on purpose: the next exemption has to be argued, not added.
 # Raised rather than removed: a bound that never moves is a bound nobody revisits, and a bound
 # with no bound at all lets the list grow unattended.
 check("every allowlist entry states a reason, and the list is bounded",
-      all(len(v) > 20 for v in _unwired.ALLOWED.values()) and len(_unwired.ALLOWED) <= 15,
+      all(len(v) > 20 for v in _unwired.ALLOWED.values()) and len(_unwired.ALLOWED) <= 18,
       str(sorted(_unwired.ALLOWED)) + " n=" + str(len(_unwired.ALLOWED)))
 check("most of the allowlist is guards, which is what it is FOR",
       sum(1 for v in _unwired.ALLOWED.values() if "guard" in v.lower()) >= 5,
