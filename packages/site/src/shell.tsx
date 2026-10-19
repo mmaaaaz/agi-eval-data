@@ -139,18 +139,23 @@ function Shell({
   const [menuOpen, setMenuOpen] = useState(false);
   const pathname = useRouterState({ select: (s) => s.location.pathname });
 
+  // The review room reads its own static snapshot and needs nothing from the
+  // ledger. Gating it behind the dataset fetch made a free, edge-served page wait
+  // on an unrelated request — on a weak link it stalled at 30% and never rendered.
+  const staticRoute = pathname === "/review";
+
   // any navigation closes the mobile menu (route change fires before render)
   useEffect(() => {
     setMenuOpen(false);
   }, [pathname]);
 
-  if (loadingFirst && !data && !error) {
+  if (loadingFirst && !data && !error && !staticRoute) {
     return <Loader progress={progress} brand={props.brand.name} onRetry={refresh} />;
   }
-  if (error && !data) {
+  if (error && !data && !staticRoute) {
     return <ErrorCard message={error} onRetry={refresh} />;
   }
-  if (!data) return <Loader progress={null} brand={props.brand.name} onRetry={refresh} />;
+  if (!data && !staticRoute) return <Loader progress={null} brand={props.brand.name} onRetry={refresh} />;
 
   const mobileItems = [...props.nav, ...(props.mobileExtra ?? [])];
 

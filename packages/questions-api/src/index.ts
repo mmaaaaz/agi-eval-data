@@ -1710,18 +1710,103 @@ const ROUTES: Route[] = [
   },
   {
     method: "GET",
-    pattern: /^\/api\/vqa\/export\.jsonl$/,
+    pattern: /^\/api\/vqa\/search$/,
+    handler: async ({ db, url }) => {
+      // Filtered search is the one dynamic read left. Edge-cached so a popular
+      // query costs D1 one scan per TTL per colo, not one per visit.
+      const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
+      const key = new Request(url.toString(), { method: "GET" });
+      if (cache) {
+        try {
+          const hit = await cache.match(key);
+          if (hit) return hit;
+        } catch { /* cache unavailable */ }
+      }
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
+      const where: string[] = [];
+      const binds: unknown[] = [];
+      const add = (col: string, val: string | null) => {
+        if (!val) return;
+        binds.push(val);
+        where.push(col + " = ?" + binds.length);
+      };
+      add("capability", url.searchParams.get("capability"));
+      add("level", url.searchParams.get("level"));
+      add("domain", url.searchParams.get("domain"));
+      const search = url.searchParams.get("search");
+      if (search) { binds.push("%" + search + "%"); where.push("question LIKE ?" + binds.length); }
+      const after = Number(url.searchParams.get("after") ?? 0);
+      if (after > 0) { binds.push(after); where.push("id > ?" + binds.length); }
+      binds.push(limit);
+      const rows = await db.prepare(
+        "SELECT id, file_id, question, answer, capability, level, domain, difficulty"
+        + " FROM vqa_candidates"
+        + (where.length ? " WHERE " + where.join(" AND ") : "")
+        + " ORDER BY id ASC LIMIT ?" + binds.length,
+      ).bind(...binds).all();
+      const response = new Response(JSON.stringify({ candidates: rows.results }), {
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=60" },
+      });
+      if (cache) {
+        try { await cache.put(key, response.clone()); } catch { /* ignore */ }
+      }
+      return response;
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/vqa\/decision$/,
     handler: async ({ request, db, deps }) => {
       if (!canApprove(request, deps)) return APPROVE_ERROR();
+      const body = (await request.json().catch(() => null)) as
+        | { id?: string; verdict?: string; reason?: string; reviewer?: string; edits?: Record<string, unknown>; batch?: string; file_id?: string }
+        | null;
+      const id = String(body?.id ?? "").trim().slice(0, 32);
+      const verdict = String(body?.verdict ?? "");
+      if (!id || !["approve", "edit", "reject"].includes(verdict)) {
+        return jsonResponse({ error: "id and verdict approve|edit|reject are required" }, 400);
+      }
+      const reason = String(body?.reason ?? "").trim().slice(0, 500);
+      if (verdict !== "approve" && !reason) return jsonResponse({ error: "a reason is required to edit or reject" }, 400);
+      const reviewer = String(body?.reviewer ?? "").slice(0, 64);
+      const edits = body?.edits && typeof body.edits === "object" ? JSON.stringify(body.edits).slice(0, 4000) : "";
+      await db.prepare(
+        "INSERT INTO vqa_decisions (cand_id, batch, file_id, verdict, reviewer, reason, edits)"
+        + " VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+        + " ON CONFLICT(cand_id) DO UPDATE SET verdict = excluded.verdict, reviewer = excluded.reviewer,"
+        + " reason = excluded.reason, edits = excluded.edits, updated_at = datetime('now')",
+      ).bind(id, String(body?.batch ?? "").slice(0, 64), String(body?.file_id ?? "").slice(0, 128), verdict, reviewer, reason, edits).run();
+      // Edge cache: the decisions read is cached, so a fresh decision can take up
+      // to the TTL to appear for other visitors. That is the price of free reads.
+      return jsonResponse({ ok: true, id, verdict });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/vqa\/decisions$/,
+    handler: async ({ db, url }) => {
+      // Served from the Cloudflare edge cache when warm; D1 is read at most once
+      // per TTL per colo, so a million visits do not become a million reads.
+      const cache = (globalThis as { caches?: { default?: Cache } }).caches?.default;
+      const key = new Request(url.toString(), { method: "GET" });
+      if (cache) {
+        try {
+          const hit = await cache.match(key);
+          if (hit) return hit;
+        } catch { /* cache unavailable in this runtime */ }
+      }
       const res = await db.prepare(
-        "SELECT file_id, question, choices, answer, grounding, capability, level, domain, difficulty,"
-        + " model, endpoint, prompt_version, reviewer, reviewed_at"
-        + " FROM vqa_candidates WHERE status IN ('approved','edited') ORDER BY id",
+        "SELECT cand_id AS id, batch, file_id, verdict, reviewer, reason, edits, updated_at FROM vqa_decisions ORDER BY updated_at",
       ).all();
-      const lines = res.results.map((r) => JSON.stringify(r)).join("\n");
-      return new Response(lines + (lines ? "\n" : ""), {
-        headers: { "content-type": "application/x-ndjson; charset=utf-8" },
+      const response = new Response(JSON.stringify({ decisions: res.results }), {
+        headers: { "content-type": "application/json; charset=utf-8", "cache-control": "public, max-age=30" },
       });
+      if (cache) {
+        try {
+          await cache.put(key, response.clone());
+        } catch { /* ignore: a cache miss is correct, a failed put is not fatal */ }
+      }
+      return response;
     },
   },
 ];

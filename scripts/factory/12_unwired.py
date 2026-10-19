@@ -57,6 +57,8 @@ ALLOWED = {
     "ingest_vqa.py": "posts a drafting batch's validated candidates to the vqa ingest endpoint behind the harness door; run by hand after a batch",
     "local_relay_proxy.py": "demo/dev proxy from loopback to the relay through a reachable Cloudflare edge, plus /img CDN passthrough; holds no credentials",
     "backfill_vqa_room.py": "one-time initialisation of the review room's materialised tables and its marker; run by hand after migration 0011",
+    "export_vqa_static.py": "the review room's FREE READ PATH: writes the candidate snapshot as static JSON pages that Pages serves from the edge, so a visit never reads D1; run by hand after a drafting pass, output is deployed with the site and never committed",
+    "sync_vqa_decisions.py": "publishes the decisions D1 already holds as static JSON, so other visitors read them from the edge instead of a query; run by hand after a review session",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "
@@ -126,7 +128,11 @@ def scripts_in(base: pathlib.Path) -> list[pathlib.Path]:
 # AN EXEMPTION WHOSE REASON IS FALSE
 # ---------------------------------------------------------------------------
 
-_CI_CLAIM = __import__("re").compile(r"ci|workflow", __import__("re").I)
+_CI_CLAIM = __import__("re").compile(r"\bci\b|\bworkflows?\b", __import__("re").I)
+# THE SUBSTRING FORM WAS A FALSE-ALARM MACHINE: `r"ci|workflow"` matched the letters
+# inside "decisions" (`de-CI-sions`), so a reason that never mentioned CI was read as
+# claiming it. Word boundaries keep the claim test about the WORD. A guard that reports
+# a fault where none exists teaches the next person to ignore it.
 # "NOT CI" IS A CLAIM IN THE OTHER DIRECTION. `16_html_mirrors.py` says it "Runs in the pipeline,
 # NOT CI, because the plan tree is private" - and a substring test for "ci" read that as an
 # assertion that CI runs it. **A phrase asserting the opposite is the round-90 defect again**, so

@@ -128,3 +128,6 @@ scripts/harness/providers/*.env
 
 # Local wrangler dev secrets (test-only codes). Never commit.
 /apps/relay/.dev.vars
+
+# Static review-room pages are generated from the private draft, never committed.
+apps/web/public/vqa/

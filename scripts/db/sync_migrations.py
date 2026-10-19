@@ -20,6 +20,7 @@ plan = [
     ("schema_v5g_selection_votes.sql", "0009_v5g_selection_votes.sql", "v5g: two distinct votes promote a nomination to chosen, and retracting below two undoes only a vote-promotion (promoted_by), never a human's own pick."),
     ("schema_v6_vqa_review.sql", "0010_v6_vqa_review.sql", "v6: the review room for model-drafted VQA candidates — candidates land pending, every decision is an appended review row, ingest is idempotent on (batch, file_id, question)."),
     ("schema_v6b_vqa_stats.sql", "0011_v6b_vqa_stats.sql", "v6b: materialised images/stats/dims so the review room costs a constant handful of D1 reads instead of a full scan per page load (the free tier is 5M rows read/day)."),
+    ("schema_v6c_vqa_decisions.sql", "0012_v6c_vqa_decisions.sql", "v6c: the review room's read path moves to static Pages JSON; D1 keeps only human decisions keyed by a stable candidate id, which is constant-cost and free at any traffic."),
 ]
 head = ("-- CANONICAL MIGRATION. Apply with:  npx wrangler d1 migrations apply agi-eval-questions --remote\n"
         "-- Source of truth for this file is apps/relay/{src}; edit there, then re-run scripts/db/sync_migrations.py.\n"
