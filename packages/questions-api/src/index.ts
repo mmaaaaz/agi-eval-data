@@ -120,6 +120,21 @@ export function canMeasure(request: Request, deps: QuestionsApiDeps): boolean {
 const APPROVE_ERROR = () => jsonResponse({ error: "reviewer code required (x-questions-code)" }, 401);
 const MEASURE_ERROR = () => jsonResponse({ error: "harness code required (x-harness-code)" }, 401);
 
+// THE REVIEW ROOM IS READ-HEAVY AND D1'S FREE TIER BILLS ROWS READ. Counting the
+// candidate table costs one full scan per dimension (status, capability, level,
+// domain) plus a DISTINCT file_id — roughly 400k reads per page load at 80k
+// candidates. Ten page loads exhausted the daily 5M allowance in testing. The
+// cache below is the difference between a demo that works and a 500.
+const VQA_COUNTS_TTL_MS = 60_000;
+let vqaCountsCache: { at: number; payload: string } | null = null;
+const vqaImagesCache = new Map<string, { at: number; payload: string }>();
+const VQA_IMAGES_TTL_MS = 30_000;
+
+function invalidateVqaCaches(): void {
+  vqaCountsCache = null;
+  vqaImagesCache.clear();
+}
+
 /** Actor identity from headers. Not authentication: a stable id plus a display name. */
 function actorOf(request: Request): { id: string; name: string } {
   return {
@@ -1460,6 +1475,18 @@ const ROUTES: Route[] = [
         ));
       }
       if (stmts.length) await db.batch(stmts);
+      // Materialised per-image rows for the ones this request touched: indexed
+      // reads on file_id, so keeping vqa_images exact is cheap even at 80k rows.
+      const touched = [...new Set(rows.map((r) => String(r.file_id ?? "")).filter(Boolean))].slice(0, 250);
+      if (touched.length) {
+        await db.batch(touched.map((fid) => db.prepare(
+          "INSERT INTO vqa_images (file_id, n, first_id, pending)"
+          + " SELECT ?1, COUNT(*), MIN(id), SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END)"
+          + " FROM vqa_candidates WHERE file_id = ?1"
+          + " ON CONFLICT(file_id) DO UPDATE SET n = excluded.n, first_id = excluded.first_id, pending = excluded.pending",
+        ).bind(fid)));
+      }
+      invalidateVqaCaches();
       const stored = await db.prepare("SELECT COUNT(*) AS n FROM vqa_candidates WHERE batch = ?1")
         .bind(batch).first<{ n: number }>();
       return jsonResponse({ ok: true, batch, attempted: rows.length, invalid, stored: Number(stored?.n ?? 0) });
@@ -1498,12 +1525,44 @@ const ROUTES: Route[] = [
     method: "GET",
     pattern: /^\/api\/vqa\/images$/,
     handler: async ({ db, url }) => {
+      const cacheKey = url.searchParams.toString();
+      const hit = vqaImagesCache.get(cacheKey);
+      if (hit && Date.now() - hit.at < VQA_IMAGES_TTL_MS) {
+        return new Response(hit.payload, { headers: { "content-type": "application/json; charset=utf-8" } });
+      }
       const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 60)));
+      const status = url.searchParams.get("status");
+      const after = Number(url.searchParams.get("after") ?? 0);
+
+      // Constant-cost path first: one row per image, 60 rows per page.
+      const where2: string[] = [];
+      const binds2: unknown[] = [];
+      if (status === "pending") where2.push("pending > 0");
+      if (after > 0) { binds2.push(after); where2.push("first_id > ?" + binds2.length); }
+      binds2.push(limit);
+      try {
+        const fast = await db.prepare(
+          "SELECT file_id, n, first_id, pending FROM vqa_images"
+          + (where2.length ? " WHERE " + where2.join(" AND ") : "")
+          + " ORDER BY first_id ASC LIMIT ?" + binds2.length,
+        ).bind(...binds2).all<{ file_id: string; n: number; first_id: number; pending: number }>();
+        if (fast.results.length) {
+          const payload = JSON.stringify({
+            images: fast.results.map((r) => ({
+              file_id: r.file_id, n: r.n, first_id: r.first_id, has_pending: r.pending > 0 ? 1 : 0,
+            })),
+          });
+          if (vqaImagesCache.size > 30) vqaImagesCache.clear();
+          vqaImagesCache.set(cacheKey, { at: Date.now(), payload });
+          return new Response(payload, { headers: { "content-type": "application/json; charset=utf-8" } });
+        }
+      } catch {
+        // vqa_images not backfilled yet — fall through to the grouped query.
+      }
+
       const where: string[] = [];
       const binds: unknown[] = [];
-      const status = url.searchParams.get("status");
       if (status) { binds.push(status); where.push("status = ?" + binds.length); }
-      const after = Number(url.searchParams.get("after") ?? 0);
       if (after > 0) { binds.push(after); where.push("id > ?" + binds.length); }
       binds.push(limit);
       const sql = "SELECT file_id, COUNT(*) AS n, MIN(id) AS first_id,"
@@ -1512,13 +1571,49 @@ const ROUTES: Route[] = [
         + (where.length ? " WHERE " + where.join(" AND ") : "")
         + " GROUP BY file_id ORDER BY first_id ASC LIMIT ?" + binds.length;
       const res = await db.prepare(sql).bind(...binds).all();
-      return jsonResponse({ images: res.results });
+      const payload = JSON.stringify({ images: res.results });
+      if (vqaImagesCache.size > 30) vqaImagesCache.clear();
+      vqaImagesCache.set(cacheKey, { at: Date.now(), payload });
+      return new Response(payload, { headers: { "content-type": "application/json; charset=utf-8" } });
     },
   },
   {
     method: "GET",
     pattern: /^\/api\/vqa\/counts$/,
     handler: async ({ db }) => {
+      if (vqaCountsCache && Date.now() - vqaCountsCache.at < VQA_COUNTS_TTL_MS) {
+        return new Response(vqaCountsCache.payload, {
+          headers: { "content-type": "application/json; charset=utf-8" },
+        });
+      }
+      // Constant-cost path: three small materialised tables, but ONLY once a
+      // backfill has initialised them (see vqa_meta in schema_v6b).
+      try {
+        const ready = await db.prepare("SELECT v FROM vqa_meta WHERE k = 'stats_initialised'").first<{ v: string }>();
+        if (ready?.v === "1") {
+          const stats = await db.prepare("SELECT status, n FROM vqa_stats").all<{ status: string; n: number }>();
+        const dims = await db.prepare("SELECT kind, value, n FROM vqa_dims ORDER BY n DESC").all<{ kind: string; value: string; n: number }>();
+        if (stats.results.length) {
+          const byStatus: Record<string, number> = {};
+          for (const r of stats.results) byStatus[r.status] = Number(r.n);
+          const pick = (kind: string) => dims.results
+            .filter((d) => d.kind === kind)
+            .map((d) => ({ [kind]: d.value, n: d.n }));
+          const payload = JSON.stringify({
+            byStatus,
+            byCapability: pick("capability"),
+            byLevel: pick("level"),
+            byDomain: pick("domain"),
+            images: Number((await db.prepare("SELECT COUNT(*) AS n FROM vqa_images").first<{ n: number }>())?.n ?? 0),
+            total: Object.values(byStatus).reduce((a, b) => a + b, 0),
+          });
+          vqaCountsCache = { at: Date.now(), payload };
+          return new Response(payload, { headers: { "content-type": "application/json; charset=utf-8" } });
+          }
+        }
+      } catch {
+        // not backfilled yet — fall through
+      }
       const status = await db.prepare("SELECT status, COUNT(*) AS n FROM vqa_candidates GROUP BY status")
         .all<{ status: string; n: number }>();
       const cap = await db.prepare("SELECT capability, COUNT(*) AS n FROM vqa_candidates GROUP BY capability ORDER BY n DESC").all();
@@ -1527,11 +1622,13 @@ const ROUTES: Route[] = [
       const img = await db.prepare("SELECT COUNT(DISTINCT file_id) AS n FROM vqa_candidates").first<{ n: number }>();
       const byStatus: Record<string, number> = {};
       for (const r of status.results) byStatus[r.status] = Number(r.n);
-      return jsonResponse({
+      const payload = JSON.stringify({
         byStatus, byCapability: cap.results, byLevel: lvl.results, byDomain: dom.results,
         images: Number(img?.n ?? 0),
         total: Object.values(byStatus).reduce((a, b) => a + b, 0),
       });
+      vqaCountsCache = { at: Date.now(), payload };
+      return new Response(payload, { headers: { "content-type": "application/json; charset=utf-8" } });
     },
   },
   {
@@ -1550,7 +1647,8 @@ const ROUTES: Route[] = [
       const reason = String(body?.reason ?? "").trim().slice(0, 500);
       if (verdict !== "approve" && !reason) return jsonResponse({ error: "a reason is required to edit or reject" }, 400);
       const edits = body?.edits && typeof body.edits === "object" ? body.edits : {};
-      const existing = await db.prepare("SELECT id FROM vqa_candidates WHERE id = ?1").bind(id).first();
+      const existing = await db.prepare("SELECT id, file_id, status FROM vqa_candidates WHERE id = ?1")
+        .bind(id).first<{ id: number; file_id: string; status: string }>();
       if (!existing) return jsonResponse({ error: "candidate not found" }, 404);
 
       const fields: string[] = [];
@@ -1584,6 +1682,29 @@ const ROUTES: Route[] = [
           .bind(id, reviewer, verdict, reason, JSON.stringify(changed)),
       ]);
       const updated = await db.prepare("SELECT * FROM vqa_candidates WHERE id = ?1").bind(id).first();
+      invalidateVqaCaches();
+      // Keep the materialised counters exact: one decrement for the old status,
+      // one increment for the new one, and the image's pending count moves only
+      // when the item crosses the pending boundary.
+      if (existing && existing.status !== status) {
+        try {
+          const ready = await db.prepare("SELECT v FROM vqa_meta WHERE k = 'stats_initialised'").first<{ v: string }>();
+          const wasPending = existing.status === "pending";
+          const delta = wasPending ? -1 : 0;
+          const maint = ready?.v === "1" ? [
+            db.prepare("UPDATE vqa_stats SET n = MAX(0, n - 1) WHERE status = ?1").bind(existing.status),
+            db.prepare("INSERT INTO vqa_stats (status, n) VALUES (?1, 1) ON CONFLICT(status) DO UPDATE SET n = n + 1").bind(status),
+          ] : [];
+          if (delta !== 0) {
+            maint.push(db.prepare("UPDATE vqa_images SET pending = MAX(0, pending + ?1) WHERE file_id = ?2")
+              .bind(delta, existing.file_id));
+          }
+          if (maint.length) await db.batch(maint);
+        } catch {
+          // Materialised tables not ready yet (migration 0011 / backfill); the
+          // decision itself is already committed and is the source of truth.
+        }
+      }
       return jsonResponse({ ok: true, candidate: updated });
     },
   },

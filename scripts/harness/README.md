@@ -39,6 +39,7 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `watch_lane.py` | Wait for a lane's key file to appear, re-shard so no image is drafted twice, then start that lane's driver; used to add capacity the moment a key is pasted |
 | `ingest_vqa.py` | POST a drafting batch's validated candidates to `/api/vqa/ingest` behind the harness door, 200 rows at a time; idempotent, so re-running after a resumed draft inserts only what is new |
 | `local_relay_proxy.py` | Demo/dev proxy: forwards loopback HTTP to the relay over TLS through a reachable Cloudflare edge IP (this network blackholes the range workers.dev resolves to), and serves `/img/<file_id>` from the corpus CDN; holds no credentials |
+| `backfill_vqa_room.py` | One-time initialisation of the review room's materialised tables (`vqa_stats`/`vqa_dims`/`vqa_images`) and the `stats_initialised` marker; run after migration 0011, once per day at most because it scans the candidate table |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |

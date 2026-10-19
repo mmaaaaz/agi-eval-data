@@ -23,6 +23,7 @@ import pathlib
 import sys
 import urllib.error
 import urllib.request
+from urllib.parse import urlparse
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 ENV_FILE = ROOT / "scripts" / "harness" / "generation.env"
@@ -130,9 +131,9 @@ def main() -> int:
     relay = args.relay or env.get("VQA_RELAY_URL", "")
     code = args.code or env.get("VQA_HARNESS_CODE", "")
     relay_ip = env.get("VQA_RELAY_IP", "")
-    if relay_ip:
-        from urllib.parse import urlparse
-        pin_host(urlparse(relay).hostname or "", relay_ip)
+    relay_host = (urlparse(relay).hostname or "") if relay else ""
+    if relay_ip and relay_host and relay_host not in ("127.0.0.1", "localhost"):
+        pin_host(relay_host, relay_ip)
     path = pathlib.Path(args.file) if args.file else ROOT / "runs" / "generation" / args.batch / "candidates.jsonl"
     if not path.exists():
         print(f"missing batch file: {path}", file=sys.stderr)
