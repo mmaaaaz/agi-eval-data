@@ -1,5 +1,6 @@
 import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "../content/experiments";
 import type { ExperimentTrack } from "../content/experiments";
+import { FIRST_RUNS } from "../content/firstRuns";
 
 function Track({ track }: { track: ExperimentTrack }) {
   return (
@@ -45,6 +46,27 @@ export function ExperimentsPage() {
           Every frontier run is costed before it begins, and the human baseline protocol is declared
           before anyone starts.
         </p>
+      </section>
+
+      <section className="sec-rule">
+        <span className="eyebrow">5.4 · First runs</span>
+        <h2>{FIRST_RUNS.title}</h2>
+        <p className="prose lead-in">
+          {FIRST_RUNS.date} · {FIRST_RUNS.release}, with the blind and typographic tracks on the
+          same set.
+        </p>
+        <div className="runs">
+          {FIRST_RUNS.rows.map((r) => (
+            <div className="run-row" key={r.id}>
+              <span className="score">{r.score}</span>
+              <span>
+                <strong>{r.what}</strong>
+                <span className="sub">{r.note}</span>
+              </span>
+            </div>
+          ))}
+        </div>
+        <p className="table-note">{FIRST_RUNS.caveat}</p>
       </section>
     </>
   );

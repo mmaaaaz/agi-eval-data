@@ -122,8 +122,13 @@ def from_env(kind: str, model: str, limit_key: str = "") -> tuple[Backend, int |
     kind='closed' -> OpenRouter, key from OPENROUTER_API_KEY (the paid line)
     """
     if kind == "open":
+        # VLLM_BASE_URL points at any OpenAI-compatible server. A local vLLM server needs no
+        # key; an authenticated gateway does, and the module docstring already says the two
+        # differ "only in the base URL and the key" — so the key is read here too. An unset
+        # VLLM_API_KEY keeps the local behaviour exactly as it was.
         base_url = os.environ.get("VLLM_BASE_URL", "http://localhost:8000/v1")
-        return OpenAICompatBackend(model=model, base_url=base_url, is_paid=False), None
+        api_key = os.environ.get("VLLM_API_KEY", "")
+        return OpenAICompatBackend(model=model, base_url=base_url, api_key=api_key, is_paid=False), None
     if kind == "closed":
         key = os.environ.get("OPENROUTER_API_KEY", "")
         if not key:

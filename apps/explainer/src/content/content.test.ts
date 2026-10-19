@@ -9,6 +9,7 @@ import { PANEL, panelWithStatus } from "./models";
 import { SAMPLES } from "./samples";
 import { BIAS_AXES, CAPABILITY_GROUPS, DOMAINS, LEVELS, SENSITIVITY } from "./taxonomy";
 import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "./experiments";
+import { FIRST_RUNS } from "./firstRuns";
 
 const allStrings = (v: unknown): string[] => {
   if (typeof v === "string") return [v];
@@ -18,7 +19,7 @@ const allStrings = (v: unknown): string[] => {
 };
 
 /** Every content surface a reader can see. Extended as content files land. */
-export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_AXES, SENSITIVITY, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, MILESTONES, STATUS, RESOURCES, SAMPLES];
+export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_AXES, SENSITIVITY, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, FIRST_RUNS, MILESTONES, STATUS, RESOURCES, SAMPLES];
 
 describe("content invariants", () => {
   it("computes the dataset split from its parts", () => {
@@ -57,6 +58,15 @@ describe("content invariants", () => {
     expect(BIAS_TRACK.items.length).toBeGreaterThanOrEqual(3);
     expect(ADVERSARIAL_TRACK.items.length).toBeGreaterThanOrEqual(2);
     expect(HONESTY.length).toBe(9);
+  });
+
+  it("quotes the first demonstration runs exactly", () => {
+    expect(FIRST_RUNS.rows.length).toBe(4);
+    const scores = FIRST_RUNS.rows.map((r) => r.score);
+    expect(scores).toContain("28 / 30");
+    expect(scores).toContain("25 / 30");
+    expect(scores).toContain("1 / 30");
+    expect(FIRST_RUNS.rows.every((r) => r.note.length > 40)).toBe(true);
   });
 
   it("twenty FAQ entries, all real answers", () => {

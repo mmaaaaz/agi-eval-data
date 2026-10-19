@@ -8,5 +8,7 @@ describe("experiments page", () => {
     expect(await findByText(/Adversarial probes/)).toBeInTheDocument();
     expect(await findByText(/Keeping the numbers honest/)).toBeInTheDocument();
     expect(container.querySelectorAll(".ws").length).toBe(14);
+    expect(await findByText(/5\.4 · First runs/)).toBeInTheDocument();
+    expect(container.querySelectorAll(".run-row").length).toBe(4);
   });
 });

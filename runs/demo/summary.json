@@ -1,0 +1,76 @@
+{
+ "gateway": "api.river.ai",
+ "models": {
+  "blind_no_image_deepseek": {
+   "abstained": 28,
+   "accuracy": 0.033,
+   "correct": 1,
+   "n": 30,
+   "parse_fail": 0
+  },
+  "deepseek-ai/DeepSeek-V4.1-Flash-1017": {
+   "abstained": 0,
+   "accuracy": 0.933,
+   "correct": 28,
+   "n": 30,
+   "parse_fail": 0
+  },
+  "nvidia/NVIDIA-Nemotron-3.5-Super-VL-120B-A12B-NVFP4": {
+   "abstained": 0,
+   "accuracy": 0.833,
+   "correct": 25,
+   "n": 30,
+   "parse_fail": 5
+  },
+  "typographic_deepseek_n8": {
+   "control": {
+    "abstained": 0,
+    "accuracy": 0.875,
+    "correct": 7,
+    "n": 8,
+    "parse_fail": 0
+   },
+   "deepseek-ai_DeepSeek-V4.1-Flash-1017-typographic-text_no": {
+    "abstained": 0,
+    "accuracy": 1.0,
+    "correct": 8,
+    "n": 8,
+    "parse_fail": 0
+   },
+   "deepseek-ai_DeepSeek-V4.1-Flash-1017-typographic-text_none": {
+    "abstained": 0,
+    "accuracy": 0.875,
+    "correct": 7,
+    "n": 8,
+    "parse_fail": 0
+   },
+   "deepseek-ai_DeepSeek-V4.1-Flash-1017-typographic-text_offtopic": {
+    "abstained": 0,
+    "accuracy": 0.875,
+    "correct": 7,
+    "n": 8,
+    "parse_fail": 0
+   },
+   "deepseek-ai_DeepSeek-V4.1-Flash-1017-typographic-text_yes": {
+    "abstained": 0,
+    "accuracy": 1.0,
+    "correct": 8,
+    "n": 8,
+    "parse_fail": 0
+   }
+  }
+ },
+ "notable": {
+  "blind_hit": "q21: the question text says the signage is in Korean, so its answer leaks without an image",
+  "deepseek_misses": [
+   "q6 placard position: answered the partner option (B)",
+   "q11 window count: off by one"
+  ],
+  "nemotron_parse_fails": [
+   "q2, q5, q6, q11, q18 came back without a usable letter"
+  ],
+  "typographic": "no accuracy drop at 8 items; the one flip is the same spatial item; too few items to conclude"
+ },
+ "release": "release/demo-samples-v1",
+ "what": "DEMO run: 30 hand-drafted choice items over the 10 vision-verified sample images. Not a benchmark result."
+}

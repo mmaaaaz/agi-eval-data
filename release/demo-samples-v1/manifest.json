@@ -1,0 +1,25 @@
+{
+ "by_capability": {
+  "G6": 4,
+  "P1": 2,
+  "P2": 1,
+  "PERC": 23
+ },
+ "consent": {
+  "basis": "the corpus owner's own public photographs (agi-eval-data.pages.dev)",
+  "images_releaseable": true,
+  "note": "DEMO release for methodology demonstration; not the curated benchmark."
+ },
+ "groundtruth_hash": "e7e4960352469bf67972c5ca06a43ce05a05cd21a3fe487b241bf6d712789063",
+ "hash_version": "v1",
+ "n_images": 10,
+ "n_items": 30,
+ "notes": "DEMO: 30 choice items over the 10 vision-verified sample images; hand-drafted for methodology demonstration only. Not the benchmark; no number quotable as a result.",
+ "pii": {
+  "flags": [],
+  "note": "no faces not for publication, licence plates, ID documents, home interiors (non-public) or children; the one person shown is from behind, no face",
+  "pass": "manual vision review of all ten source images"
+ },
+ "release_hash": "fa1118124726447bfca8967e81f75ff420b35aa74a1c1b39f11a359e1c90e86d",
+ "release_id": "demo-samples-v1"
+}
