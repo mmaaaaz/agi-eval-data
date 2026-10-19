@@ -113,3 +113,14 @@ data/drive/
 
 # The explainer site ships the public briefing download (linked from the Home page).
 !apps/explainer/public/docs/*.docx
+
+# Model-generation drafts: the full-corpus JSONL and raw responses stay local
+# (D1 is the intended live store); manifests, stats and one committed sample are the repo evidence.
+runs/generation/full-50k/candidates.jsonl
+runs/generation/full-50k/raw/
+runs/generation/scale-probe-200/
+runs/generation/ab-low/
+runs/generation/ab-v2/
+
+# The generation API key. Never commit this file.
+scripts/harness/generation.env

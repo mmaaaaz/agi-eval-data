@@ -1,0 +1,14 @@
+{
+ "batch": "pilot-40",
+ "model": "minimax/minimax-m3.1-flash-preview:free",
+ "provider": "commandcode",
+ "prompt_version": "vqa-draft-v1",
+ "requested_candidates": 5,
+ "images": 2,
+ "drafted": 2,
+ "ok": 1,
+ "failed": 1,
+ "started_at": "2026-10-19T13:26:54.084194+00:00",
+ "finished_at": "2026-10-19T14:13:08.110363+00:00",
+ "rows": "runs\\generation\\pilot-40\\candidates.jsonl"
+}

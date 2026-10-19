@@ -31,6 +31,7 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `build_release.py` | CLI: freeze a release from an approved export |
 | `make_demo_release.py` | CLI: build `release/demo-samples-v1`, the 30-item demo release over the ten vision-verified sample photographs; run by hand, one-off |
 | `make_explainer_runs.py` | Generator (run by hand after runs land): reads `runs/demo/` traces + `release/demo-samples-v1/questions.jsonl`, asserts aggregates against `runs/demo/summary.json`, writes `apps/explainer/src/content/runs.ts` |
+| `generate_vqa.py` | Drafting runner: ledger images → vision model (via `hermes chat`, no key handling) → strict JSON candidates → validated against the closed sets → append-only `runs/generation/<batch>/candidates.jsonl`; resumable, `--spend` required |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |
