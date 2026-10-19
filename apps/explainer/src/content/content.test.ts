@@ -94,16 +94,16 @@ describe("content invariants", () => {
     expect(PANEL.some((m) => m.id === "google/gemma-4-31b-it")).toBe(true);
   });
 
-  it("has ten samples with valid, varied domains", () => {
-    expect(SAMPLES.length).toBe(10);
+  it("has fifteen samples, five questions each, with valid varied domains", () => {
+    expect(SAMPLES.length).toBe(15);
     for (const s of SAMPLES) {
       expect(DOMAINS.some((d) => d.id === s.domain)).toBe(true);
-      expect(s.questions.length).toBeGreaterThanOrEqual(3);
+      expect(s.questions.length).toBe(5);
       expect(s.thumbUrl).toMatch(/^https:\/\/lh3\.googleusercontent\.com\/d\/.+=w\d+$/);
       expect(s.sourceUrl).toMatch(/^https:\/\/agi-eval-data\.pages\.dev\/gallery\?q=/);
       expect(s.sighted.length).toBeGreaterThan(30);
     }
-    expect(new Set(SAMPLES.map((s) => s.domain)).size).toBeGreaterThanOrEqual(5);
+    expect(new Set(SAMPLES.map((s) => s.domain)).size).toBeGreaterThanOrEqual(8);
   });
 
   it("contains no em dash anywhere in visible copy", () => {

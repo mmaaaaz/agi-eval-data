@@ -239,6 +239,12 @@ main.wrap > section:first-child .eyebrow { margin-top: 0; }
 .run-row .sub { display: block; color: var(--ink-soft); font-size: 14.5px; margin-top: 3px; }
 @media (max-width: 720px) { .run-row { grid-template-columns: 1fr; gap: 3px; } }
 
+/* domain filter on the samples page */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+button.chip { background: transparent; border: 1px solid var(--rule-strong); border-radius: 4px; padding: 4px 10px; cursor: pointer; font-family: var(--mono); font-size: 11px; letter-spacing: .05em; color: var(--ink-soft); }
+button.chip:hover { border-color: var(--accent); color: var(--accent-deep); }
+button.chip.on { border-color: var(--accent); color: var(--accent-deep); background: var(--chip); }
+
 /* ---- FAQ (native details) ---- */
 .faq { margin-top: 24px; display: grid; gap: 0; }
 .faq details { border-bottom: 1px solid var(--rule); padding: 14px 0; }

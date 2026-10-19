@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { SAMPLES } from "../content/samples";
 import { DOMAINS } from "../content/taxonomy";
@@ -16,20 +16,53 @@ function SampleThumb({ src, alt }: { src: string; alt: string }) {
 }
 
 export function SamplesPage() {
+  const [domain, setDomain] = useState<string | null>(null);
+  const present = useMemo(() => DOMAINS.filter((d) => SAMPLES.some((s) => s.domain === d.id)), []);
+  const shown = useMemo(
+    () => (domain ? SAMPLES.filter((s) => s.domain === domain) : SAMPLES),
+    [domain],
+  );
+  const totalQuestions = useMemo(
+    () => SAMPLES.reduce((n, s) => n + s.questions.length, 0),
+    [],
+  );
+
   return (
     <section>
       <span className="eyebrow">04.1 · See it</span>
       <h2>Real photographs, real questions</h2>
       <div className="prose">
         <p className="lead-in">
-          Ten photographs from the dataset, with example questions written for this page after looking
-          at each image. They show the shape of the questions the benchmark asks across domains. They
-          are not items from the benchmark set, and nothing shown here has been written into the
-          dataset.
+          {SAMPLES.length} photographs from the dataset, five example questions each, written for
+          this page after looking at each image: {totalQuestions} questions across{" "}
+          {present.length} of the {DOMAINS.length} scene domains. They show the shape of the
+          questions the benchmark asks. They are not items from the benchmark set, and nothing
+          shown here has been written into the dataset.
         </p>
       </div>
+
+      <div className="filters" role="group" aria-label="Filter by scene domain">
+        <button
+          type="button"
+          className={domain === null ? "chip on" : "chip"}
+          onClick={() => setDomain(null)}
+        >
+          all · {SAMPLES.length}
+        </button>
+        {present.map((d) => (
+          <button
+            key={d.id}
+            type="button"
+            className={domain === d.id ? "chip on" : "chip"}
+            onClick={() => setDomain(domain === d.id ? null : d.id)}
+          >
+            {d.id} · {d.label} · {SAMPLES.filter((s) => s.domain === d.id).length}
+          </button>
+        ))}
+      </div>
+
       <div className="samples">
-        {SAMPLES.map((s) => (
+        {shown.map((s) => (
           <article className="sample" key={s.id}>
             <div>
               <div className="thumb">
