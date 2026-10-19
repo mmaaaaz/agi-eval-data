@@ -49,6 +49,8 @@ ALLOWED = {
     "make_demo_release.py": "a one-off builder: it writes release/demo-samples-v1 for the first demo runs, run by hand as its docstring says; the demo traces it feeds are committed under runs/demo/",
     "make_explainer_runs.py": "a generator, run by hand after traces land: reads the committed demo traces + release questions and writes apps/explainer/src/content/runs.ts (a site content file), asserting its aggregates against runs/demo/summary.json; its output is committed",
     "generate_vqa.py": "the drafting runner for the model-generation programme: walks a ledger image list, calls the vision model through the hermes CLI, validates every candidate against the closed taxonomy sets and writes an append-only runs/generation/<batch>/candidates.jsonl; refuses without --spend even for :free models",
+    "preview_candidates.py": "read-only review aid: renders a generation batch's candidates.jsonl as one offline HTML contact sheet (image, every candidate, choices, answer, grounding, tags, validation flags) so a human can inspect drafts before the review room exists; it writes nothing except the requested HTML file",
+    "drive_generation.py": "the overnight driver for the drafting programme: probes the free endpoint, waits out upstream outages, and runs resumable generate_vqa passes until every image in a batch has a parsed row or its hour budget runs out; it writes only driver.log/pass-NN.log beside the batch",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "
