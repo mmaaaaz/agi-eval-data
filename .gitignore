@@ -124,3 +124,8 @@ runs/generation/ab-v2/
 
 # The generation API key. Never commit this file.
 scripts/harness/generation.env
+
+# Runtime logs for a drafting batch (pass-NN.log + driver.log); the evidence is
+# candidates.jsonl, manifest.json and the report, not the console noise.
+runs/generation/*/driver.log
+runs/generation/*/pass-*.log

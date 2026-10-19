@@ -1,0 +1,21 @@
+{
+ "batch": "smoke-fix",
+ "model": "minimax/minimax-m3.1-flash-preview:free",
+ "provider": "commandcode",
+ "transport": "api",
+ "base_url": "https://api.commandcode.ai/provider/v1",
+ "reasoning_effort": "low",
+ "max_tokens": 32000,
+ "rpm": 30,
+ "rows_kept": 5,
+ "rows_compacted_away": 0,
+ "prompt_version": "vqa-draft-v2",
+ "requested_candidates": 5,
+ "images": 5,
+ "drafted": 5,
+ "ok": 4,
+ "failed": 1,
+ "started_at": "2026-10-19T15:22:52.247106+00:00",
+ "finished_at": "2026-10-19T15:24:45.464827+00:00",
+ "rows": "runs\\generation\\smoke-fix\\candidates.jsonl"
+}
