@@ -27,7 +27,7 @@ export function ThumbImage({ fileId, w = 400, alt, eager = false, className = ""
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const base = (import.meta.env.VITE_IMG_BASE as string | undefined) ?? "";
+  const base = (globalThis as { __IMG_BASE__?: string }).__IMG_BASE__ ?? "";
   const src = base
     ? `${base.replace(/\/$/, "")}/${fileId}?w=${w}`
     : kind === "o"

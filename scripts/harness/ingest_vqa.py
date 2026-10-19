@@ -122,6 +122,7 @@ def main() -> int:
     ap.add_argument("--relay", default="")
     ap.add_argument("--code", default="")
     ap.add_argument("--chunk", type=int, default=200)
+    ap.add_argument("--full", action="store_true", help="ignore the incremental state and re-send everything")
     ap.add_argument("--dry-run", action="store_true")
     args = ap.parse_args()
 
@@ -138,7 +139,17 @@ def main() -> int:
         return 2
     rows, stats = rows_from_batch(path, args.batch)
     print(f"{args.batch}: {stats}")
-    print(f"to ingest: {len(rows)} candidates from {stats['parsed']} parsed images")
+
+    state_path = path.parent / "ingest-state.json"
+    start_at = 0
+    if not args.full and state_path.exists():
+        try:
+            start_at = int(json.loads(state_path.read_text(encoding="utf-8")).get("candidates", 0))
+        except Exception:
+            start_at = 0
+        start_at = min(start_at, len(rows))
+    pending_rows = rows[start_at:]
+    print(f"to ingest: {len(pending_rows)} new candidates ({start_at} already sent) from {stats['parsed']} parsed images")
     if args.dry_run:
         return 0
     if not relay or not code:
@@ -146,8 +157,8 @@ def main() -> int:
         return 2
 
     stored = 0
-    for start in range(0, len(rows), args.chunk):
-        chunk = rows[start:start + args.chunk]
+    for start in range(0, len(pending_rows), args.chunk):
+        chunk = pending_rows[start:start + args.chunk]
         try:
             res = post(relay, code, args.batch, chunk)
         except urllib.error.HTTPError as e:
@@ -158,9 +169,10 @@ def main() -> int:
             return 1
         stored = int(res.get("stored", stored))
         if (start // args.chunk) % 10 == 0:
-            print(f"  {start + len(chunk)}/{len(rows)} sent | stored for batch: {stored}")
+            print(f"  {start + len(chunk)}/{len(pending_rows)} sent | stored for batch: {stored}")
 
-    print(f"done: {stored} candidates stored for batch {args.batch}")
+    state_path.write_text(json.dumps({"candidates": len(rows), "stored": stored}), encoding="utf-8")
+    print(f"done: {stored} candidates stored for batch {args.batch} (state {len(rows)})")
     return 0
 
 
