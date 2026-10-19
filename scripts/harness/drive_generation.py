@@ -135,6 +135,7 @@ def main() -> int:
         cmd = [
             sys.executable, "-u", "-m", "scripts.harness.generate_vqa",
             "--batch", args.batch, "--images", str(images),
+            "--model", args.model,
             "--concurrency", str(args.concurrency), "--rpm", str(args.rpm),
             "--retry", "2", "--cooldown-429", "120",
             "--transport", "api", "--reasoning-effort", "low",
