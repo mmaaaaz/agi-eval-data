@@ -200,20 +200,83 @@ def validate(cand: dict, seen_hashes: set[str]) -> list[str]:
 
 
 def download(fid: str, dest: Path) -> tuple[int, int]:
+    import socket
+    import urllib.error
     import urllib.request
 
-    with urllib.request.urlopen(THUMB.format(fid=fid), timeout=120) as r:
-        data = r.read()
-    dest.write_bytes(data)
-    w = h = 0
-    try:
-        from PIL import Image
+    last: Exception | None = None
+    for attempt in range(3):
+        try:
+            with urllib.request.urlopen(THUMB.format(fid=fid), timeout=120) as r:
+                data = r.read()
+            dest.write_bytes(data)
+            w = h = 0
+            try:
+                from PIL import Image
 
-        with Image.open(io.BytesIO(data)) as im:
-            w, h = im.size
-    except Exception:
-        pass
-    return len(data), w, h
+                with Image.open(io.BytesIO(data)) as im:
+                    w, h = im.size
+            except Exception:
+                pass
+            return len(data), w, h
+        except Exception as e:  # DNS, 5xx, truncation: all retryable
+            last = e
+            wait = (20, 45, 90)[min(attempt, 2)]
+            print(f"  retry download {fid[:12]} in {wait}s: {type(e).__name__}: {str(e)[:80]}")
+            time.sleep(wait)
+    raise last  # type: ignore[misc]
+
+
+_pace_lock = threading.Lock()
+_next_slot = [0.0]
+_cool_lock = threading.Lock()
+_cooldown_until = [0.0]
+
+
+def pace(rpm: int) -> None:
+    """Global request pacing shared by all workers (token bucket, one slot at a time)."""
+    if rpm <= 0:
+        return
+    with _pace_lock:
+        now = time.time()
+        slot = max(now, _next_slot[0])
+        _next_slot[0] = slot + 60.0 / rpm
+    delay = slot - time.time()
+    if delay > 0:
+        time.sleep(delay)
+
+
+def cooldown_wait() -> None:
+    """After an upstream 429, every worker pauses together instead of hammering."""
+    with _cool_lock:
+        delay = _cooldown_until[0] - time.time()
+    if delay > 0:
+        time.sleep(delay)
+
+
+def set_cooldown(seconds: float) -> None:
+    with _cool_lock:
+        _cooldown_until[0] = max(_cooldown_until[0], time.time() + seconds)
+
+
+def compact_rows(path: Path) -> tuple[int, int]:
+    """Keep the last row per file_id; failed rows re-run, successes win. Returns (kept, dropped)."""
+    if not path.exists():
+        return (0, 0)
+    lines = [l for l in path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if not lines:
+        return (0, 0)
+    order: list[str] = []
+    latest: dict[str, str] = {}
+    for line in lines:
+        fid = json.loads(line)["file_id"]
+        if fid not in latest:
+            order.append(fid)
+        latest[fid] = line
+    if len(order) == len(lines):
+        return (len(order), 0)
+    path.write_text("\n".join(latest[f] for f in order) + "\n", encoding="utf-8")
+    return (len(order), len(lines) - len(order))
 
 
 def call_model(image_path: Path, model: str, provider: str, n: int, name: str, timeout: int) -> tuple[str, str, int]:
@@ -321,8 +384,12 @@ def main() -> int:
     ap.add_argument("--raw-mode", choices=["all", "failures", "none"], default="all",
                     help="store raw responses: all, only failures, or none (preview is always kept)")
     ap.add_argument("--concurrency", type=int, default=4)
+    ap.add_argument("--rpm", type=int, default=30,
+                    help="global model requests per minute across workers (0 = unlimited)")
+    ap.add_argument("--cooldown-429", type=float, default=180,
+                    help="seconds ALL workers pause after an upstream 429 / 'temporarily unavailable'")
     ap.add_argument("--limit", type=int, default=0)
-    ap.add_argument("--retry", type=int, default=1)
+    ap.add_argument("--retry", type=int, default=2, help="extra attempts per image")
     ap.add_argument("--timeout", type=int, default=900, help="per-call seconds")
     ap.add_argument("--dry-run", action="store_true", help="assemble prompts only, no calls")
     ap.add_argument("--spend", action="store_true", help="required by house rule even for :free models")
@@ -359,7 +426,10 @@ def main() -> int:
         for line in rows_path.read_text(encoding="utf-8").splitlines():
             if line.strip():
                 row = json.loads(line)
-                done.add(row["file_id"])
+                # Only a PARSED row counts as done: a failed attempt must be retried
+                # on the next run, or the corpus silently loses those images.
+                if row.get("parse_ok"):
+                    done.add(row["file_id"])
                 for c in row.get("candidates", []):
                     seen_hashes.add(hashlib.sha1(norm_q(c.get("question", "")).encode()).hexdigest()[:12])
     todo = [it for it in items if it["file_id"] not in done]
@@ -400,6 +470,8 @@ def main() -> int:
             attempts = 1 + max(0, args.retry)
             for attempt in range(attempts):
                 try:
+                    pace(args.rpm)
+                    cooldown_wait()
                     if transport == "api":
                         out, rid, wall, usage = call_api(
                             img.read_bytes(), "image/jpeg", args.model, api_key, base_url,
@@ -432,6 +504,18 @@ def main() -> int:
                             raw_path = raw_dir / f"{fid}.failed.txt"
                             raw_path.write_text(out, encoding="utf-8")
                             row["raw_path"] = str(raw_path.relative_to(ROOT))
+                    else:
+                        # Back off by failure type: rate limits need far more room than
+                        # a transient socket error.
+                        msg = str(e)
+                        if "429" in msg or "temporarily unavailable" in msg.lower():
+                            set_cooldown(args.cooldown_429)
+                            wait = 5
+                        elif "getaddrinfo" in msg or "URLError" in type(e).__name__:
+                            wait = 20
+                        else:
+                            wait = 5 * (2 ** attempt)
+                        time.sleep(wait)
             for c in cands:
                 errs = validate(c, seen_hashes)
                 c["_errors"] = errs
@@ -450,10 +534,12 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=args.concurrency) as ex:
         list(ex.map(work, todo))
 
+    kept, dropped = compact_rows(rows_path)
     manifest = {
         "batch": args.batch, "model": args.model, "provider": args.provider,
         "transport": transport, "base_url": (base_url if transport == "api" else "hermes-cli"),
         "reasoning_effort": args.reasoning_effort or None, "max_tokens": args.max_tokens,
+        "rpm": args.rpm, "rows_kept": kept, "rows_compacted_away": dropped,
         "prompt_version": PROMPT_VERSION, "requested_candidates": args.candidates,
         "images": len(items), "drafted": len(done) + len(todo),
         "ok": counters["ok"], "failed": counters["fail"],
