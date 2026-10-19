@@ -45,3 +45,14 @@ CREATE TABLE IF NOT EXISTS vqa_dims (
   n     INTEGER NOT NULL DEFAULT 0,
   PRIMARY KEY (kind, value)
 );
+
+-- The three tables above are only trustworthy once a backfill has initialised
+-- them. Without this marker a single review decision inserted the first stats
+-- row and the counts endpoint then served "approved: 1" as the whole corpus —
+-- a partial table reads exactly like a complete one, which is the failure this
+-- marker exists to prevent. The API uses the materialised path only when
+-- stats_initialised = '1'; otherwise it falls back to the grouped query.
+CREATE TABLE IF NOT EXISTS vqa_meta (
+  k TEXT PRIMARY KEY,
+  v TEXT NOT NULL DEFAULT ''
+);
