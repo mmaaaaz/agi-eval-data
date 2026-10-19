@@ -50,11 +50,11 @@ const PHASES: Phase[] = [
   },
   {
     n: "05",
-    title: "Question authoring",
+    title: "Question drafting and review",
     state: "open",
     detail:
-      "The gate for the whole project. Nothing downstream — grading, baselines, paper — is interpretable until questions exist and each is authored by a person who can say it has exactly one defensible answer.",
-    evidence: "Planned 2,400 questions over 900 images · 15 annotators · 438 human hours",
+      "The gate for the whole project. Nothing downstream (grading, baselines, the paper) is interpretable until questions exist. The model drafts candidates across the dataset and people review and pick; every admitted item has a recorded human review and exactly one defensible answer.",
+    evidence: "Planned ≈25,000 reviewed question–answer pairs over 5,000 hand-picked images · model-drafted, human-reviewed",
   },
   {
     n: "06",
@@ -76,10 +76,10 @@ const PHASES: Phase[] = [
 ];
 
 const SCALE = [
-  { have: "2,400", what: "questions we intend to author", vs: "2,079 MM-AQA · 1,404 TRAPSBench" },
-  { have: "900", what: "images authored by hand", vs: "smaller per-item budget than our comparators" },
-  { have: "438 h", what: "total human effort", vs: "5.9 h per person per week across 15 annotators" },
-  { have: "$63", what: "machine cost", vs: "grading and inference only" },
+  { have: "50,000", what: "photographs in the dataset", vs: "questions drafted across all of them" },
+  { have: "5,000", what: "hand-picked images in the curated benchmark", vs: "45,000 stay open for community contribution" },
+  { have: "≈25,000", what: "reviewed question–answer pairs", vs: "2,079 MM-AQA · 1,404 TRAPSBench" },
+  { have: "$0", what: "everything except model inference", vs: "free tiers and the group's own cluster" },
 ];
 
 function Status() {
