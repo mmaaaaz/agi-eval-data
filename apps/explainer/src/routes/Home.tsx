@@ -66,6 +66,11 @@ export function HomePage() {
             <div className="t">Every model being run</div>
             <div className="d">Open and frontier, with the run status of each.</div>
           </Link>
+          <Link to="/costs" className="card">
+            <span className="k">The cost</span>
+            <div className="t">What a full run would cost</div>
+            <div className="d">A projection from the panel's own prices, and the ranked ways to run it.</div>
+          </Link>
         </div>
       </section>
 

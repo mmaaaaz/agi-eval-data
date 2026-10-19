@@ -264,10 +264,53 @@ button.chip.on { border-color: var(--accent); color: var(--accent-deep); backgro
 @media (max-width: 720px) { .ms { grid-template-columns: 1fr; gap: 6px; } }
 
 /* ---- cards row on home ---- */
-.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 26px; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 16px; margin-top: 26px; }
 @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
 .card { display: block; padding: 18px 20px; background: var(--paper-raise); border: 1px solid var(--rule); border-radius: 6px; color: var(--ink); }
 .card:hover { border-color: var(--rule-strong); text-decoration: none; }
+
+/* ---- measured runs: score bars + item tables (Experiments 5.4) ---- */
+.chart { margin-top: 20px; }
+.scorebar { display: grid; grid-template-columns: minmax(170px, 250px) 1fr 64px; gap: 12px; align-items: center; margin: 7px 0; }
+.scorebar .nm { font-size: 14px; }
+.bartrack { height: 14px; border: 1px solid var(--rule-strong); border-radius: 3px; background: var(--paper-raise); overflow: hidden; }
+.barfill { height: 100%; background: var(--accent); }
+.scorebar .pc { font-family: var(--mono); font-size: 12.5px; text-align: right; }
+.scorebar .sub { grid-column: 2 / 4; font-size: 12.5px; color: var(--ink-soft); margin-top: -3px; }
+.runsec { margin-top: 30px; border-top: 1px solid var(--rule); padding-top: 16px; }
+.runhead { display: flex; flex-wrap: wrap; gap: 10px; align-items: baseline; }
+.runhead h3 { margin: 0; }
+.runmeta { color: var(--ink-soft); font-size: 13.5px; margin-top: 5px; }
+.itemtable { width: 100%; border-collapse: collapse; margin-top: 10px; }
+.itemtable th { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); text-align: left; padding: 6px; border-bottom: 1px solid var(--rule-strong); }
+.itemtable td { border-top: 1px solid var(--rule); padding: 7px 6px; vertical-align: top; font-size: 13.5px; }
+.itemtable tr.miss td { background: rgba(157, 34, 51, .045); }
+.itemtable .thumb img { width: 54px; height: 54px; object-fit: cover; border-radius: 4px; display: block; }
+.itemtable .thumb .thumb-fallback { width: 54px; font-size: 10px; }
+.mono.small, .small { font-size: 12px; }
+.vd { font-size: 11.5px; padding: 2px 7px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+.vd.correct { color: #2f6b46; border-color: #2f6b46; }
+.vd.wrong { color: var(--accent); border-color: var(--accent); }
+.vd.parse_fail { color: var(--ochre); border-color: var(--ochre); }
+.vd.abstained { color: #6b6b6b; border-color: #b9b9b9; }
+
+/* ---- sample taxonomy chips ---- */
+.codes { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 10px; }
+.chip.code { font-size: 11.5px; }
+
+/* ---- costs page ---- */
+.costhead { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin: 24px 0 8px; }
+@media (max-width: 860px) { .costhead { grid-template-columns: 1fr; } }
+.costhead .big { display: block; font-size: 30px; font-weight: 650; letter-spacing: -0.01em; }
+.costhead .sub { color: var(--ink-soft); font-size: 13.5px; display: block; margin-top: 3px; }
+.big.small { font-size: 20px; }
+.scen { border: 1px solid var(--rule); border-radius: 6px; padding: 14px 16px; margin: 10px 0; background: var(--paper-raise); }
+.scen .shead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; }
+.scen p { color: var(--ink-soft); font-size: 13.5px; margin: 6px 0 0; }
+.assumptions { margin: 10px 0 0 0; padding-left: 18px; color: var(--ink-soft); font-size: 14.5px; }
+.assumptions li { margin: 4px 0; }
+.panel-table td { font-size: 13.5px; }
+.dim { color: var(--ink-soft); }
 .card .k { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ochre); }
 .card .t { font-weight: 600; margin-top: 6px; font-size: 16px; }
 .card .d { color: var(--ink-soft); font-size: 14.5px; margin-top: 4px; }

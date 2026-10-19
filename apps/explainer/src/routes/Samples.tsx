@@ -2,18 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { SAMPLES } from "../content/samples";
 import { DOMAINS } from "../content/taxonomy";
-
-function SampleThumb({ src, alt }: { src: string; alt: string }) {
-  const [failed, setFailed] = useState(false);
-  if (failed) {
-    return (
-      <div className="thumb-fallback" role="img" aria-label={alt}>
-        The photograph could not be loaded here. Open it in the dataset gallery instead.
-      </div>
-    );
-  }
-  return <img src={src} alt={alt} loading="lazy" decoding="async" onError={() => setFailed(true)} />;
-}
+import { SampleThumb } from "../components/Thumb";
 
 export function SamplesPage() {
   const [domain, setDomain] = useState<string | null>(null);
@@ -74,10 +63,16 @@ export function SamplesPage() {
               </a>
             </div>
             <div>
-              <div>
-                <Link className="chip" to="/taxonomy" hash={s.domain.toLowerCase()}>
+              <div className="codes">
+                <Link className="chip dom" to="/taxonomy" hash={s.domain.toLowerCase()}>
                   {s.domain} · {DOMAINS.find((d) => d.id === s.domain)?.label ?? s.domain}
                 </Link>
+                {s.caps.map((c) => (
+                  <Link key={c} className="chip code" to="/taxonomy">
+                    {c}
+                  </Link>
+                ))}
+                <span className="chip code level">{s.levels.join(" · ")}</span>
               </div>
               <ul className="examples">
                 {s.questions.map((q) => (
@@ -91,6 +86,11 @@ export function SamplesPage() {
           </article>
         ))}
       </div>
+      <p className="table-note">
+        Capability and level codes come from the taxonomy's closed sets. The ten images that ran in
+        the first demonstration carry the exact codes their demo items were tagged with; the rest
+        are tagged by the same rubric, before their questions were written.
+      </p>
     </section>
   );
 }

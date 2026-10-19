@@ -10,6 +10,8 @@ import { SAMPLES } from "./samples";
 import { BIAS_AXES, CAPABILITY_GROUPS, DOMAINS, LEVELS, SENSITIVITY } from "./taxonomy";
 import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "./experiments";
 import { FIRST_RUNS } from "./firstRuns";
+import { RUNS, TYPOGRAPHIC, runForModel } from "./runs";
+import { COST_ASSUMPTIONS, COST_ROWS, PLAN, SCENARIOS, fullRunUsd } from "./costs";
 
 const allStrings = (v: unknown): string[] => {
   if (typeof v === "string") return [v];
@@ -19,7 +21,7 @@ const allStrings = (v: unknown): string[] => {
 };
 
 /** Every content surface a reader can see. Extended as content files land. */
-export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_AXES, SENSITIVITY, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, FIRST_RUNS, MILESTONES, STATUS, RESOURCES, SAMPLES];
+export const EMDASH_WALK: unknown[] = [FACTS, PIPELINE, FAQ, CAPABILITY_GROUPS, LEVELS, DOMAINS, BIAS_AXES, SENSITIVITY, BIAS_TRACK, ADVERSARIAL_TRACK, HONESTY, FIRST_RUNS, MILESTONES, STATUS, RESOURCES, SAMPLES, RUNS, TYPOGRAPHIC, COST_ASSUMPTIONS, COST_ROWS, SCENARIOS];
 
 describe("content invariants", () => {
   it("computes the dataset split from its parts", () => {
@@ -94,16 +96,55 @@ describe("content invariants", () => {
     expect(PANEL.some((m) => m.id === "google/gemma-4-31b-it")).toBe(true);
   });
 
-  it("has fifteen samples, five questions each, with valid varied domains", () => {
+  it("has fifteen samples, five questions each, with valid varied domains and real codes", () => {
     expect(SAMPLES.length).toBe(15);
+    const capIds = new Set(CAPABILITY_GROUPS.flatMap((g) => g.codes).map((c) => c.id));
+    const levelIds = new Set(LEVELS.map((c) => c.id));
     for (const s of SAMPLES) {
       expect(DOMAINS.some((d) => d.id === s.domain)).toBe(true);
       expect(s.questions.length).toBe(5);
       expect(s.thumbUrl).toMatch(/^https:\/\/lh3\.googleusercontent\.com\/d\/.+=w\d+$/);
       expect(s.sourceUrl).toMatch(/^https:\/\/agi-eval-data\.pages\.dev\/gallery\?q=/);
       expect(s.sighted.length).toBeGreaterThan(30);
+      expect(s.caps.length).toBeGreaterThanOrEqual(1);
+      expect(s.levels.length).toBeGreaterThanOrEqual(1);
+      for (const c of s.caps) expect(capIds.has(c)).toBe(true);
+      for (const l of s.levels) expect(levelIds.has(l)).toBe(true);
     }
     expect(new Set(SAMPLES.map((s) => s.domain)).size).toBeGreaterThanOrEqual(8);
+  });
+
+  it("reports the first runs exactly as the committed traces do", () => {
+    expect(RUNS.length).toBe(3);
+    const ds = RUNS.find((r) => r.id === "deepseek");
+    const nm = RUNS.find((r) => r.id === "nemotron");
+    const bl = RUNS.find((r) => r.id === "blind");
+    expect(ds?.correct).toBe(28);
+    expect(nm?.correct).toBe(25);
+    expect(nm?.parseFail).toBe(5);
+    expect(bl?.correct).toBe(1);
+    expect(bl?.abstained).toBe(28);
+    for (const r of RUNS) {
+      expect(r.items.length).toBe(30);
+      expect(r.latency.mean).toBeGreaterThan(0);
+    }
+    expect(TYPOGRAPHIC.groups.length).toBe(5);
+    expect(TYPOGRAPHIC.groups[0].id).toBe("control");
+    expect(runForModel("deepseek/deepseek-v4.1-flash-1017")?.correct).toBe(28);
+  });
+
+  it("projects costs from the panel's own prices, with the arithmetic shown", () => {
+    expect(COST_ROWS.length).toBe(PANEL.length);
+    expect(COST_ASSUMPTIONS.items).toBe(25000);
+    const ds = COST_ROWS.find((r) => r.id === "deepseek/deepseek-v4.1-flash-1017");
+    expect(ds?.fullUsd).toBeCloseTo(
+      fullRunUsd(0.15, 0.6, 25000),
+      6,
+    );
+    expect(PLAN.totalUsd).toBeCloseTo(PLAN.cheapFullUsd + PLAN.frontierSliceUsd, 6);
+    expect(PLAN.totalUsd).toBeLessThan(PLAN.everythingFullUsd);
+    expect(SCENARIOS.length).toBe(3);
+    expect(SCENARIOS[0].usd).toBe(PLAN.totalUsd);
   });
 
   it("contains no em dash anywhere in visible copy", () => {

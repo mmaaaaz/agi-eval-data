@@ -7,12 +7,13 @@ import { TaxonomyPage } from "./routes/Taxonomy";
 import { SamplesPage } from "./routes/Samples";
 import { ExperimentsPage } from "./routes/Experiments";
 import { ModelsPage } from "./routes/Models";
+import { CostsPage } from "./routes/Costs";
 import { RoadmapPage } from "./routes/Roadmap";
 import { FaqPage } from "./routes/Faq";
 
 export const ROUTE_PATHS = [
   "/", "/benchmark", "/questions", "/taxonomy", "/samples",
-  "/experiments", "/models", "/roadmap", "/faq",
+  "/experiments", "/models", "/costs", "/roadmap", "/faq",
 ] as const;
 
 const rootRoute = createRootRoute({ component: Layout });
@@ -24,6 +25,7 @@ const taxonomyRoute = createRoute({ getParentRoute: () => rootRoute, path: "/tax
 const samplesRoute = createRoute({ getParentRoute: () => rootRoute, path: "/samples", component: SamplesPage });
 const experimentsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/experiments", component: ExperimentsPage });
 const modelsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/models", component: ModelsPage });
+const costsRoute = createRoute({ getParentRoute: () => rootRoute, path: "/costs", component: CostsPage });
 const roadmapRoute = createRoute({ getParentRoute: () => rootRoute, path: "/roadmap", component: RoadmapPage });
 const faqRoute = createRoute({ getParentRoute: () => rootRoute, path: "/faq", component: FaqPage });
 
@@ -35,6 +37,7 @@ export const routeTree = rootRoute.addChildren([
   samplesRoute,
   experimentsRoute,
   modelsRoute,
+  costsRoute,
   roadmapRoute,
   faqRoute,
 ]);

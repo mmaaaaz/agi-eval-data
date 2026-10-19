@@ -30,6 +30,7 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `backends.py` | **the only place that spends money.** A stub, and one OpenAI-compatible client that covers both a local vLLM server and a hosted API |
 | `build_release.py` | CLI: freeze a release from an approved export |
 | `make_demo_release.py` | CLI: build `release/demo-samples-v1`, the 30-item demo release over the ten vision-verified sample photographs; run by hand, one-off |
+| `make_explainer_runs.py` | Generator (run by hand after runs land): reads `runs/demo/` traces + `release/demo-samples-v1/questions.jsonl`, asserts aggregates against `runs/demo/summary.json`, writes `apps/explainer/src/content/runs.ts` |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |

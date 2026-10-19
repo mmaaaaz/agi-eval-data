@@ -47,6 +47,7 @@ ALLOWED = {
     "selftest.py": "the harness self-test, run by CI and by hand",
     "12_unwired.py": "the guard itself — it has a CI runner, it simply is not a pipeline stage",
     "make_demo_release.py": "a one-off builder: it writes release/demo-samples-v1 for the first demo runs, run by hand as its docstring says; the demo traces it feeds are committed under runs/demo/",
+    "make_explainer_runs.py": "a generator, run by hand after traces land: reads the committed demo traces + release questions and writes apps/explainer/src/content/runs.ts (a site content file), asserting its aggregates against runs/demo/summary.json; its output is committed",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "

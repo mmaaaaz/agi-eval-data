@@ -10,6 +10,10 @@ export interface Sample {
   name: string;
   /** scene domain code from the closed D1-D11 list (taxonomy.ts) */
   domain: string;
+  /** capability codes this sample's questions exercise (G/P/B/PERC) */
+  caps: string[];
+  /** reasoning levels these questions reach (L1-L5) */
+  levels: string[];
   /** what is actually visible in the photograph, written AFTER viewing it */
   sighted: string;
   /** hot-linked thumbnail, same CDN the dataset site uses */
@@ -22,7 +26,10 @@ export interface Sample {
 /** Every example was written AFTER viewing the photograph, and its answers were
  *  re-checked on a second full-resolution pass. Nothing here is written into the
  *  dataset; these examples live only on this page. Domain codes are a visual
- *  classification of these demo images. */
+ *  classification of these demo images. Capability and level codes are the
+ *  taxonomy's own: the ten images that ran in the first demonstration carry the
+ *  exact codes their demo items were tagged with in the harness traces; the
+ *  five beyond it are tagged by the same rubric. */
 const gallery = (name: string) =>
   `https://agi-eval-data.pages.dev/gallery?q=${encodeURIComponent(name)}`;
 
@@ -31,6 +38,8 @@ export const SAMPLES: Sample[] = [
     id: "1tS0yaqG-wTlcmVgOn5bDjsc6OViS5PNj",
     name: "black_clock_decor_0112.jpg",
     domain: "D8",
+    caps: ["PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A round wall clock whose face is printed with an antique world map. Roman numerals mark the hours, small anchors circle the center, and the hands sit at ten past ten.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1tS0yaqG-wTlcmVgOn5bDjsc6OViS5PNj=w512",
@@ -47,6 +56,8 @@ export const SAMPLES: Sample[] = [
     id: "1yV7IsX1FQ7ZISiE_mUGa_YOouHFkFVWZ",
     name: "colorful_toy_train_0055.jpg",
     domain: "D6",
+    caps: ["G6", "PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A large scale model of a black steam locomotive and its tender, with red-spoked wheels, displayed on a wooden base with a French information placard in front.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1yV7IsX1FQ7ZISiE_mUGa_YOouHFkFVWZ=w512",
@@ -63,6 +74,8 @@ export const SAMPLES: Sample[] = [
     id: "1yqc-Bt8wJSqDgM2OxtD2f882ktvu-G1t",
     name: "colorful_educational_toy_0305.jpg",
     domain: "D6",
+    caps: ["PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A museum display case, behind glass, of vintage mechanical calculators and educational toys, with white placards and small numbered tags beside the objects.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1yqc-Bt8wJSqDgM2OxtD2f882ktvu-G1t=w512",
@@ -79,6 +92,8 @@ export const SAMPLES: Sample[] = [
     id: "1z6e6ZwHTyddx76RrISAsrFHpkALGsrz9",
     name: "large_passenger_bus_0050.jpg",
     domain: "D2",
+    caps: ["G6", "PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A light green minibus covered in colorful graphics, parked on a dirt lot beside a blue truck, with multi-story buildings behind and an overcast sky.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1z6e6ZwHTyddx76RrISAsrFHpkALGsrz9=w512",
@@ -95,6 +110,8 @@ export const SAMPLES: Sample[] = [
     id: "1yu8m8xeg4bRh-aR9KHW-sprulkKD08r_",
     name: "blue_mountain_bicycle_0391.jpg",
     domain: "D8",
+    caps: ["P2", "PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A bare bicycle frame in glossy metallic red, with its rear suspension, resting on a wooden slatted surface indoors. The brand name is printed in large letters on the down tube.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1yu8m8xeg4bRh-aR9KHW-sprulkKD08r_=w512",
@@ -111,6 +128,8 @@ export const SAMPLES: Sample[] = [
     id: "1ypNERjZ9A6NTGE0EeoD287u2SGOvSkP3",
     name: "large_stadium_structure_1841.jpg",
     domain: "D3",
+    caps: ["P1", "PERC"],
+    levels: ["L1", "L2", "L5"],
     sighted:
       "The brick and glass exterior of a sports stadium on a sunny day, its name in large letters over the main entrance, with trees framing the view and a road in the foreground.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1ypNERjZ9A6NTGE0EeoD287u2SGOvSkP3=w512",
@@ -127,6 +146,8 @@ export const SAMPLES: Sample[] = [
     id: "1zE8yp_UQxpqk9RabJqxZ8eGbPbQtfFOs",
     name: "modern_school_building_1021.jpg",
     domain: "D3",
+    caps: ["PERC"],
+    levels: ["L1", "L2", "L5"],
     sighted:
       "A beige multi-story school building behind a fence, its signage in Korean, with a yellow sign attached to the fence and a red-painted bus lane on the road in front.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1zE8yp_UQxpqk9RabJqxZ8eGbPbQtfFOs=w512",
@@ -143,6 +164,8 @@ export const SAMPLES: Sample[] = [
     id: "1ygRKV_hQ_6mzu0TytvYO2lkv4OMjqPPy",
     name: "black_coffee_machine_0439.jpg",
     domain: "D8",
+    caps: ["G6", "P1", "PERC"],
+    levels: ["L2"],
     sighted:
       "A black espresso machine brewing a single stream of coffee into a small clear glass cup, on a wooden kitchen counter, the background out of focus.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1ygRKV_hQ_6mzu0TytvYO2lkv4OMjqPPy=w512",
@@ -159,6 +182,8 @@ export const SAMPLES: Sample[] = [
     id: "1z535AFjwX-o86EFq0npf5vdmC-pjLNzB",
     name: "multiple_monitor_setup_0118.jpg",
     domain: "D8",
+    caps: ["PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A desk with two large monitors side by side showing long documents, with a keyboard, a mouse and a white mug carrying a film design.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1z535AFjwX-o86EFq0npf5vdmC-pjLNzB=w512",
@@ -175,6 +200,8 @@ export const SAMPLES: Sample[] = [
     id: "1zeo6vjQvhPyLGkuHyr7LDFY-MwIDY1fb",
     name: "3186_1787455721326_3341.jpg",
     domain: "D7",
+    caps: ["G6", "PERC"],
+    levels: ["L2"],
     sighted:
       "A person seen from behind, in a plaid coat, carrying two bags beside a red mesh sack of produce that rests on the ground against a red wall. The face is out of frame.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1zeo6vjQvhPyLGkuHyr7LDFY-MwIDY1fb=w512",
@@ -191,6 +218,8 @@ export const SAMPLES: Sample[] = [
     id: "1nchrh-Nr_SyP_iV3k1uJNeixoXSwUPNH",
     name: "traditional_domed_mosque_1706.jpg",
     domain: "D4",
+    caps: ["PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A single-domed mosque behind a metal gate, its entrance sign reading MASJID AL-QOSIM in yellow capitals on a dark fascia. The dome carries green, white and yellow mosaic and two small gold finials, and power lines cross the blue sky.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1nchrh-Nr_SyP_iV3k1uJNeixoXSwUPNH=w512",
@@ -207,6 +236,8 @@ export const SAMPLES: Sample[] = [
     id: "1tuKj_xzS-ddDV_8IdAqhLmdKtHrgnz2e",
     name: "large_hospital_building_1124.jpg",
     domain: "D5",
+    caps: ["P1", "PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "An indoor hospital corridor with wood-look flooring. A closed double door carries a blue sign reading Alu VIP Ward; a single door on the right carries a blue sign reading Emergency Unit over X-Ray Unit; three waiting chairs line the wall.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1tuKj_xzS-ddDV_8IdAqhLmdKtHrgnz2e=w512",
@@ -223,6 +254,8 @@ export const SAMPLES: Sample[] = [
     id: "1wfaJCDu57jcxTrP9N2NbNNkEKRBrCmv5",
     name: "industrial_factory_building_1720.jpg",
     domain: "D11",
+    caps: ["G6", "P6", "PERC"],
+    levels: ["L1", "L2"],
     sighted:
       "A circular access hatch on a polished stainless-steel tank, indoors. The hatch is secured by a clamp with a hinge on the left and a threaded tightening handle on the right; behind, out of focus, more tanks and a blue barrel with a green lid.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1wfaJCDu57jcxTrP9N2NbNNkEKRBrCmv5=w512",
@@ -239,6 +272,8 @@ export const SAMPLES: Sample[] = [
     id: "1yj1ld7HB8iaGexvyDGVMIIJhXLdlfi4C",
     name: "colorful_board_game_0405.jpg",
     domain: "D8",
+    caps: ["PERC"],
+    levels: ["L1"],
     sighted:
       "A white cabinet with five shelf levels packed with board game boxes: DIXIT, CATAN, MYSTERIUM, TAKENOKO, EVERDELL and more. A white bag with a green kiwi graphic sits on top, and a single white die rests on the third shelf.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1yj1ld7HB8iaGexvyDGVMIIJhXLdlfi4C=w512",
@@ -255,6 +290,8 @@ export const SAMPLES: Sample[] = [
     id: "1zBFV0cF-RLqvUvf_Z2h6MFBLQO7Uq8rk",
     name: "black_planter_decor_0111.jpg",
     domain: "D8",
+    caps: ["PERC"],
+    levels: ["L1"],
     sighted:
       "A single cylindrical planter with a dense white crosshatch pattern on charcoal, photographed against a plain white background with ruler-style dimension labels: 7.87 inches beside it and 8.85 inches beneath. The pot is empty.",
     thumbUrl: "https://lh3.googleusercontent.com/d/1zBFV0cF-RLqvUvf_Z2h6MFBLQO7Uq8rk=w512",
