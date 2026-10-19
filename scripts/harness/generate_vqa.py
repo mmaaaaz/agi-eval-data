@@ -3,7 +3,7 @@
 
 WHY THIS EXISTS
 ---------------
-The dataset plan (see .scratch/seen-not-grasped/minimax-m31-flash-50k-plan.md) is
+The dataset plan (kept privately, outside this repository) is
 model-drafted questions, human-reviewed picks, everything recorded. This runner is
 the drafting half: it walks a list of ledger images, asks the model for candidates
 in a strict JSON contract, validates every candidate against the closed taxonomy
@@ -23,8 +23,8 @@ RUN
 ---
     python scripts/harness/generate_vqa.py --batch pilot-40 \
         --images runs/generation/pilot-40/images.jsonl \
-        --model minimax/minimax-m3.1-flash-preview:free \
-        --provider commandcode --concurrency 4 --spend
+        --model <vision-model-id> \
+        --base-url <openai-compatible-base> --concurrency 4 --spend
 
 Transport note: the call goes through `hermes chat` with the provider's stored
 credential; this runner never handles an API key.
@@ -339,7 +339,7 @@ def call_api(
                 "Authorization": f"Bearer {api_key}",
                 "Content-Type": "application/json",
                 "Accept": "application/json",
-                # Cloudflare on the API host answers 403/1010 to non-browser UAs.
+                # Some gateways reject non-browser user agents.
                 "User-Agent": (
                     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
                     "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36"
@@ -371,12 +371,12 @@ def main() -> int:
     ap = argparse.ArgumentParser(description="Draft VQA candidates for ledger images.")
     ap.add_argument("--images", required=True, help="JSONL rows: {file_id, name}")
     ap.add_argument("--batch", required=True, help="batch name; output goes to runs/generation/<batch>/")
-    ap.add_argument("--model", default="minimax/minimax-m3.1-flash-preview:free")
-    ap.add_argument("--provider", default="commandcode")
+    ap.add_argument("--model", default="")
+    ap.add_argument("--provider", default="")
     ap.add_argument("--transport", choices=["auto", "api", "cli"], default="auto",
                     help="api = direct OpenAI-compatible HTTP (fast); cli = hermes chat; auto picks api when a key is found")
     ap.add_argument("--api-key-file", default=str(DEFAULT_ENV), help="KEY=VALUE file, gitignored")
-    ap.add_argument("--base-url", default="https://api.commandcode.ai/provider/v1")
+    ap.add_argument("--base-url", default="")
     ap.add_argument("--reasoning-effort", default="low",
                     help="low|medium|high|max; pass an empty string to omit the parameter")
     ap.add_argument("--max-tokens", type=int, default=32000)
@@ -392,21 +392,26 @@ def main() -> int:
     ap.add_argument("--retry", type=int, default=2, help="extra attempts per image")
     ap.add_argument("--timeout", type=int, default=900, help="per-call seconds")
     ap.add_argument("--dry-run", action="store_true", help="assemble prompts only, no calls")
-    ap.add_argument("--spend", action="store_true", help="required by house rule even for :free models")
+    ap.add_argument("--spend", action="store_true", help="required by house rule even for zero-priced models")
     args = ap.parse_args()
 
     if not args.dry_run and not spend_permitted(args):
         refuse_without_spend(args, "--spend", f"the {args.model} drafting run")
 
     env = load_env_file(Path(args.api_key_file))
-    api_key = env.get("COMMANDCODE_API_KEY", os.environ.get("COMMANDCODE_API_KEY", ""))
-    base_url = env.get("COMMANDCODE_BASE_URL", args.base_url)
+    api_key = env.get("VQA_API_KEY", os.environ.get("VQA_API_KEY", ""))
+    base_url = args.base_url or env.get("VQA_API_BASE", os.environ.get("VQA_API_BASE", ""))
+    if not args.model:
+        args.model = env.get("VQA_MODEL", os.environ.get("VQA_MODEL", ""))
+    if not args.model:
+        print("set --model or VQA_MODEL in the env file", file=sys.stderr)
+        return 2
     transport = args.transport
     if transport == "auto":
         transport = "api" if api_key else "cli"
     if transport == "api" and not api_key:
         raise SystemExit(
-            f"--transport api needs a key: put COMMANDCODE_API_KEY=... in {args.api_key_file}"
+            f"--transport api needs a key: put VQA_API_KEY=... in {args.api_key_file}"
         )
     print(f"transport: {transport} | model: {args.model} | effort: {args.reasoning_effort or 'default'}")
 

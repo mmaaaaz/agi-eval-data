@@ -114,18 +114,11 @@ data/drive/
 # The explainer site ships the public briefing download (linked from the Home page).
 !apps/explainer/public/docs/*.docx
 
-# Model-generation drafts: the full-corpus JSONL and raw responses stay local
-# (D1 is the intended live store); manifests, stats and one committed sample are the repo evidence.
-runs/generation/full-50k/candidates.jsonl
-runs/generation/full-50k/raw/
-runs/generation/scale-probe-200/
-runs/generation/ab-low/
-runs/generation/ab-v2/
+# Model-generation working data stays OUT of the public repo: drafts, raw
+# responses, selection lists, reports, logs — all of it. The dataset is published
+# deliberately, as a frozen release with its own licence and provenance, never by
+# pushing the working tree. (Owner decision, 2026-10-19.)
+runs/generation/
 
 # The generation API key. Never commit this file.
 scripts/harness/generation.env
-
-# Runtime logs for a drafting batch (pass-NN.log + driver.log); the evidence is
-# candidates.jsonl, manifest.json and the report, not the console noise.
-runs/generation/*/driver.log
-runs/generation/*/pass-*.log

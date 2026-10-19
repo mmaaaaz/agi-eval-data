@@ -3,8 +3,8 @@
 
     python -m scripts.harness.drive_generation --batch full-50k --hours 48
 
-The free endpoint intermittently answers 429 "upstream model provider is
-temporarily unavailable", and the machine's DNS has dropped twice mid-run. A
+The upstream endpoint intermittently answers 429 "provider is temporarily
+unavailable", and the machine's DNS has dropped twice mid-run. A
 single `generate_vqa.py` pass cannot survive either, so this driver runs passes
 in a loop:
 
@@ -92,7 +92,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--batch", required=True)
     ap.add_argument("--images", default="")
-    ap.add_argument("--model", default="minimax/minimax-m3.1-flash-preview:free")
+    ap.add_argument("--model", default="")
     ap.add_argument("--hours", type=float, default=36)
     ap.add_argument("--gap", type=int, default=300, help="seconds between passes / probes")
     ap.add_argument("--concurrency", type=int, default=8)
@@ -105,10 +105,15 @@ def main() -> int:
     dlog = batch_dir / "driver.log"
 
     kv = env_file()
-    api_key = kv.get("COMMANDCODE_API_KEY", "")
-    base = kv.get("COMMANDCODE_BASE_URL", "https://api.commandcode.ai/provider/v1")
+    api_key = kv.get("VQA_API_KEY", "")
+    base = kv.get("VQA_API_BASE", "")
+    if not args.model:
+        args.model = kv.get("VQA_MODEL", "")
     if not api_key:
-        print("no COMMANDCODE_API_KEY in scripts/harness/generation.env", file=sys.stderr)
+        print("no VQA_API_KEY in scripts/harness/generation.env", file=sys.stderr)
+        return 2
+    if not args.model:
+        print("no --model and no VQA_MODEL in scripts/harness/generation.env", file=sys.stderr)
         return 2
 
     total = len([l for l in images.read_text(encoding="utf-8").splitlines() if l.strip()])
