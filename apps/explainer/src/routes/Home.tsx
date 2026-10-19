@@ -66,6 +66,11 @@ export function HomePage() {
             <div className="t">Every model being run</div>
             <div className="d">Open and frontier, with the run status of each.</div>
           </Link>
+          <a href="/anatomy.html" className="card">
+            <span className="k">The anatomy</span>
+            <div className="t">The pipeline as one machine</div>
+            <div className="d">An interactive figure: plates, drafting, review, and the two shelves.</div>
+          </a>
         </div>
       </section>
 

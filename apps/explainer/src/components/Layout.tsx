@@ -12,6 +12,9 @@ const NAV = [
   { to: "/faq", label: "FAQ" },
 ] as const;
 
+/** Plain documents that live beside the SPA (no client route to match). */
+const NAV_EXTRA = [{ href: "/anatomy.html", label: "Anatomy" }] as const;
+
 export function Layout() {
   return (
     <div className="page">
@@ -22,6 +25,11 @@ export function Layout() {
             <Link key={n.to} to={n.to} activeProps={{ className: "navlink active" }} className="navlink">
               {n.label}
             </Link>
+          ))}
+          {NAV_EXTRA.map((n) => (
+            <a key={n.href} href={n.href} className="navlink">
+              {n.label}
+            </a>
           ))}
         </nav>
       </header>

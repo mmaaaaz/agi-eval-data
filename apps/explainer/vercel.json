@@ -1,3 +1,4 @@
 {
+  "redirects": [{ "source": "/anatomy", "destination": "/anatomy.html", "permanent": false }],
   "rewrites": [{ "source": "/(.*)", "destination": "/index.html" }]
 }

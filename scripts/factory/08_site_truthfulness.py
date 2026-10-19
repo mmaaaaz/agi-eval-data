@@ -25,6 +25,8 @@ ROOT = Path(__file__).resolve().parents[2]
 WEB_SRC = ROOT / "apps" / "web"
 SITE_PKG = ROOT / "packages" / "site" / "src"
 EXPLAINER_SRC = ROOT / "apps" / "explainer" / "src"
+EXPLAINER_PUBLIC = ROOT / "apps" / "explainer" / "public"
+EXPLAINER_TOOLS = ROOT / "apps" / "explainer" / "tools"
 
 # (regex, why it is forbidden, where it is allowed to appear)
 #
@@ -91,6 +93,12 @@ def collect() -> list[Path]:
             out += [p for p in base.rglob("*.tsx") if p.is_file() and not (skip & set(p.parts))]
             out += [p for p in base.rglob("*.ts") if p.is_file() and not (skip & set(p.parts))]
             out += [p for p in base.rglob("*.html") if p.is_file() and not (skip & set(p.parts))]
+    # The anatomy figure ships as a built HTML document beside the SPA, and its
+    # build script holds the same prose. Both must answer to the same guard.
+    if EXPLAINER_PUBLIC.exists():
+        out += [p for p in EXPLAINER_PUBLIC.rglob("*.html") if p.is_file()]
+    if EXPLAINER_TOOLS.exists():
+        out += [p for p in EXPLAINER_TOOLS.rglob("*.mjs") if p.is_file()]
     # The OG generator writes per-route HTML served at the apex domain, so a
     # false claim can reappear there even after index.html is fixed. It is a
     # build input, not a source file, and must be checked too.
