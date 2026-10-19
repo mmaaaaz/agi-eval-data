@@ -46,6 +46,7 @@ ALLOWED = {
     "00_metadata_audit.py": "a CI guard, run by .github/workflows/ci.yml as a check, not a stage",
     "selftest.py": "the harness self-test, run by CI and by hand",
     "12_unwired.py": "the guard itself — it has a CI runner, it simply is not a pipeline stage",
+    "make_demo_release.py": "a one-off builder: it writes release/demo-samples-v1 for the first demo runs, run by hand as its docstring says; the demo traces it feeds are committed under runs/demo/",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "

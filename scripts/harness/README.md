@@ -29,6 +29,7 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `fetch.py` | image bytes from the corpus CDN with a local cache, plus an offline stub fetcher |
 | `backends.py` | **the only place that spends money.** A stub, and one OpenAI-compatible client that covers both a local vLLM server and a hosted API |
 | `build_release.py` | CLI: freeze a release from an approved export |
+| `make_demo_release.py` | CLI: build `release/demo-samples-v1`, the 30-item demo release over the ten vision-verified sample photographs; run by hand, one-off |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |
