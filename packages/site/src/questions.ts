@@ -304,6 +304,48 @@ async function call<T>(relay: string, code: string, path: string, init?: Request
   return body;
 }
 
+export interface VqaCandidate {
+  id: number;
+  batch: string;
+  file_id: string;
+  ordinal: number;
+  question: string;
+  qnorm: string;
+  choices: string;
+  answer: string;
+  grounding: string;
+  capability: string;
+  level: string;
+  domain: string;
+  difficulty: string;
+  model: string;
+  endpoint: string;
+  prompt_version: string;
+  run_id: string;
+  image_sha256: string;
+  status: "pending" | "approved" | "edited" | "rejected";
+  reviewer: string | null;
+  reviewed_at: string | null;
+  reason: string;
+  created_at: string;
+}
+
+export interface VqaImageGroup {
+  file_id: string;
+  n: number;
+  first_id: number;
+  has_pending: number;
+}
+
+export interface VqaCounts {
+  byStatus: Record<string, number>;
+  byCapability: { capability: string; n: number }[];
+  byLevel: { level: string; n: number }[];
+  byDomain: { domain: string; n: number }[];
+  images: number;
+  total: number;
+}
+
 export const questionsApi = {
   counts(relay: string, code: string): Promise<{ counts: Record<string, number>; images: number }> {
     return call(relay, code, "/api/questions/counts");
@@ -478,6 +520,41 @@ export const questionsApi = {
   },
   unexclude(relay: string, code: string, file_id: string): Promise<{ ok: boolean }> {
     return call(relay, code, `/api/excluded?file_id=${encodeURIComponent(file_id)}`, { method: "DELETE" });
+  },
+  // ---- v6: the review room for model-drafted VQA candidates ----
+  vqaCounts(relay: string, code: string): Promise<VqaCounts> {
+    return call(relay, code, "/api/vqa/counts");
+  },
+  vqaImages(relay: string, code: string, opts: { status?: string; limit?: number; after?: number } = {}): Promise<{ images: VqaImageGroup[] }> {
+    const p = new URLSearchParams();
+    if (opts.status) p.set("status", opts.status);
+    if (opts.limit) p.set("limit", String(opts.limit));
+    if (opts.after) p.set("after", String(opts.after));
+    const qs = p.toString();
+    return call(relay, code, `/api/vqa/images${qs ? `?${qs}` : ""}`);
+  },
+  vqaCandidates(relay: string, code: string, opts: {
+    file_id?: string; status?: string; capability?: string; level?: string; domain?: string;
+    search?: string; limit?: number; after?: number;
+  } = {}): Promise<{ candidates: VqaCandidate[] }> {
+    const p = new URLSearchParams();
+    for (const k of ["file_id", "status", "capability", "level", "domain", "search"] as const) {
+      const v = opts[k];
+      if (v) p.set(k, v);
+    }
+    if (opts.limit) p.set("limit", String(opts.limit));
+    if (opts.after) p.set("after", String(opts.after));
+    const qs = p.toString();
+    return call(relay, code, `/api/vqa/candidates${qs ? `?${qs}` : ""}`);
+  },
+  vqaReview(relay: string, code: string, payload: {
+    candidate_id: number;
+    verdict: "approve" | "edit" | "reject";
+    reason?: string;
+    reviewer?: string;
+    edits?: Record<string, unknown>;
+  }): Promise<{ ok: boolean; candidate: VqaCandidate }> {
+    return call(relay, code, "/api/vqa/review", { method: "POST", body: JSON.stringify(payload) });
   },
 };
 

@@ -54,6 +54,8 @@ ALLOWED = {
     "shard_images.py": "splits a batch's remaining images across parallel lanes, skipping images already parsed; run by hand when adding a lane",
     "merge_batches.py": "merges lane batches into one file keeping the last parsed row per image and its endpoint label; run by hand after lanes finish",
     "watch_lane.py": "waits for a lane's key file, re-shards and then starts that lane's driver; run by hand when adding a lane",
+    "ingest_vqa.py": "posts a drafting batch's validated candidates to the vqa ingest endpoint behind the harness door; run by hand after a batch",
+    "local_relay_proxy.py": "demo/dev proxy from loopback to the relay through a reachable Cloudflare edge, plus /img CDN passthrough; holds no credentials",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "

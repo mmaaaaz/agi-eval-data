@@ -14,6 +14,7 @@ import { Route as ChooseRouteImport } from './routes/choose'
 import { Route as ContributeRouteImport } from './routes/contribute'
 import { Route as GalleryRouteImport } from './routes/gallery'
 import { Route as ResultsRouteImport } from './routes/results'
+import { Route as ReviewRouteImport } from './routes/review'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as StatusRouteImport } from './routes/status'
 import { Route as ContributeIndexRouteImport } from './routes/contribute.index'
@@ -55,6 +56,11 @@ const GalleryRoute = GalleryRouteImport.update({
 const ResultsRoute = ResultsRouteImport.update({
   id: '/results',
   path: '/results',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReviewRoute = ReviewRouteImport.update({
+  id: '/review',
+  path: '/review',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SettingsRoute = SettingsRouteImport.update({
@@ -153,6 +159,7 @@ export interface FileRoutesByFullPath {
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
   '/results': typeof ResultsRoute
+  '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/contribute/nominated': typeof ContributeNominatedRoute
@@ -175,6 +182,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/choose': typeof ChooseRoute
   '/results': typeof ResultsRoute
+  '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/contribute/nominated': typeof ContributeNominatedRoute
@@ -199,6 +207,7 @@ export interface FileRoutesById {
   '/contribute': typeof ContributeRouteWithChildren
   '/gallery': typeof GalleryRouteWithChildren
   '/results': typeof ResultsRoute
+  '/review': typeof ReviewRoute
   '/settings': typeof SettingsRoute
   '/status': typeof StatusRoute
   '/contribute/nominated': typeof ContributeNominatedRoute
@@ -225,6 +234,7 @@ export interface FileRouteTypes {
     | '/contribute'
     | '/gallery'
     | '/results'
+    | '/review'
     | '/settings'
     | '/status'
     | '/contribute/nominated'
@@ -247,6 +257,7 @@ export interface FileRouteTypes {
     | '/'
     | '/choose'
     | '/results'
+    | '/review'
     | '/settings'
     | '/status'
     | '/contribute/nominated'
@@ -270,6 +281,7 @@ export interface FileRouteTypes {
     | '/contribute'
     | '/gallery'
     | '/results'
+    | '/review'
     | '/settings'
     | '/status'
     | '/contribute/nominated'
@@ -295,6 +307,7 @@ export interface RootRouteChildren {
   ContributeRoute: typeof ContributeRouteWithChildren
   GalleryRoute: typeof GalleryRouteWithChildren
   ResultsRoute: typeof ResultsRoute
+  ReviewRoute: typeof ReviewRoute
   SettingsRoute: typeof SettingsRoute
   StatusRoute: typeof StatusRoute
 }
@@ -334,6 +347,13 @@ declare module '@tanstack/react-router' {
       path: '/results'
       fullPath: '/results'
       preLoaderRoute: typeof ResultsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/review': {
+      id: '/review'
+      path: '/review'
+      fullPath: '/review'
+      preLoaderRoute: typeof ReviewRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/settings': {
@@ -522,6 +542,7 @@ const rootRouteChildren: RootRouteChildren = {
   ContributeRoute: ContributeRouteWithChildren,
   GalleryRoute: GalleryRouteWithChildren,
   ResultsRoute: ResultsRoute,
+  ReviewRoute: ReviewRoute,
   SettingsRoute: SettingsRoute,
   StatusRoute: StatusRoute,
 }

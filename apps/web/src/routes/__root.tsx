@@ -12,6 +12,7 @@ import { AppShell, NotFound } from "@site/shell";
 const NAV = [
   { to: "/contribute", label: "Contribute" },
   { to: "/gallery", label: "Gallery" },
+  { to: "/review", label: "Review room" },
   { to: "/results", label: "Results" },
   { to: "/status", label: "Status" },
 ];
@@ -38,6 +39,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/contribute/write": "Questions",
   "/contribute/triage": "Keyboard triage",
   "/contribute/review": "Review",
+  "/review": "Review room",
   "/contribute/rules": "Writing rules",
   "/results": "Results",
   "/status": "Status",

@@ -34,6 +34,41 @@ def read_key(path: Path) -> str:
     return ""
 
 
+def read_env(path: Path) -> dict[str, str]:
+    kv: dict[str, str] = {}
+    if path.exists():
+        for line in path.read_text(encoding="utf-8").splitlines():
+            if "=" in line and not line.strip().startswith("#"):
+                k, v = line.split("=", 1)
+                kv[k.strip()] = v.strip().strip('"').strip("'")
+    return kv
+
+
+def preflight(kv: dict[str, str], model: str) -> tuple[bool, str]:
+    """One tiny text call: catches a wrong key, base URL or model id before a lane starts."""
+    import json
+    import urllib.error
+    import urllib.request
+
+    body = {"model": model, "max_tokens": 16, "temperature": 0,
+            "messages": [{"role": "user", "content": "Reply: PONG"}]}
+    req = urllib.request.Request(
+        kv.get("VQA_API_BASE", "").rstrip("/") + "/chat/completions",
+        data=json.dumps(body).encode(),
+        headers={"Authorization": f"Bearer {kv.get('VQA_API_KEY', '')}",
+                 "Content-Type": "application/json", "Accept": "application/json",
+                 "User-Agent": ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
+                                "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")},
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            return True, str(r.status)
+    except urllib.error.HTTPError as e:
+        return False, f"HTTP {e.code}: {e.read().decode()[:160]}"
+    except Exception as e:
+        return False, f"{type(e).__name__}: {str(e)[:120]}"
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--env-file", required=True)
@@ -54,8 +89,19 @@ def main() -> int:
 
     while time.time() < deadline:
         if read_key(env_path):
+            kv = read_env(env_path)
+            model = args.model or kv.get("VQA_MODEL", "")
+            try:
+                ok, detail = preflight(kv, model)
+            except Exception as e:  # a socket timeout must never kill the watcher
+                ok, detail = False, f"{type(e).__name__}: {str(e)[:100]}"
+            if not ok:
+                stamp = datetime.now(timezone.utc).strftime("%H:%M:%SZ")
+                print(f"[{stamp}] key found but preflight failed ({detail}); retrying in 60s", flush=True)
+                time.sleep(60)
+                continue
             stamp = datetime.now(timezone.utc).strftime("%H:%M:%SZ")
-            print(f"[{stamp}] key found; starting lane {args.endpoint}", flush=True)
+            print(f"[{stamp}] key found, preflight ok; starting lane {args.endpoint}", flush=True)
             # Re-shard first: the main lane parsed more images while we waited,
             # and a stale shard would pay for those twice.
             subprocess.call(

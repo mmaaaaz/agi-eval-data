@@ -1423,6 +1423,186 @@ const ROUTES: Route[] = [
       return jsonResponse({ ok: true, n: stmts.length, blind_passed: passed });
     },
   },
+  // -------------------------------------------------------------------------
+  // v6: THE VQA REVIEW ROOM. Model-drafted candidates land `pending`; only the
+  // reviewer door decides. Ingest never touches the questions table.
+  // -------------------------------------------------------------------------
+  {
+    method: "POST",
+    pattern: /^\/api\/vqa\/ingest$/,
+    handler: async ({ request, db, deps }) => {
+      if (!canMeasure(request, deps)) return MEASURE_ERROR();
+      const body = (await request.json().catch(() => null)) as
+        | { batch?: string; rows?: Array<Record<string, unknown>> }
+        | null;
+      const batch = (body?.batch ?? "").trim().slice(0, 64);
+      const rows = body?.rows;
+      if (!batch || !Array.isArray(rows) || rows.length === 0) {
+        return jsonResponse({ error: "batch and a non-empty rows array are required" }, 400);
+      }
+      if (rows.length > 250) return jsonResponse({ error: "at most 250 rows per ingest call" }, 413);
+      const stmts = [];
+      let invalid = 0;
+      for (const r of rows) {
+        const question = String(r.question ?? "").trim();
+        const answer = String(r.answer ?? "").trim();
+        const choices = Array.isArray(r.choices) ? r.choices.map((c) => String(c).trim()) : [];
+        const fileId = String(r.file_id ?? "").trim();
+        if (!fileId || question.length < 8 || !answer || choices.length < 2) { invalid++; continue; }
+        stmts.push(db.prepare(
+          "INSERT OR IGNORE INTO vqa_candidates (batch, file_id, ordinal, question, qnorm, choices, answer, grounding, capability, level, domain, difficulty, model, endpoint, prompt_version, run_id, image_sha256) VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16,?17)",
+        ).bind(
+          batch, fileId, Number(r.ordinal ?? 0), question, deps.normQ(question), JSON.stringify(choices),
+          answer, String(r.grounding ?? ""), String(r.capability ?? ""), String(r.level ?? ""),
+          String(r.domain ?? ""), String(r.difficulty ?? ""), String(r.model ?? ""),
+          String(r.endpoint ?? ""), String(r.prompt_version ?? ""), String(r.run_id ?? ""),
+          String(r.image_sha256 ?? ""),
+        ));
+      }
+      if (stmts.length) await db.batch(stmts);
+      const stored = await db.prepare("SELECT COUNT(*) AS n FROM vqa_candidates WHERE batch = ?1")
+        .bind(batch).first<{ n: number }>();
+      return jsonResponse({ ok: true, batch, attempted: rows.length, invalid, stored: Number(stored?.n ?? 0) });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/vqa\/candidates$/,
+    handler: async ({ db, url }) => {
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 50)));
+      const where: string[] = [];
+      const binds: unknown[] = [];
+      const add = (col: string, val: string | null) => {
+        if (!val) return;
+        binds.push(val);
+        where.push(col + " = ?" + binds.length);
+      };
+      add("status", url.searchParams.get("status"));
+      add("capability", url.searchParams.get("capability"));
+      add("level", url.searchParams.get("level"));
+      add("domain", url.searchParams.get("domain"));
+      add("file_id", url.searchParams.get("file_id"));
+      const search = url.searchParams.get("search");
+      if (search) { binds.push("%" + search + "%"); where.push("question LIKE ?" + binds.length); }
+      const after = Number(url.searchParams.get("after") ?? 0);
+      if (after > 0) { binds.push(after); where.push("id > ?" + binds.length); }
+      binds.push(limit);
+      const sql = "SELECT * FROM vqa_candidates"
+        + (where.length ? " WHERE " + where.join(" AND ") : "")
+        + " ORDER BY id ASC LIMIT ?" + binds.length;
+      const res = await db.prepare(sql).bind(...binds).all();
+      return jsonResponse({ candidates: res.results });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/vqa\/images$/,
+    handler: async ({ db, url }) => {
+      const limit = Math.min(200, Math.max(1, Number(url.searchParams.get("limit") ?? 60)));
+      const where: string[] = [];
+      const binds: unknown[] = [];
+      const status = url.searchParams.get("status");
+      if (status) { binds.push(status); where.push("status = ?" + binds.length); }
+      const after = Number(url.searchParams.get("after") ?? 0);
+      if (after > 0) { binds.push(after); where.push("id > ?" + binds.length); }
+      binds.push(limit);
+      const sql = "SELECT file_id, COUNT(*) AS n, MIN(id) AS first_id,"
+        + " MAX(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) AS has_pending"
+        + " FROM vqa_candidates"
+        + (where.length ? " WHERE " + where.join(" AND ") : "")
+        + " GROUP BY file_id ORDER BY first_id ASC LIMIT ?" + binds.length;
+      const res = await db.prepare(sql).bind(...binds).all();
+      return jsonResponse({ images: res.results });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/vqa\/counts$/,
+    handler: async ({ db }) => {
+      const status = await db.prepare("SELECT status, COUNT(*) AS n FROM vqa_candidates GROUP BY status")
+        .all<{ status: string; n: number }>();
+      const cap = await db.prepare("SELECT capability, COUNT(*) AS n FROM vqa_candidates GROUP BY capability ORDER BY n DESC").all();
+      const lvl = await db.prepare("SELECT level, COUNT(*) AS n FROM vqa_candidates GROUP BY level ORDER BY level").all();
+      const dom = await db.prepare("SELECT domain, COUNT(*) AS n FROM vqa_candidates GROUP BY domain ORDER BY n DESC").all();
+      const img = await db.prepare("SELECT COUNT(DISTINCT file_id) AS n FROM vqa_candidates").first<{ n: number }>();
+      const byStatus: Record<string, number> = {};
+      for (const r of status.results) byStatus[r.status] = Number(r.n);
+      return jsonResponse({
+        byStatus, byCapability: cap.results, byLevel: lvl.results, byDomain: dom.results,
+        images: Number(img?.n ?? 0),
+        total: Object.values(byStatus).reduce((a, b) => a + b, 0),
+      });
+    },
+  },
+  {
+    method: "POST",
+    pattern: /^\/api\/vqa\/review$/,
+    handler: async ({ request, db, deps }) => {
+      if (!canApprove(request, deps)) return APPROVE_ERROR();
+      const body = (await request.json().catch(() => null)) as
+        | { candidate_id?: number; verdict?: string; reason?: string; reviewer?: string; edits?: Record<string, unknown> }
+        | null;
+      const id = Number(body?.candidate_id ?? 0);
+      const verdict = String(body?.verdict ?? "");
+      if (!id || !["approve", "edit", "reject"].includes(verdict)) {
+        return jsonResponse({ error: "candidate_id and verdict approve|edit|reject are required" }, 400);
+      }
+      const reason = String(body?.reason ?? "").trim().slice(0, 500);
+      if (verdict !== "approve" && !reason) return jsonResponse({ error: "a reason is required to edit or reject" }, 400);
+      const edits = body?.edits && typeof body.edits === "object" ? body.edits : {};
+      const existing = await db.prepare("SELECT id FROM vqa_candidates WHERE id = ?1").bind(id).first();
+      if (!existing) return jsonResponse({ error: "candidate not found" }, 404);
+
+      const fields: string[] = [];
+      const binds: unknown[] = [];
+      const changed: Record<string, unknown> = {};
+      for (const k of ["question", "choices", "answer", "grounding", "capability", "level", "domain", "difficulty"] as const) {
+        if (!(k in edits)) continue;
+        const v = edits[k];
+        let val: string;
+        if (k === "choices") {
+          if (!Array.isArray(v) || v.length < 2) return jsonResponse({ error: "choices must be an array of at least 2" }, 400);
+          val = JSON.stringify(v.map((x) => String(x).trim()));
+        } else {
+          val = String(v ?? "").trim();
+          if ((k === "question" || k === "answer") && !val) return jsonResponse({ error: k + " cannot be empty" }, 400);
+        }
+        changed[k] = val;
+        binds.push(val);
+        fields.push(k + " = ?" + binds.length);
+      }
+      const status = verdict === "approve" ? "approved" : verdict === "edit" ? "edited" : "rejected";
+      const reviewer = String(body?.reviewer ?? "").slice(0, 64);
+      binds.push(status, reviewer, reason, id);
+      const n = binds.length; // last four are ?n-3 (status), ?n-2 (reviewer), ?n-1 (reason), ?n (id)
+      await db.batch([
+        db.prepare("UPDATE vqa_candidates SET "
+          + [...fields, "status = ?" + (n - 3), "reviewer = ?" + (n - 2),
+             "reviewed_at = datetime('now')", "reason = ?" + (n - 1)].join(", ")
+          + " WHERE id = ?" + n).bind(...binds),
+        db.prepare("INSERT INTO vqa_reviews (candidate_id, reviewer, verdict, reason, changed) VALUES (?1, ?2, ?3, ?4, ?5)")
+          .bind(id, reviewer, verdict, reason, JSON.stringify(changed)),
+      ]);
+      const updated = await db.prepare("SELECT * FROM vqa_candidates WHERE id = ?1").bind(id).first();
+      return jsonResponse({ ok: true, candidate: updated });
+    },
+  },
+  {
+    method: "GET",
+    pattern: /^\/api\/vqa\/export\.jsonl$/,
+    handler: async ({ request, db, deps }) => {
+      if (!canApprove(request, deps)) return APPROVE_ERROR();
+      const res = await db.prepare(
+        "SELECT file_id, question, choices, answer, grounding, capability, level, domain, difficulty,"
+        + " model, endpoint, prompt_version, reviewer, reviewed_at"
+        + " FROM vqa_candidates WHERE status IN ('approved','edited') ORDER BY id",
+      ).all();
+      const lines = res.results.map((r) => JSON.stringify(r)).join("\n");
+      return new Response(lines + (lines ? "\n" : ""), {
+        headers: { "content-type": "application/x-ndjson; charset=utf-8" },
+      });
+    },
+  },
 ];
 
 export * from "./actor";
@@ -1436,7 +1616,7 @@ export interface QuestionsApi {
 }
 
 export function createQuestionsApi(deps: QuestionsApiDeps): QuestionsApi {
-  const prefixRe = /^\/api\/(questions|evaluations|insights|excluded|graphs|selections|changes|runs|blind)/;
+  const prefixRe = /^\/api\/(questions|evaluations|insights|excluded|graphs|selections|changes|runs|blind|vqa)/;
   return {
     prefixRe,
     async handle(request: Request, url: URL): Promise<Response | null> {

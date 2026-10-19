@@ -27,9 +27,12 @@ export function ThumbImage({ fileId, w = 400, alt, eager = false, className = ""
   const [failed, setFailed] = useState(false);
   const [loaded, setLoaded] = useState(false);
 
-  const src = kind === "o"
-    ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w${w}`
-    : `https://lh3.googleusercontent.com/d/${fileId}=w${w}`;
+  const base = (import.meta.env.VITE_IMG_BASE as string | undefined) ?? "";
+  const src = base
+    ? `${base.replace(/\/$/, "")}/${fileId}?w=${w}`
+    : kind === "o"
+      ? `https://drive.google.com/thumbnail?id=${fileId}&sz=w${w}`
+      : `https://lh3.googleusercontent.com/d/${fileId}=w${w}`;
 
   if (failed) {
     return (

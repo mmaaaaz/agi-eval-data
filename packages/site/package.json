@@ -14,6 +14,7 @@
     "./questions": "./src/questions.ts",
     "./authoring": "./src/authoring.tsx",
     "./review": "./src/review.tsx",
+  "./vqaReview": "./src/vqaReview.tsx",
     "./triage": "./src/triage.tsx",
     "./select": "./src/SelectGrid.tsx",
     "./nominated": "./src/NominationBoard.tsx",

@@ -21,6 +21,7 @@ export default defineConfig({
       "@site/questions": path.resolve(__dirname, "../../packages/site/src/questions.ts"),
       "@site/authoring": path.resolve(__dirname, "../../packages/site/src/authoring.tsx"),
       "@site/review": path.resolve(__dirname, "../../packages/site/src/review.tsx"),
+      "@site/vqaReview": path.resolve(__dirname, "../../packages/site/src/vqaReview.tsx"),
       "@site/triage": path.resolve(__dirname, "../../packages/site/src/triage.tsx"),
       "@site/select": path.resolve(__dirname, "../../packages/site/src/SelectGrid.tsx"),
       "@site/nominated": path.resolve(__dirname, "../../packages/site/src/NominationBoard.tsx"),

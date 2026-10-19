@@ -102,6 +102,7 @@ def main() -> int:
     args = ap.parse_args()
 
     batch_dir = RUNS / args.batch
+    batch_dir.mkdir(parents=True, exist_ok=True)
     images = Path(args.images) if args.images else batch_dir / "images.jsonl"
     rows = batch_dir / "candidates.jsonl"
     dlog = batch_dir / "driver.log"
