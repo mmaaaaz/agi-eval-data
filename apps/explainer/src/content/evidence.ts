@@ -84,7 +84,9 @@ export const EVIDENCE: ImageEvidence[] = SAMPLES.filter((s) => qidsByFile.has(s.
       parseFail: qItems.filter((it) => it.verdict === "parse_fail").length,
       abstained: qItems.filter((it) => it.verdict === "abstained").length,
     };
-    if (scores[run.id].correct < scores[run.id].n) anyMiss = true;
+    // The blind run abstains on everything by design; it must not count as a
+    // "miss" for the filter, or every photograph would match.
+    if (run.id !== "blind" && scores[run.id].correct < scores[run.id].n) anyMiss = true;
   }
   return {
     id: s.id,

@@ -145,6 +145,7 @@ describe("content invariants", () => {
       expect(summed).toBe(r.correct);
     }
     expect(EVIDENCE.filter((e) => e.anyMiss).length).toBeGreaterThan(0);
+    expect(EVIDENCE.filter((e) => e.anyMiss).length).toBeLessThan(EVIDENCE.length);
   });
 
   it("projects costs from the panel's own prices, with the arithmetic shown", () => {
