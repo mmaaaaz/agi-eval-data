@@ -372,6 +372,7 @@ def main() -> int:
     ap.add_argument("--images", required=True, help="JSONL rows: {file_id, name}")
     ap.add_argument("--batch", required=True, help="batch name; output goes to runs/generation/<batch>/")
     ap.add_argument("--model", default="")
+    ap.add_argument("--endpoint", default="", help="label recorded on every row, e.g. the lane name")
     ap.add_argument("--provider", default="")
     ap.add_argument("--transport", choices=["auto", "api", "cli"], default="auto",
                     help="api = direct OpenAI-compatible HTTP (fast); cli = hermes chat; auto picks api when a key is found")
@@ -453,7 +454,8 @@ def main() -> int:
         fid, name = it["file_id"], it["name"]
         row = {
             "file_id": fid, "name": name,
-            "model": args.model, "provider": args.provider, "prompt_version": PROMPT_VERSION,
+            "model": args.model, "provider": args.provider, "endpoint": args.endpoint or None,
+            "prompt_version": PROMPT_VERSION,
             "transport": transport, "reasoning_effort": args.reasoning_effort or None,
             "requested_candidates": args.candidates,
             "started_at": datetime.now(timezone.utc).isoformat(),

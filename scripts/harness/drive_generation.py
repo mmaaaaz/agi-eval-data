@@ -38,9 +38,9 @@ UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
 
 
-def env_file() -> dict[str, str]:
+def env_file(path: str = "") -> dict[str, str]:
     kv: dict[str, str] = {}
-    p = ROOT / "scripts" / "harness" / "generation.env"
+    p = Path(path) if path else ROOT / "scripts" / "harness" / "generation.env"
     if p.exists():
         for line in p.read_text(encoding="utf-8").splitlines():
             if "=" in line and not line.strip().startswith("#"):
@@ -93,6 +93,8 @@ def main() -> int:
     ap.add_argument("--batch", required=True)
     ap.add_argument("--images", default="")
     ap.add_argument("--model", default="")
+    ap.add_argument("--endpoint", default="", help="lane label, recorded on every row")
+    ap.add_argument("--env-file", default="", help="KEY=VALUE file for this lane (default: generation.env)")
     ap.add_argument("--hours", type=float, default=36)
     ap.add_argument("--gap", type=int, default=300, help="seconds between passes / probes")
     ap.add_argument("--concurrency", type=int, default=8)
@@ -104,7 +106,7 @@ def main() -> int:
     rows = batch_dir / "candidates.jsonl"
     dlog = batch_dir / "driver.log"
 
-    kv = env_file()
+    kv = env_file(args.env_file)
     api_key = kv.get("VQA_API_KEY", "")
     base = kv.get("VQA_API_BASE", "")
     if not args.model:
@@ -141,11 +143,14 @@ def main() -> int:
             sys.executable, "-u", "-m", "scripts.harness.generate_vqa",
             "--batch", args.batch, "--images", str(images),
             "--model", args.model,
+            "--endpoint", args.endpoint or args.batch,
             "--concurrency", str(args.concurrency), "--rpm", str(args.rpm),
             "--retry", "2", "--cooldown-429", "120",
             "--transport", "api", "--reasoning-effort", "low",
             "--raw-mode", "failures", "--spend",
         ]
+        if args.env_file:
+            cmd += ["--api-key-file", args.env_file]
         log(dlog, f"pass {passes} starts (log {plog.name})")
         with plog.open("a", encoding="utf-8") as fh:
             rc = subprocess.call(cmd, cwd=str(ROOT), stdout=fh, stderr=subprocess.STDOUT)

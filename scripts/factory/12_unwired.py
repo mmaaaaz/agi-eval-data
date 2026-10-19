@@ -51,6 +51,9 @@ ALLOWED = {
     "generate_vqa.py": "the drafting runner for the model-generation programme: walks a ledger image list, calls a vision model through the hermes CLI or an OpenAI-compatible endpoint, validates every candidate against the closed taxonomy sets and writes an append-only runs/generation/<batch>/candidates.jsonl; refuses without --spend even for zero-priced models",
     "preview_candidates.py": "read-only review aid: renders a generation batch's candidates.jsonl as one offline HTML contact sheet (image, every candidate, choices, answer, grounding, tags, validation flags) so a human can inspect drafts before the review room exists; it writes nothing except the requested HTML file",
     "drive_generation.py": "the overnight driver for the drafting programme: probes the endpoint, waits out upstream outages, and runs resumable generate_vqa passes until every image in a batch has a parsed row or its hour budget runs out; it writes only driver.log/pass-NN.log beside the batch",
+    "shard_images.py": "splits a batch's remaining images across parallel lanes, skipping images already parsed; run by hand when adding a lane",
+    "merge_batches.py": "merges lane batches into one file keeping the last parsed row per image and its endpoint label; run by hand after lanes finish",
+    "watch_lane.py": "waits for a lane's key file, re-shards and then starts that lane's driver; run by hand when adding a lane",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "

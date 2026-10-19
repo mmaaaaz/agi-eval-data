@@ -122,3 +122,6 @@ runs/generation/
 
 # The generation API key. Never commit this file.
 scripts/harness/generation.env
+
+# Per-lane API keys. Never commit these.
+scripts/harness/providers/*.env

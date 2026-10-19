@@ -34,6 +34,9 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `generate_vqa.py` | Drafting runner: ledger images → vision model (an OpenAI-compatible endpoint configured in the gitignored `scripts/harness/generation.env`, or the `hermes chat` CLI) → strict JSON candidates → validated against the closed sets → append-only `runs/generation/<batch>/candidates.jsonl`; resumable, rpm-paced, shared 429 cooldown, `--spend` required even for zero-priced models |
 | `drive_generation.py` | Overnight driver for a drafting batch: probes the endpoint, waits out upstream 429 outages, runs resumable `generate_vqa` passes and stops when every image has a parsed row or its hour budget runs out; logs `driver.log` + `pass-NN.log` beside the batch |
 | `preview_candidates.py` | Read-only review aid: renders a batch's `candidates.jsonl` as one offline HTML contact sheet (image, every candidate, choices, marked answer, grounding, tags, validation flags); approves nothing, writes only the HTML |
+| `shard_images.py` | Split a batch's remaining images across parallel lanes (one process/endpoint each), skipping anything already parsed so no image is paid for twice |
+| `merge_batches.py` | Merge lane batches into one `merged.jsonl`, last parsed row per image wins, keeping each row's endpoint label for provenance |
+| `watch_lane.py` | Wait for a lane's key file to appear, re-shard so no image is drafted twice, then start that lane's driver; used to add capacity the moment a key is pasted |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |
