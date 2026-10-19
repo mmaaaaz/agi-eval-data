@@ -68,8 +68,12 @@ REQUIRED_GUARDS = {
 def all_workflows() -> list[pathlib.Path]:
     return sorted(WORKFLOW_DIR.glob("*.yml"))
 
-_PATH = re.compile(r"python\s+(?:-m\s+)?([A-Za-z0-9_./-]+\.py)")
-_MODULE = re.compile(r"python\s+-m\s+([A-Za-z0-9_.]+)")
+_PATH = re.compile(r"python3?\s+(?:-m\s+)?([A-Za-z0-9_./-]+\.py)")
+# `python3?` IS NOT COSMETIC. The first form was `python\s+`, which never matched
+# `python3 scripts/db/check_migrations.py` — a step deploy.yml runs on every deploy was
+# unchecked, and a planted typo in it produced no complaint. Caught by moving the plant
+# after the pages job was removed: the new plant was invisible, which exposed the regex.
+_MODULE = re.compile(r"python3?\s+-m\s+([A-Za-z0-9_.]+)")
 
 
 def run_blocks(text: str) -> list[tuple[int, str]]:

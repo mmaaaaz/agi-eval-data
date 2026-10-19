@@ -42,6 +42,7 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `backfill_vqa_room.py` | One-time initialisation of the review room's materialised tables (`vqa_stats`/`vqa_dims`/`vqa_images`) and the `stats_initialised` marker; run after migration 0011, once per day at most because it scans the candidate table |
 | `export_vqa_static.py` | Write the review room's read path as static JSON (one index, one file per page, one search index): Pages serves it from the edge with unlimited requests, so a visit never reads D1; run after a drafting pass and deploy with the site |
 | `sync_vqa_decisions.py` | Pull the decisions D1 holds and publish them as a static snapshot beside the pages, so other visitors read that instead of triggering a query |
+| `deploy_site.sh` | The only safe Pages deploy: exports the snapshot, builds, refuses to deploy if the build has no snapshot, then verifies the live deployment returns JSON rather than the SPA fallback |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |

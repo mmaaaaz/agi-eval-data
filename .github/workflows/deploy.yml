@@ -293,44 +293,20 @@ jobs:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
-  pages:
-    name: deploy pages
-    needs: changes
-    if: needs.changes.outputs.secrets == 'true' && (inputs.force_all == true || needs.changes.outputs.web == 'true')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
+  # DEPLOY PAGES IS DELIBERATELY NOT HERE.
+  #
+  # The site now carries the review room's dataset snapshot (apps/web/public/vqa,
+  # gitignored, ~80 MB of static JSON). A CI checkout does not have it, so a CI
+  # deploy silently published a site whose /vqa/* paths fell back to the SPA shell
+  # while every run reported success — the data read path disappeared and only a
+  # stale edge cache hid it. The snapshot cannot be built on the runner because the
+  # draft is private, by design.
+  #
+  # Pages is therefore deployed from the machine that holds the draft:
+  #     bash scripts/harness/deploy_site.sh
+  # which exports the snapshot, builds, refuses to deploy without it, and verifies
+  # the live deployment returns JSON (not the fallback) before reporting success.
 
-      - uses: oven-sh/setup-bun@v2
-        with:
-          bun-version: latest
-
-      - name: Install (frozen lockfile)
-        run: bun install --frozen-lockfile
-
-      - name: Bake data artifacts (parquet + stats)
-        uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: pip install pyarrow && python scripts/build_data.py
-
-      - name: Build site
-        run: bunx turbo run build --filter=@agi-eval/web
-        env:
-          VITE_REPO: ${{ github.repository }}
-
-      - name: Stamp per-route OG tags
-        run: node scripts/og/gen-route-html.mjs
-
-      - name: Test
-        run: bunx turbo run test
-
-      - name: Deploy pages
-        run: bunx --bun wrangler@4.125.0 pages deploy dist --project-name=agi-eval-data --branch=main --commit-dirty=true
-        working-directory: apps/web
-        env:
-          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
-          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
   metro-relay:
     name: deploy metro relay

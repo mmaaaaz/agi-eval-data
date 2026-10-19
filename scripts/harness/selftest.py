@@ -1868,7 +1868,13 @@ _typo = _ci_text.replace("python scripts/factory/12_unwired.py",
 check("a typo'd script path IS caught", any("does not exist" in x for x in _ci.find_problems(_typo)),
       str(_ci.find_problems(_typo))[:160])
 # and caught in a NON-ci workflow, which is where the false negative was
-_dep_bad = _dep.replace("scripts/build_data.py", "scripts/build_data_TYPO.py")
+# THE PLANT MOVED WHEN THE PAGES JOB LEFT. It used to typo `scripts/build_data.py`,
+# which only the pages job ran; removing that job (the snapshot cannot be built on a
+# runner) made the plant a no-op and this test failed for the RIGHT reason: it was
+# asserting a fault that no longer existed. The relay's migration check is a step
+# that still runs on the runner, and the `python3` prefix makes the match unique.
+_dep_bad = _dep.replace("python3 scripts/db/check_migrations.py",
+                        "python3 scripts/db/check_migrations_TYPO.py")
 check("a fault in deploy.yml IS caught",
       any("does not exist" in x for x in _ci.find_problems(_dep_bad, check_required=False)),
       str(_ci.find_problems(_dep_bad, check_required=False))[:160])
