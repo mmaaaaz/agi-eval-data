@@ -264,7 +264,7 @@ button.chip.on { border-color: var(--accent); color: var(--accent-deep); backgro
 @media (max-width: 720px) { .ms { grid-template-columns: 1fr; gap: 6px; } }
 
 /* ---- cards row on home ---- */
-.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(215px, 1fr)); gap: 16px; margin-top: 26px; }
+.cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-top: 26px; }
 @media (max-width: 860px) { .cards { grid-template-columns: 1fr; } }
 .card { display: block; padding: 18px 20px; background: var(--paper-raise); border: 1px solid var(--rule); border-radius: 6px; color: var(--ink); }
 .card:hover { border-color: var(--rule-strong); text-decoration: none; }
