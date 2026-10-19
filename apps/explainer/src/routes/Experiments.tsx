@@ -1,8 +1,22 @@
+import { useEffect, useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "../content/experiments";
 import type { ExperimentTrack } from "../content/experiments";
 import { RUNS, TYPOGRAPHIC, RUNS_CAVEAT } from "../content/runs";
 import type { Run, RunItem } from "../content/runs";
+import { EVIDENCE, EVIDENCE_RUNS } from "../content/evidence";
+import type { EvidenceQuestion, ImageEvidence, RunCell } from "../content/evidence";
 import { SampleThumb } from "../components/Thumb";
+
+const DOT_CLASS: Record<RunItem["verdict"], string> = {
+  correct: "dot ok",
+  wrong: "dot bad",
+  parse_fail: "dot none",
+  abstained: "dot abs",
+};
+
+const RUN_NAME: Record<string, string> = { deepseek: "DeepSeek", nemotron: "Nemotron", blind: "blind" };
+const RUN_HEAD: Record<string, string> = { deepseek: "DeepSeek", nemotron: "Nemotron", blind: "Blind, no image" };
 
 function Track({ track }: { track: ExperimentTrack }) {
   return (
@@ -10,45 +24,24 @@ function Track({ track }: { track: ExperimentTrack }) {
       <span className="eyebrow">{track.label}</span>
       <h2>{track.title}</h2>
       <p className="prose lead-in">{track.blurb}</p>
-      {track.items.map((it) => (
-        <div className="ws" key={it.lead}>
-          <h3>{it.lead}</h3>
-          <p>
-            <b>What we run.</b> {it.what}
-          </p>
-          <p>
-            <b>Why it matters.</b> {it.why}
-          </p>
-        </div>
-      ))}
+      <div className="track-items">
+        {track.items.map((it) => (
+          <div className="ws" key={it.lead}>
+            <h3>{it.lead}</h3>
+            <p>
+              <b>What we run.</b> {it.what}
+            </p>
+            <p>
+              <b>Why it matters.</b> {it.why}
+            </p>
+          </div>
+        ))}
+      </div>
     </section>
   );
 }
 
-const VERDICT_LABEL: Record<RunItem["verdict"], string> = {
-  correct: "correct",
-  wrong: "wrong choice",
-  parse_fail: "no letter",
-  abstained: "abstained",
-};
-
-function answerCell(it: RunItem): string {
-  if (it.responseText) return it.responseText;
-  if (it.response) return `"${it.response}" does not name a choice`;
-  return "no answer returned";
-}
-
-function ScoreBar({
-  label,
-  correct,
-  n,
-  note,
-}: {
-  label: string;
-  correct: number;
-  n: number;
-  note?: string;
-}) {
+function ScoreBar({ label, correct, n, note }: { label: string; correct: number; n: number; note?: string }) {
   const pct = Math.round((correct / n) * 100);
   return (
     <div className="scorebar">
@@ -64,61 +57,121 @@ function ScoreBar({
   );
 }
 
-function RunBlock({ run }: { run: Run }) {
+function cellText(cell: RunCell): string {
+  if (cell.verdict === "correct") return cell.responseText ?? "correct";
+  if (cell.responseText) return cell.responseText;
+  if (cell.response) return `"${cell.response}"`;
+  return "no answer";
+}
+
+function ImageCard({ image }: { image: ImageEvidence }) {
   return (
-    <div className="runsec">
-      <div className="runhead">
-        <h3>{run.label}</h3>
-        <span className="mono small">{run.modelId}</span>
-      </div>
-      <p className="runmeta">
-        {run.gateway} · temperature {run.temperature} · pixel budget {run.pixelBudget} · latency:
-        mean {run.latency.mean.toLocaleString()} ms, p50 {run.latency.p50.toLocaleString()} ms
-      </p>
-      <table className="itemtable">
-        <thead>
-          <tr>
-            <th aria-label="photograph" />
-            <th>Question</th>
-            <th>Its answer</th>
-            <th>Correct answer</th>
-            <th>Verdict</th>
-            <th>ms</th>
-          </tr>
-        </thead>
-        <tbody>
-          {run.items.map((it) => (
-            <tr key={`${run.id}-${it.qid}`} className={it.verdict === "correct" ? "ok" : "miss"}>
-              <td className="thumb">
-                <SampleThumb
-                  src={`https://lh3.googleusercontent.com/d/${it.fileId}=w128`}
-                  alt={it.sample}
-                />
-              </td>
-              <td>
-                {it.question}
-                <span className="mono small">
-                  {" "}
-                  {it.capability} · {it.level}
+    <details className="imgcard" id={`img-${image.id}`}>
+      <summary>
+        <span className="thumb">
+          <SampleThumb src={image.thumbUrl.replace("=w512", "=w160")} alt={image.name} />
+        </span>
+        <span className="meta">
+          <span className="nm">{image.name}</span>
+          <span className="codes">
+            <span className="chip code">{image.domain}</span>
+            {image.caps.map((c) => (
+              <span key={c} className="chip code">
+                {c}
+              </span>
+            ))}
+            <span className="chip code level">{image.levels.join(" · ")}</span>
+          </span>
+        </span>
+        <span className="strips">
+          {EVIDENCE_RUNS.map((r) => {
+            const sc = image.scores[r.id];
+            return (
+              <span className="strip" key={r.id}>
+                <span className="who">{RUN_NAME[r.id] ?? r.id}</span>
+                <span className="dots">
+                  {image.questions.map((q) => (
+                    <span key={q.qid} className={DOT_CLASS[q.cells[r.id]?.verdict ?? "abstained"]} />
+                  ))}
                 </span>
-              </td>
-              <td>{answerCell(it)}</td>
-              <td>{it.answer}</td>
-              <td>
-                <span className={`vd ${it.verdict}`}>{VERDICT_LABEL[it.verdict]}</span>
-              </td>
-              <td className="num">{it.latencyMs.toLocaleString()}</td>
+                <span className="sc">
+                  {sc.correct}/{sc.n}
+                </span>
+              </span>
+            );
+          })}
+          <span className="open-hint">open</span>
+        </span>
+      </summary>
+      <div className="imgdetail">
+        <table className="imgtable">
+          <thead>
+            <tr>
+              <th>Question</th>
+              <th>Ground truth</th>
+              {EVIDENCE_RUNS.map((r) => (
+                <th key={r.id}>{RUN_HEAD[r.id] ?? r.id}</th>
+              ))}
             </tr>
-          ))}
-        </tbody>
-      </table>
+          </thead>
+          <tbody>
+            {image.questions.map((q: EvidenceQuestion) => (
+              <tr key={q.qid}>
+                <td>
+                  {q.question}
+                  <span className="mono small">
+                    {" "}
+                    {q.capability} · {q.level}
+                  </span>
+                </td>
+                <td>{q.answer}</td>
+                {EVIDENCE_RUNS.map((r) => {
+                  const cell = q.cells[r.id];
+                  return (
+                    <td key={r.id}>
+                      <span className={DOT_CLASS[cell.verdict]} /> <span className="ans">{cellText(cell)}</span>
+                      <span className="mono small"> {cell.latencyMs ? `${cell.latencyMs} ms` : ""}</span>
+                    </td>
+                  );
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+        <div className="imglinks">
+          <a href={image.sourceUrl}>Open the photograph in the dataset gallery →</a>
+          <Link to="/samples">See it among the samples →</Link>
+        </div>
+      </div>
+    </details>
+  );
+}
+
+function RunHeader({ run }: { run: Run }) {
+  return (
+    <div className="runmeta-line">
+      <span className="mono small">{run.modelId}</span>
+      <span className="dim">
+        {run.gateway} · temperature {run.temperature} · pixel budget {run.pixelBudget} · mean{" "}
+        {run.latency.mean.toLocaleString()} ms · p50 {run.latency.p50.toLocaleString()} ms
+      </span>
     </div>
   );
 }
 
 export function ExperimentsPage() {
-  const blind = RUNS.find((r) => r.id === "blind");
-  const imageRuns = RUNS.filter((r) => r.id !== "blind");
+  const [missOnly, setMissOnly] = useState(false);
+  const withMiss = useMemo(() => EVIDENCE.filter((e) => e.anyMiss).length, []);
+  const shown = useMemo(() => (missOnly ? EVIDENCE.filter((e) => e.anyMiss) : EVIDENCE), [missOnly]);
+
+  // Deep links from the Samples page open the matching photograph's card.
+  useEffect(() => {
+    const id = window.location.hash.slice(1);
+    if (!id) return;
+    const el = document.getElementById(id);
+    if (el instanceof HTMLDetailsElement) el.open = true;
+  }, []);
+
   return (
     <>
       <Track track={BIAS_TRACK} />
@@ -126,17 +179,19 @@ export function ExperimentsPage() {
       <section className="sec-rule">
         <span className="eyebrow">5.3 · Keeping the numbers honest</span>
         <h2>The experiments behind every score</h2>
-        {HONESTY.map((it) => (
-          <div className="ws" key={it.lead}>
-            <h3>{it.lead}</h3>
-            <p>
-              <b>What we run.</b> {it.what}
-            </p>
-            <p>
-              <b>Why it matters.</b> {it.why}
-            </p>
-          </div>
-        ))}
+        <div className="track-items">
+          {HONESTY.map((it) => (
+            <div className="ws" key={it.lead}>
+              <h3>{it.lead}</h3>
+              <p>
+                <b>What we run.</b> {it.what}
+              </p>
+              <p>
+                <b>Why it matters.</b> {it.why}
+              </p>
+            </div>
+          ))}
+        </div>
         <p className="table-note">
           Every frontier run is costed before it begins, and the human baseline protocol is declared
           before anyone starts.
@@ -145,12 +200,12 @@ export function ExperimentsPage() {
 
       <section className="sec-rule">
         <span className="eyebrow">5.4 · First runs</span>
-        <h2>Every item of the first runs, scored</h2>
+        <h2>The runs, image by image</h2>
         <p className="prose lead-in">
           19 October 2026 · 30 hand-drafted questions over the ten sample photographs, through{" "}
-          {RUNS[0]?.gateway}. Each row below is one question: what the model answered, what the
-          correct answer is, and what the harness recorded. This is everything the runs produced,
-          nothing rounded.
+          {RUNS[0]?.gateway}. Each photograph opens into the questions it was asked, with the ground
+          truth and every model's answer side by side. This is everything the runs produced, nothing
+          rounded.
         </p>
 
         <div className="chart">
@@ -170,15 +225,30 @@ export function ExperimentsPage() {
             />
           ))}
         </div>
-        <p className="table-note">
-          Bars show correct answers out of 30. An answer without a usable choice letter counts as a
-          miss. The blind run abstaining on 28 of 30 is that baseline working, not failing.
-        </p>
 
-        {imageRuns.map((r) => (
-          <RunBlock key={r.id} run={r} />
-        ))}
-        {blind ? <RunBlock run={blind} /> : null}
+        <div className="runmeta-stack">
+          {RUNS.map((r) => (
+            <RunHeader key={r.id} run={r} />
+          ))}
+        </div>
+
+        <div className="board-tools">
+          <button type="button" className={missOnly ? "chip on" : "chip"} onClick={() => setMissOnly(false)}>
+            all {EVIDENCE.length} photographs
+          </button>
+          <button type="button" className={missOnly ? "chip on" : "chip"} onClick={() => setMissOnly(true)}>
+            where a model missed · {withMiss}
+          </button>
+          <span className="table-note inline">
+            dots: one per question, green correct, red wrong, ochre no letter, gray abstained
+          </span>
+        </div>
+
+        <div className="board">
+          {shown.map((e) => (
+            <ImageCard key={e.id} image={e} />
+          ))}
+        </div>
 
         <div className="runsec">
           <div className="runhead">

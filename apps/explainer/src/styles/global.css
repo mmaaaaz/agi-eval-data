@@ -311,6 +311,66 @@ button.chip.on { border-color: var(--accent); color: var(--accent-deep); backgro
 .assumptions li { margin: 4px 0; }
 .panel-table td { font-size: 13.5px; }
 .dim { color: var(--ink-soft); }
+
+/* ---- tracks as card grids (efficiency pass) ---- */
+.track-items { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+@media (max-width: 900px) { .track-items { grid-template-columns: 1fr; } }
+.track-items .ws { margin-top: 0; }
+
+/* ---- evidence board: image-first expandable rows ---- */
+.board { margin-top: 18px; border-top: 1px solid var(--rule-strong); }
+.imgcard { border-bottom: 1px solid var(--rule); scroll-margin-top: 18px; }
+.imgcard > summary { display: grid; grid-template-columns: 96px 1fr 300px; gap: 16px; align-items: center; padding: 12px 4px; cursor: pointer; list-style: none; transition: background .12s ease; }
+.imgcard > summary::-webkit-details-marker { display: none; }
+.imgcard > summary:hover { background: var(--paper-raise); }
+.imgcard .thumb img { width: 96px; height: 72px; object-fit: cover; border-radius: 4px; border: 1px solid var(--rule-strong); display: block; }
+.imgcard .nm { font-weight: 600; font-size: 14.5px; display: block; }
+.imgcard .codes { margin: 6px 0 0; }
+.imgcard .meta .chip { margin-right: 4px; }
+.imgcard .strips { display: grid; gap: 4px; }
+.strip { display: grid; grid-template-columns: 74px 1fr 44px; gap: 8px; align-items: center; }
+.strip .who { font-family: var(--mono); font-size: 10.5px; letter-spacing: .04em; color: var(--ink-soft); }
+.strip .dots { display: flex; gap: 3px; }
+.dot { width: 9px; height: 9px; border-radius: 50%; display: inline-block; }
+.dot.ok { background: #2f6b46; }
+.dot.bad { background: var(--accent); }
+.dot.none { background: var(--ochre); }
+.dot.abs { background: #c4c4c4; }
+.strip .sc { font-family: var(--mono); font-size: 11.5px; text-align: right; color: var(--accent-deep); }
+.open-hint { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); text-align: right; }
+.imgcard[open] .open-hint { color: var(--accent); }
+.imgcard[open] .open-hint::after { content: " ▲"; }
+.imgcard:not([open]) .open-hint::after { content: " ▼"; }
+.imgdetail { padding: 6px 4px 18px; }
+.imgtable { width: 100%; border-collapse: collapse; }
+.imgtable th { font-family: var(--mono); font-size: 10.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--ink-soft); text-align: left; padding: 6px; border-bottom: 1px solid var(--rule-strong); }
+.imgtable td { border-top: 1px solid var(--rule); padding: 7px 6px; vertical-align: top; font-size: 13px; }
+.imgtable .ans { color: var(--ink); }
+.imglinks { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 8px; font-family: var(--mono); font-size: 12px; }
+.board-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 18px; }
+.board-tools .table-note.inline { margin: 0 0 0 8px; }
+.runmeta-stack { margin-top: 10px; display: grid; gap: 4px; }
+.runmeta-line { font-size: 12.5px; color: var(--ink-soft); display: flex; gap: 8px; flex-wrap: wrap; }
+.runmeta-line .dim { color: var(--muted); }
+
+/* ---- models panel as tiered cards ---- */
+.tiergroup { margin-top: 30px; }
+.tierhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.tierhead h3 { margin: 0; }
+.tierhead .count { font-family: var(--mono); font-size: 11px; color: var(--accent-deep); border: 1px solid var(--rule-strong); border-radius: 3px; padding: 1px 7px; }
+.mgrid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; margin-top: 12px; }
+.mcard { border: 1px solid var(--rule); border-radius: 6px; background: var(--paper-raise); padding: 14px 16px; }
+.mcard .mname { font-weight: 600; font-size: 15.5px; }
+.mcard .specs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 14px; margin: 12px 0 0; }
+.mcard .specs div { min-width: 0; }
+.mcard dt { font-family: var(--mono); font-size: 10px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); }
+.mcard dd { margin: 2px 0 0; font-size: 13px; color: var(--ink); }
+.chip.ran { color: var(--ochre); border-color: var(--ochre); }
+@media (max-width: 640px) {
+  .imgcard > summary { grid-template-columns: 72px 1fr; }
+  .imgcard .strips { grid-column: 1 / -1; }
+  .mcard .specs { grid-template-columns: 1fr; }
+}
 .card .k { font-family: var(--mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--ochre); }
 .card .t { font-weight: 600; margin-top: 6px; font-size: 16px; }
 .card .d { color: var(--ink-soft); font-size: 14.5px; margin-top: 4px; }

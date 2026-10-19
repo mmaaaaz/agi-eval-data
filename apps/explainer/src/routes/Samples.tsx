@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { SAMPLES } from "../content/samples";
 import { DOMAINS } from "../content/taxonomy";
+import { EVIDENCE } from "../content/evidence";
 import { SampleThumb } from "../components/Thumb";
 
 export function SamplesPage() {
@@ -73,6 +74,11 @@ export function SamplesPage() {
                   </Link>
                 ))}
                 <span className="chip code level">{s.levels.join(" · ")}</span>
+                {EVIDENCE.some((e) => e.id === s.id) ? (
+                  <Link className="chip code ran" to="/experiments" hash={`img-${s.id}`}>
+                    ran in the demo
+                  </Link>
+                ) : null}
               </div>
               <ul className="examples">
                 {s.questions.map((q) => (

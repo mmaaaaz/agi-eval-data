@@ -1,7 +1,36 @@
 import { Link } from "@tanstack/react-router";
 import { panelWithStatus } from "../content/models";
+import type { PanelModel } from "../content/models";
 import { FACTS } from "../content/facts";
 import { runForModel } from "../content/runs";
+
+const TIERS = [
+  {
+    id: "open-weight",
+    label: "Open weight, on the group's cluster",
+    note: "$0 of cash; vLLM serves them, every run is repeatable",
+  },
+  {
+    id: "cheap-closed",
+    label: "Cheap closed, through an API",
+    note: "priced per token; swept only against costed budgets",
+  },
+  {
+    id: "frontier-closed",
+    label: "Frontier closed, through an API",
+    note: "the comparison tier; every run is costed before it begins",
+  },
+];
+
+const fmtContext = (m: PanelModel) =>
+  m.context_length
+    ? `${(m.context_length / 1024).toLocaleString(undefined, { maximumFractionDigits: 0 })}k tokens`
+    : "not listed";
+
+const fmtPrice = (m: PanelModel) =>
+  m.cost_tier === "free"
+    ? "cluster, $0"
+    : `$${m.pricing_per_million.prompt} in · $${m.pricing_per_million.completion} out, per M`;
 
 export function ModelsPage() {
   return (
@@ -21,60 +50,71 @@ export function ModelsPage() {
           was assembled in October 2026.
         </p>
       </div>
-      <table className="panel-table">
-        <thead>
-          <tr>
-            <th>Model</th>
-            <th>Released</th>
-            <th>Tier</th>
-            <th>Context</th>
-            <th>Priced, per M tokens</th>
-            <th>Runs on</th>
-            <th>Demo run</th>
-            <th>Status</th>
-          </tr>
-        </thead>
-        <tbody>
-          {panelWithStatus.map((m) => {
-            const run = runForModel(m.id);
-            return (
-              <tr key={m.id}>
-                <td>
-                  {m.name}
-                  {m.hugging_face_id ? (
-                    <span className="mono small"> {m.hugging_face_id.split("/").pop()}</span>
-                  ) : null}
-                </td>
-                <td className="num">{m.created}</td>
-                <td>{m.tier}</td>
-                <td className="num">
-                  {m.context_length
-                    ? `${(m.context_length / 1024).toLocaleString(undefined, { maximumFractionDigits: 0 })}k`
-                    : "—"}
-                </td>
-                <td className="num">
-                  ${m.pricing_per_million.prompt} in · ${m.pricing_per_million.completion} out
-                </td>
-                <td>{m.runs_on}</td>
-                <td>
-                  {run ? (
-                    <Link className="chip" to="/experiments">
-                      {run.correct} / {run.n}
-                    </Link>
-                  ) : (
-                    <span className="dim">not yet</span>
-                  )}
-                </td>
-                <td>{m.status}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
+
+      {TIERS.map((t) => {
+        const models = panelWithStatus.filter((m) => m.tier === t.id);
+        if (models.length === 0) return null;
+        return (
+          <section className="tiergroup" key={t.id}>
+            <div className="tierhead">
+              <h3>{t.label}</h3>
+              <span className="count">{models.length}</span>
+              <span className="table-note inline">{t.note}</span>
+            </div>
+            <div className="mgrid">
+              {models.map((m) => {
+                const run = runForModel(m.id);
+                return (
+                  <article className="mcard" key={m.id}>
+                    <div className="mname">{m.name}</div>
+                    <div className="mono small dim">{m.hugging_face_id ?? m.id}</div>
+                    <dl className="specs">
+                      <div>
+                        <dt>Released</dt>
+                        <dd>{m.created}</dd>
+                      </div>
+                      <div>
+                        <dt>Context</dt>
+                        <dd>{fmtContext(m)}</dd>
+                      </div>
+                      <div>
+                        <dt>Price /M</dt>
+                        <dd>{fmtPrice(m)}</dd>
+                      </div>
+                      <div>
+                        <dt>Runs on</dt>
+                        <dd>{m.runs_on}</dd>
+                      </div>
+                      <div>
+                        <dt>Demo run</dt>
+                        <dd>
+                          {run ? (
+                            <Link to="/experiments">
+                              {run.correct} / {run.n}
+                            </Link>
+                          ) : (
+                            <span className="dim">not yet</span>
+                          )}
+                        </dd>
+                      </div>
+                      <div>
+                        <dt>Status</dt>
+                        <dd>{m.status}</dd>
+                      </div>
+                    </dl>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        );
+      })}
+
       <p className="table-note">
-        Status values: planned means the run has not started yet; updated whenever a run is logged.
-        A demo run figure links to the item-by-item evidence on the Experiments page. Projected spend
-        for a full run of each model is on the <Link to="/costs">Costs page</Link>.
+        Status values: planned means the run has not started yet; updated whenever a run is logged. A
+        demo run figure links to the image-by-image evidence on the <Link to="/experiments">Experiments
+        page</Link>; projected spend for a full run of each model is on the <Link to="/costs">Costs
+        page</Link>.
       </p>
     </section>
   );

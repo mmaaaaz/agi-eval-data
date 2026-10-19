@@ -45,6 +45,12 @@ export function QuestionsPage() {
           Every item carries codes from a closed taxonomy so results can be reported per capability,
           level and domain. The full list lives on the <Link to="/taxonomy">Taxonomy</Link> page.
         </p>
+        <p className="table-note">
+          The first demonstration runs put 30 drafted questions through three models. See them image by
+          image, with the ground truth and every model's answer side by side, on the{" "}
+          <Link to="/experiments">Experiments</Link> page; the photographs they were asked about are on
+          the <Link to="/samples">Samples</Link> page.
+        </p>
       </section>
     </>
   );

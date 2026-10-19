@@ -11,6 +11,7 @@ import { BIAS_AXES, CAPABILITY_GROUPS, DOMAINS, LEVELS, SENSITIVITY } from "./ta
 import { ADVERSARIAL_TRACK, BIAS_TRACK, HONESTY } from "./experiments";
 import { FIRST_RUNS } from "./firstRuns";
 import { RUNS, TYPOGRAPHIC, runForModel } from "./runs";
+import { EVIDENCE } from "./evidence";
 import { COST_ASSUMPTIONS, COST_ROWS, PLAN, SCENARIOS, fullRunUsd } from "./costs";
 
 const allStrings = (v: unknown): string[] => {
@@ -131,6 +132,19 @@ describe("content invariants", () => {
     expect(TYPOGRAPHIC.groups.length).toBe(5);
     expect(TYPOGRAPHIC.groups[0].id).toBe("control");
     expect(runForModel("deepseek/deepseek-v4.1-flash-1017")?.correct).toBe(28);
+  });
+
+  it("joins the traces into an image-first board that sums back to the run totals", () => {
+    expect(EVIDENCE.length).toBe(10);
+    for (const e of EVIDENCE) {
+      expect(e.questions.length).toBe(3);
+      expect(e.scores["blind"]?.n).toBe(3);
+    }
+    for (const r of RUNS) {
+      const summed = EVIDENCE.reduce((n, e) => n + (e.scores[r.id]?.correct ?? 0), 0);
+      expect(summed).toBe(r.correct);
+    }
+    expect(EVIDENCE.filter((e) => e.anyMiss).length).toBeGreaterThan(0);
   });
 
   it("projects costs from the panel's own prices, with the arithmetic shown", () => {

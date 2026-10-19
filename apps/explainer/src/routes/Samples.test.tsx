@@ -18,6 +18,7 @@ describe("samples page", () => {
     );
     expect(codes.length).toBeGreaterThanOrEqual(30);
     expect(codes.some((t) => /^L\d/.test(t))).toBe(true);
+    expect(container.querySelectorAll("article.sample .chip.ran").length).toBe(10);
     expect(container.querySelector('a[href*="/gallery?q="]')).not.toBeNull();
   });
 });
