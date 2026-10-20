@@ -54,6 +54,8 @@ def main() -> int:
     lvls: Counter[str] = Counter()
     doms: Counter[str] = Counter()
     matrix: dict[str, Counter[str]] = {}
+    axes: Counter[str] = Counter()
+    abstentions = 0
     total = 0
     trimmed = 0
 
@@ -84,6 +86,10 @@ def main() -> int:
                 "model": c.get("model") or r.get("model", ""),
                 "endpoint": c.get("endpoint") or r.get("endpoint") or "",
                 "prompt_version": c.get("prompt_version") or r.get("prompt_version", ""),
+                "answer_type": c.get("answer_type", ""),
+                "relevance": c.get("relevance", ""),
+                "bias_axis": c.get("bias_axis", ""),
+                "abstention": bool(c.get("abstention")),
             }
             images.setdefault(fid, []).append(item)
             search.append({"id": cid, "f": fid, "q": item["question"],
@@ -92,6 +98,10 @@ def main() -> int:
             lvls[item["level"]] += 1
             doms[item["domain"]] += 1
             matrix.setdefault(item["capability"], Counter())[item["level"]] += 1
+            if item["bias_axis"]:
+                axes[item["bias_axis"]] += 1
+            if item["abstention"]:
+                abstentions += 1
             total += 1
 
     out = pathlib.Path(args.out)
@@ -117,6 +127,8 @@ def main() -> int:
                 "f": f, "p": n,
                 "d": cs[0]["domain"], "c": sorted({x["capability"] for x in cs}),
                 "l": sorted({x["level"] for x in cs}), "n": len(cs),
+                "b": 1 if any(x.get("bias_axis") for x in cs) else 0,
+                "a": 1 if any(x.get("abstention") for x in cs) else 0,
             })
 
     index = {
@@ -129,6 +141,8 @@ def main() -> int:
         "byCapability": dict(caps.most_common()),
         "byLevel": dict(sorted(lvls.items())),
         "byDomain": dict(doms.most_common()),
+        "byBiasAxis": dict(sorted(axes.items())),
+        "abstentions": abstentions,
         "trimmedOverFive": trimmed,
     }
     # Pages refuses files over 25 MiB. The question index is sharded at 60k rows

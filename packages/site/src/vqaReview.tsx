@@ -27,14 +27,16 @@ interface Cand {
   id: string; question: string; choices: string[]; answer: string; grounding: string;
   capability: string; level: string; domain: string; difficulty: string;
   model: string; endpoint: string; prompt_version: string;
+  answer_type?: string; relevance?: string; bias_axis?: string; abstention?: boolean;
 }
 interface PageData { page: number; images: { file_id: string; candidates: Cand[] }[] }
 interface PageMeta { p: number; file: string; images: number; first: string; last: string }
 interface Index {
   generated_at: string; batch: string; images: number; candidates: number; pages: PageMeta[]; searchParts?: number;
   byCapability: Record<string, number>; byLevel: Record<string, number>; byDomain: Record<string, number>;
+  byBiasAxis?: Record<string, number>; abstentions?: number;
 }
-interface ImgRow { f: string; p: number; d: string; c: string[]; l: string[]; n: number }
+interface ImgRow { f: string; p: number; d: string; c: string[]; l: string[]; n: number; b?: number; a?: number }
 interface Decision { id: string; verdict: "approve" | "edit" | "reject"; reason: string; reviewer: string }
 interface Hit { id: string; f: string; q: string; c: string; l: string; d: string }
 
@@ -83,6 +85,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   const [capability, setCapability] = useState("");
   const [level, setLevel] = useState("");
   const [minN, setMinN] = useState(0);
+  const [kind, setKind] = useState<"all" | "bias" | "abstain">("all");
   const [group, setGroup] = useState<"none" | "domain" | "level">("domain");
 
   const [selected, setSelected] = useState<ImgRow | null>(null);
@@ -148,9 +151,10 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
       && (!capability || r.c.includes(capability))
       && (!level || r.l.includes(level))
       && r.n >= minN
+      && (kind === "all" || (kind === "bias" ? r.b === 1 : r.a === 1))
       && (!searchMatches || searchMatches.has(r.f)),
     );
-  }, [rows, domain, capability, level, minN, searchMatches]);
+  }, [rows, domain, capability, level, minN, searchMatches, kind]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -302,6 +306,8 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
             <Chip k="approved" v={counts.approved} />
             <Chip k="edited" v={counts.edited} />
             <Chip k="rejected" v={counts.rejected} />
+            {index?.abstentions ? <Chip k="abstention" v={index.abstentions} /> : null}
+            {index?.byBiasAxis ? <Chip k="bias" v={Object.values(index.byBiasAxis).reduce((a, b) => a + b, 0)} /> : null}
             <Chip k="snapshot" v={index.generated_at.slice(0, 16).replace("T", " ")} />
           </div>
         )}
@@ -385,6 +391,12 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
         <select value={minN} onChange={(e) => setMinN(Number(e.target.value))}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
           <option value={0}>any count</option><option value={3}>≥ 3 questions</option><option value={5}>5 questions</option>
+        </select>
+        <select value={kind} onChange={(e) => setKind(e.target.value as "all" | "bias" | "abstain")}
+          className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
+          <option value="all">every item</option>
+          <option value="bias">has a bias probe</option>
+          <option value="abstain">has an abstention item</option>
         </select>
         <select value={group} onChange={(e) => setGroup(e.target.value as "none" | "domain" | "level")}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
@@ -487,6 +499,8 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                     <div className="mb-2 flex flex-wrap items-center gap-2">
                       <span className="rounded-full border border-[#262626] px-2 py-0.5 font-mono text-[9px] text-[#a1a1a1]">{st}</span>
                       <Chip k="cap" v={c.capability} /><Chip k="level" v={c.level} /><Chip k="diff" v={c.difficulty} />
+                      {c.bias_axis ? <Chip k="axis" v={c.bias_axis} /> : null}
+                      {c.abstention ? <Chip k="abstain" v="cannot determine" /> : null}
                     </div>
                     {editingThis ? (
                       <div className="space-y-2">
