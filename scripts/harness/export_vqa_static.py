@@ -81,9 +81,9 @@ def main() -> int:
                 "level": c.get("level", ""),
                 "domain": c.get("domain", ""),
                 "difficulty": c.get("difficulty", ""),
-                "model": r.get("model", ""),
-                "endpoint": r.get("endpoint") or "",
-                "prompt_version": r.get("prompt_version", ""),
+                "model": c.get("model") or r.get("model", ""),
+                "endpoint": c.get("endpoint") or r.get("endpoint") or "",
+                "prompt_version": c.get("prompt_version") or r.get("prompt_version", ""),
             }
             images.setdefault(fid, []).append(item)
             search.append({"id": cid, "f": fid, "q": item["question"],
