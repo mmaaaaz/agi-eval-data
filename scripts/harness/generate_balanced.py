@@ -360,8 +360,41 @@ def main() -> int:
     with ThreadPoolExecutor(max_workers=args.concurrency) as ex:
         list(ex.map(work, items))
 
-    # ---- the run's own report: composition, not just success ----
-    rows = [json.loads(l) for l in rows_path.read_text(encoding="utf-8").splitlines() if l.strip()]
+    # ---- read back, TOLERATING a partial line ----
+    # A killed process can leave half a JSON object behind, and two workers sharing
+    # this file while a restart overlaps can interleave one. The first version read
+    # every line as JSON and would have crashed at the end of a 50k run for one bad
+    # byte. Bad lines are dropped and the image is simply redrafted.
+    rows = []
+    for line in rows_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            continue
+
+    # ---- compact: one row per image, the best one ----
+    # Duplicates exist because an interrupted run's images are redrafted on resume.
+    def score(r: dict) -> tuple:
+        good = [c for c in r.get("candidates") or [] if c.get("_ok")]
+        has_diff = all(c.get("difficulty") in ("easy", "medium", "hard") for c in good) and bool(good)
+        return (len(good) == 5, has_diff, len(good), r.get("wall_ms", 0))
+
+    best: dict[str, dict] = {}
+    for r in rows:
+        fid = r.get("file_id", "")
+        if not fid:
+            continue
+        if fid not in best or score(r) > score(best[fid]):
+            best[fid] = r
+    rows = list(best.values())
+    tmp_rows = rows_path.with_suffix(".jsonl.compact")
+    with tmp_rows.open("w", encoding="utf-8") as f:
+        for r in rows:
+            f.write(json.dumps(r, ensure_ascii=False) + "\n")
+    tmp_rows.replace(rows_path)
+
     by_level: dict[str, int] = {}
     by_cap: dict[str, int] = {}
     by_difficulty: dict[str, int] = {}

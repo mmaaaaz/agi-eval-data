@@ -26,7 +26,7 @@ export interface VqaReviewSite {
 interface Cand {
   id: string; question: string; choices: string[]; answer: string; grounding: string;
   capability: string; level: string; domain: string; difficulty: string;
-  model: string; endpoint: string; prompt_version: string;
+  prompt_version: string;
   answer_type?: string; relevance?: string; bias_axis?: string; abstention?: boolean;
 }
 interface PageData { page: number; images: { file_id: string; candidates: Cand[] }[] }
@@ -155,6 +155,20 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
       && (!searchMatches || searchMatches.has(r.f)),
     );
   }, [rows, domain, capability, level, minN, searchMatches, kind]);
+
+  // The modal is a reading surface: Escape closes it and the grid behind it
+  // stops scrolling, so a reviewer's wheel never moves the page under the photo.
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setSelected(null); };
+    window.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      window.removeEventListener("keydown", onKey);
+      document.body.style.overflow = prev;
+    };
+  }, [selected]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
@@ -467,40 +481,42 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
         {!rows && <p className="p-10 text-center font-mono text-xs text-[#666]">loading the index…</p>}
       </div>
 
-      {/* DETAIL DRAWER */}
+      {/* FULL-SCREEN REVIEW MODAL: the photograph large beside every question */}
       {selected && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/60" onClick={() => setSelected(null)}>
-          <div className="h-full w-full max-w-[620px] overflow-y-auto border-l border-[#262626] bg-[#0a0a0a] p-5"
+        <div className="fixed inset-0 z-50 bg-black/85 p-2 md:p-5" onClick={() => setSelected(null)}>
+          <div className="mx-auto flex h-full w-full max-w-[1600px] flex-col overflow-hidden rounded-xl border border-[#262626] bg-[#0a0a0a]"
             onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-start justify-between gap-3">
-              <div>
-                <div className="font-mono text-[9px] uppercase tracking-wider text-[#666]">image</div>
-                <div className="break-all font-mono text-[10px] text-[#a1a1a1]">{selected.f}</div>
-              </div>
-              <button onClick={() => setSelected(null)} className="rounded border border-[#262626] px-2 py-1 text-[11px] text-[#a1a1a1]">close</button>
-            </div>
-            <div className="mt-3 overflow-hidden rounded-lg border border-[#262626]">
-              <ThumbImage fileId={selected.f} w={1600} alt="review image" fit="contain" />
-            </div>
-            <div className="mt-3 flex flex-wrap gap-1.5">
+            <div className="flex flex-wrap items-center gap-2 border-b border-[#262626] px-4 py-2">
+              <span className="font-mono text-[9px] uppercase tracking-wider text-[#666]">image</span>
+              <span className="break-all font-mono text-[10px] text-[#a1a1a1]">{selected.f}</span>
               <Chip k="domain" v={selected.d} />
               {selected.l.map((l) => <Chip key={l} k="level" v={l} />)}
               {selected.c.map((c) => <Chip key={c} k="cap" v={c} />)}
               <Chip k="questions" v={selected.n} />
+              <button onClick={() => setSelected(null)}
+                className="ml-auto rounded border border-[#262626] px-3 py-1 text-[11px] text-[#a1a1a1] hover:border-[#404040]">close ✕</button>
             </div>
-
-            <div className="mt-4 space-y-3">
+            <div className="grid min-h-0 flex-1 md:grid-cols-[minmax(0,1fr)_minmax(460px,620px)]">
+              <div className="flex min-h-0 items-center justify-center overflow-hidden bg-black p-2 md:p-4">
+                <ThumbImage fileId={selected.f} w={1600} alt="review image" fit="contain"
+                  className="h-full w-full object-contain" />
+              </div>
+              <div className="min-h-0 overflow-y-auto border-t border-[#262626] p-3 md:border-l md:border-t-0">
+                {/* Five items read in one column; a ten-item image (the planned
+                    next count) pairs them so its list does not double in height. */}
+                <div className={openCands.length > 6 ? "grid grid-cols-1 gap-2 md:grid-cols-2" : "space-y-2"}>
               {openCands.length === 0 && <p className="font-mono text-[11px] text-[#666]">loading questions…</p>}
-              {openCands.map((c) => {
+              {openCands.map((c, qi) => {
                 const st = statusOf(c.id);
                 const editingThis = editing === c.id;
                 return (
-                  <div key={c.id} className="rounded-lg border border-[#262626] bg-[#0d0d0d] p-4">
-                    <div className="mb-2 flex flex-wrap items-center gap-2">
-                      <span className="rounded-full border border-[#262626] px-2 py-0.5 font-mono text-[9px] text-[#a1a1a1]">{st}</span>
-                      <Chip k="cap" v={c.capability} /><Chip k="level" v={c.level} /><Chip k="diff" v={c.difficulty} />
-                      {c.bias_axis ? <Chip k="axis" v={c.bias_axis} /> : null}
-                      {c.abstention ? <Chip k="abstain" v="cannot determine" /> : null}
+                  <div key={c.id} className="rounded-lg border border-[#262626] bg-[#0d0d0d] px-2.5 py-2">
+                    <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[9px] text-[#8a8a8a]">
+                      <span className="rounded bg-[#141414] px-1.5 py-0.5 text-[#ededed]">Q{qi + 1}</span>
+                      <span>{c.capability} · {c.level} · {c.difficulty}</span>
+                      {c.bias_axis ? <span className="text-[#60a5fa]">bias {c.bias_axis}</span> : null}
+                      {c.abstention ? <span className="text-[#60a5fa]">abstention</span> : null}
+                      <span className="ml-auto">{st}</span>
                     </div>
                     {editingThis ? (
                       <div className="space-y-2">
@@ -524,32 +540,33 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                       </div>
                     ) : (
                       <>
-                        <div className="text-[14px] font-medium text-[#ededed]">{c.question}</div>
-                        <ol className="mt-2 space-y-1 text-[13px]">
+                        <div className="text-[13px] font-medium leading-snug text-[#ededed]">{c.question}</div>
+                        <div className="mt-1 text-[12px] leading-5 text-[#a1a1a1]">
                           {c.choices.map((ch, i) => (
-                            <li key={i} className={ch === c.answer ? "font-semibold text-[#4ade80]" : "text-[#a1a1a1]"}>
-                              {String.fromCharCode(65 + i)}. {ch}{ch === c.answer ? "  ← answer" : ""}
-                            </li>
+                            <span key={i} className={ch === c.answer ? "font-semibold text-[#4ade80]" : ""}>
+                              {String.fromCharCode(65 + i)}. {ch}{i < c.choices.length - 1 ? "  ·  " : ""}
+                            </span>
                           ))}
-                        </ol>
-                        {c.grounding && <div className="mt-2 text-[12px] italic text-[#8a8a8a]">{c.grounding}</div>}
-                        <div className="mt-2 font-mono text-[9px] text-[#5f5f5f]">{c.model} · {c.prompt_version}</div>
+                        </div>
+                        {c.grounding && (
+                          <div className="mt-0.5 line-clamp-1 text-[10.5px] italic leading-4 text-[#7a7a7a]">{c.grounding}</div>
+                        )}
                         {rejectFor === c.id ? (
-                          <div className="mt-3 flex gap-2">
+                          <div className="mt-2 flex gap-1.5">
                             <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="why reject?"
-                              className="flex-1 rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]" />
+                              className="flex-1 rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1 text-[11px] text-[#ededed]" />
                             <button disabled={busy || !reason.trim()} onClick={() => decide(c, "reject", undefined, reason.trim())}
-                              className="rounded bg-[#b3261e] px-3 py-1.5 text-[12px] text-white disabled:opacity-50">Reject</button>
-                            <button onClick={() => setRejectFor(null)} className="rounded border border-[#262626] px-3 py-1.5 text-[12px] text-[#a1a1a1]">Cancel</button>
+                              className="rounded bg-[#b3261e] px-2 py-1 text-[11px] text-white disabled:opacity-50">Reject</button>
+                            <button onClick={() => setRejectFor(null)} className="rounded border border-[#262626] px-2 py-1 text-[11px] text-[#a1a1a1]">Cancel</button>
                           </div>
                         ) : (
-                          <div className="mt-3 flex flex-wrap gap-2">
+                          <div className="mt-1.5 flex flex-wrap gap-1.5">
                             <button disabled={busy || st === "approve"} onClick={() => decide(c, "approve")}
-                              className="rounded bg-[#14532d] px-3 py-1.5 text-[12px] font-medium text-[#4ade80] disabled:opacity-40">Approve</button>
+                              className="rounded bg-[#14532d] px-2.5 py-1 text-[11px] font-medium text-[#4ade80] disabled:opacity-40">Approve</button>
                             <button disabled={busy} onClick={() => startEdit(c)}
-                              className="rounded border border-[#262626] px-3 py-1.5 text-[12px] text-[#ededed]">Edit</button>
+                              className="rounded border border-[#262626] px-2.5 py-1 text-[11px] text-[#ededed]">Edit</button>
                             <button disabled={busy || st === "reject"} onClick={() => { setRejectFor(c.id); setReason(""); }}
-                              className="rounded border border-[#4c1d1d] px-3 py-1.5 text-[12px] text-[#f87171] disabled:opacity-40">Reject</button>
+                              className="rounded border border-[#4c1d1d] px-2.5 py-1 text-[11px] text-[#f87171] disabled:opacity-40">Reject</button>
                           </div>
                         )}
                       </>
@@ -557,6 +574,8 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                   </div>
                 );
               })}
+                </div>
+              </div>
             </div>
           </div>
         </div>
