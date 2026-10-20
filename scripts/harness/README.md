@@ -44,7 +44,9 @@ cache, the trace file — is local and free. **The spend rule is the owner's, an
 | `sync_vqa_decisions.py` | Pull the decisions D1 holds and publish them as a static snapshot beside the pages, so other visitors read that instead of triggering a query |
 | `deploy_site.sh` | The only safe Pages deploy: exports the snapshot, builds, refuses to deploy if the build has no snapshot, then verifies the live deployment returns JSON rather than the SPA fallback |
 | `top_up_vqa.py` | Repair a batch that came back short: for each image under five valid questions, ask for exactly the missing number with the accepted questions shown, merge without overwriting, and report what is still short |
-| `generate_balanced.py` | Composition-balanced drafting: five enforced slots per image (L1, L2, L3, L4/L5, rotating bias probe / abstention / extra L2), because free-form prompting produced 86% L1 and no abstention items |
+| `generate_balanced.py` | v4 composition-balanced drafting: five enforced slots per image (L1, L2, L3, L4/L5, rotating bias probe / abstention / extra L2). Superseded by `generate_v5.py`; kept because its rows are still an archive |
+| `taxonomy_v5.py` | **the v5 contract**: five categories, their closed subcategory sets, applicability vocabulary, and `check_image()` — two hard items per applicable category, exactly. Imported by the generator and the export; `--selftest` proves a short / easy / bad-answer / identity record is refused |
+| `generate_v5.py` | v5 drafting: one call per image returns the applicability decision (with evidence) and two hard items for every applicable category; no `easy` item outside the PERC control rung |
 | `sweep.py` | CLI shared by the two runners |
 | `run_open.py` | CLI: sweep an open-weight model on your own GPU |
 | `run_closed.py` | CLI: sweep a closed model on a capped subsample (the paid line) |

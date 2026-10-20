@@ -47,7 +47,23 @@ def main() -> int:
     args = ap.parse_args()
 
     src = RUNS / args.batch / "candidates.jsonl"
-    rows = [json.loads(l) for l in src.read_text(encoding="utf-8").splitlines() if l.strip()]
+    rows = []
+    for line in src.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        try:
+            rows.append(json.loads(line))
+        except json.JSONDecodeError:
+            # A live run may be mid-append; a torn last line is not a batch defect.
+            continue
+    # A live batch can hold two rows for one image (a retry landed after a success).
+    # The last row is the freshest; the end-of-run compaction keeps the best, but an
+    # export must not double an image's counts in the meantime.
+    latest: dict[str, dict] = {}
+    for r in rows:
+        if r.get("file_id"):
+            latest[r["file_id"]] = r
+    rows = list(latest.values())
     images: dict[str, list[dict]] = {}
     search: list[dict] = []
     caps: Counter[str] = Counter()
@@ -58,35 +74,69 @@ def main() -> int:
     abstentions = 0
     total = 0
     trimmed = 0
+    cats: Counter[str] = Counter()
+    subs: Counter[str] = Counter()
+    taxonomy_versions: Counter[str] = Counter()
+
+    # v5 rows do not carry a scene domain (the five categories are the taxonomy);
+    # the v2 draft of the same corpus does. Reuse it by file_id rather than spend a
+    # second pass over 50k images just to label the explorer's domain facet.
+    dom_map: dict[str, str] = {}
+    fallback = RUNS / "full-50k" / "candidates.jsonl"
+    if fallback.exists() and fallback != src:
+        for line in fallback.read_text(encoding="utf-8").splitlines():
+            try:
+                fr = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            for fc in fr.get("candidates") or []:
+                if fc.get("domain"):
+                    dom_map[fr.get("file_id", "")] = fc["domain"]
+                    break
 
     for r in rows:
         if not r.get("parse_ok"):
             continue
         fid = r.get("file_id", "")
         batch = args.batch
-        valid = [c for c in (r.get("candidates") or []) if not c.get("_errors")]
-        # EXACTLY FIVE. The model occasionally returned six to ten; the spec is
-        # five per image, so keep the first five in ordinal order and count what
-        # was dropped, rather than letting the page size drift per image.
-        if len(valid) > 5:
-            trimmed += len(valid) - 5
-            valid = valid[:5]
+        is_v5 = r.get("taxonomy_version") == "v5"
+        # v5 stores `items`; legacy rows store `candidates`.
+        valid = [c for c in ((r.get("items") if is_v5 else r.get("candidates")) or [])
+                 if not c.get("_errors")]
+        # v5 has no fixed five: it has two items per APPLICABLE category, so the
+        # count belongs to the schema and must not be trimmed. Legacy rows keep the
+        # old five-item contract.
+        if is_v5:
+            taxonomy_versions["v5"] += 1
+        else:
+            taxonomy_versions["v4"] += 1
+            if len(valid) > 5:
+                trimmed += len(valid) - 5
+                valid = valid[:5]
         for c in valid:
             cid = cand_id(batch, fid, c.get("qnorm") or c.get("question", ""))
+            cat = c.get("category", "") if is_v5 else ""
+            sub = c.get("subcategory", "") if is_v5 else ""
+            dom = c.get("domain", "") or r.get("domain", "") or dom_map.get(fid, "")
+            dom = str(dom).strip().split()[0].upper() if str(dom).strip() else ""
             item = {
                 "id": cid,
                 "question": c.get("question", ""),
                 "choices": c.get("choices", []),
                 "answer": c.get("answer", ""),
                 "grounding": c.get("grounding", ""),
-                "capability": c.get("capability", ""),
-                "level": c.get("level", ""),
-                "domain": c.get("domain", ""),
+                # legacy keys stay so an old page and a v5 page share one reader;
+                # in v5 `capability` is the subcategory code.
+                "capability": sub or c.get("capability", ""),
+                "category": cat,
+                "subcategory": sub,
+                "level": "" if is_v5 else c.get("level", ""),
+                "domain": dom,
                 "difficulty": c.get("difficulty", ""),
                 "prompt_version": c.get("prompt_version") or r.get("prompt_version", ""),
                 "answer_type": c.get("answer_type", ""),
                 "relevance": c.get("relevance", ""),
-                "bias_axis": c.get("bias_axis", ""),
+                "bias_axis": c.get("bias_axis", "") or (sub if cat == "bias" else ""),
                 "abstention": bool(c.get("abstention")),
             }
             images.setdefault(fid, []).append(item)
@@ -96,6 +146,10 @@ def main() -> int:
             lvls[item["level"]] += 1
             doms[item["domain"]] += 1
             matrix.setdefault(item["capability"], Counter())[item["level"]] += 1
+            if is_v5:
+                cats[cat] += 1
+                subs[sub] += 1
+                matrix.setdefault(cat, Counter())[sub] += 1
             if item["bias_axis"]:
                 axes[item["bias_axis"]] += 1
             if item["abstention"]:
@@ -123,8 +177,10 @@ def main() -> int:
             cs = images[f]
             imgs_index.append({
                 "f": f, "p": n,
-                "d": cs[0]["domain"], "c": sorted({x["capability"] for x in cs}),
-                "l": sorted({x["level"] for x in cs}), "n": len(cs),
+                "d": cs[0]["domain"],
+                "c": sorted({(x["category"] or x["capability"]) for x in cs}),
+                "s": sorted({x["subcategory"] for x in cs if x["subcategory"]}),
+                "l": sorted({x["level"] for x in cs if x["level"]}), "n": len(cs),
                 "b": 1 if any(x.get("bias_axis") for x in cs) else 0,
                 "a": 1 if any(x.get("abstention") for x in cs) else 0,
             })
@@ -137,6 +193,9 @@ def main() -> int:
         "page_size": args.page_size,
         "pages": pages,
         "byCapability": dict(caps.most_common()),
+        "byCategory": dict(cats.most_common()),
+        "bySubcategory": dict(subs.most_common()),
+        "taxonomyVersion": "v5" if taxonomy_versions["v5"] else "v4",
         "byLevel": dict(sorted(lvls.items())),
         "byDomain": dict(doms.most_common()),
         "byBiasAxis": dict(sorted(axes.items())),

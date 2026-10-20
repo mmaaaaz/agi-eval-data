@@ -28,6 +28,7 @@ export interface VqaReviewSite {
 interface Cand {
   id: string; question: string; choices: string[]; answer: string; grounding: string;
   capability: string; level: string; domain: string; difficulty: string;
+  category?: string; subcategory?: string;
   prompt_version: string;
   answer_type?: string; relevance?: string; bias_axis?: string; abstention?: boolean;
 }
@@ -36,9 +37,10 @@ interface PageMeta { p: number; file: string; images: number; first: string; las
 interface Index {
   generated_at: string; batch: string; images: number; candidates: number; pages: PageMeta[]; searchParts?: number;
   byCapability: Record<string, number>; byLevel: Record<string, number>; byDomain: Record<string, number>;
+  byCategory?: Record<string, number>; bySubcategory?: Record<string, number>; taxonomyVersion?: "v4" | "v5";
   byBiasAxis?: Record<string, number>; abstentions?: number;
 }
-interface ImgRow { f: string; p: number; d: string; c: string[]; l: string[]; n: number; b?: number; a?: number }
+interface ImgRow { f: string; p: number; d: string; c: string[]; s?: string[]; l: string[]; n: number; b?: number; a?: number }
 interface Decision {
   id: string; verdict: "approve" | "edit" | "reject" | "clear"; reason: string; reviewer: string;
   file_id?: string; edits?: string;
@@ -185,7 +187,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
     return list.filter((r) =>
       (!domain || r.d === domain)
       && (!capability || r.c.includes(capability))
-      && (!level || r.l.includes(level))
+      && (!level || (r.s ?? r.l).includes(level))
       && r.n >= minN
       && (kind === "all" || (kind === "bias" ? r.b === 1 : r.a === 1))
       && (!searchMatches || searchMatches.has(r.f)),
@@ -234,7 +236,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
     }
     const buckets = new Map<string, ImgRow[]>();
     for (const r of filtered) {
-      const key = group === "domain" ? r.d : (r.l.slice().sort().pop() ?? "?");
+      const key = group === "domain" ? r.d : ((r.s?.length ? r.s : r.l).slice().sort().pop() ?? "?");
       if (!buckets.has(key)) buckets.set(key, []);
       buckets.get(key)!.push(r);
     }
@@ -417,6 +419,16 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   const caps = Object.keys(index?.byCapability ?? {}).sort(natural);
   const doms = Object.keys(index?.byDomain ?? {}).sort(natural);
   const levels = Object.keys(index?.byLevel ?? {}).sort(natural);
+  // v5 reports categories and subcategories. The same two filter slots are used:
+  // `capability` holds the category, `level` holds the subcategory, so a URL or a
+  // bookmark keeps meaning without a second filter bar.
+  const isV5 = index?.taxonomyVersion === "v5";
+  const cats = Object.keys(index?.byCategory ?? {}).sort(natural);
+  const subs = Object.keys(index?.bySubcategory ?? {}).sort(natural);
+  const CAT_OF: Record<string, string> = { P: "physics", G: "geometry", B: "combination", F: "bias", S: "sensitivity" };
+  const catOf = (code: string) => (code === "PERC" ? "perc" : CAT_OF[code.slice(0, 1)] ?? "");
+  const capOptions = isV5 ? cats : caps;
+  const levelOptions = isV5 ? subs : levels;
 
   return (
     <div className="mx-auto max-w-[1500px] px-4 py-6">
@@ -454,7 +466,45 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
         </div>
       )}
 
-      {/* COVERAGE MATRIX — capability x level, the shape of the benchmark at a glance */}
+      {/* COVERAGE — v5: category × its subcategory counts; v4: capability × level */}
+      {isV5 ? (
+        <div className="mt-5 rounded-lg border border-[#262626] bg-[#0d0d0d] p-4">
+          <div className="mb-2 flex items-baseline justify-between">
+            <span className="font-mono text-[10px] uppercase tracking-wider text-[#666]">coverage · category × subcategory</span>
+            <span className="font-mono text-[9px] text-[#5f5f5f]">click a subcategory to filter</span>
+          </div>
+          <div className="space-y-2">
+            {cats.map((cat) => {
+              const total = index?.byCategory?.[cat] ?? 0;
+              const mine = subs.filter((s) => catOf(s) === cat);
+              return (
+                <div key={cat} className="flex flex-wrap items-baseline gap-2 border-t border-[#1c1c1c] pt-2">
+                  <button onClick={() => { setCapability(capability === cat ? "" : cat); setLevel(""); }}
+                    className={`w-28 text-left font-mono text-[11px] ${capability === cat ? "text-[#60a5fa]" : "text-[#ededed]"}`}>
+                    {cat} <span className="text-[#666]">{total.toLocaleString()}</span>
+                  </button>
+                  <div className="flex flex-1 flex-wrap gap-1">
+                    {mine.map((s) => {
+                      const n = index?.bySubcategory?.[s] ?? 0;
+                      return (
+                        <button key={s} onClick={() => { setCapability(cat); setLevel(level === s ? "" : s); }}
+                          title={`${s}: ${n}`}
+                          className={`rounded border px-1.5 py-0.5 font-mono text-[10px] tabular-nums ${level === s ? "border-[#0070f3] text-[#60a5fa]" : "border-[#262626] text-[#a1a1a1] hover:border-[#404040]"}`}>
+                          {s} <span className="text-[#666]">{n}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              );
+            })}
+            <div className="flex items-baseline gap-2 border-t border-[#1c1c1c] pt-2">
+              <span className="w-28 font-mono text-[11px] text-[#666]">control</span>
+              <span className="font-mono text-[10px] text-[#666]">reported separately; not one of the five categories</span>
+            </div>
+          </div>
+        </div>
+      ) : (
       <div className="mt-5 overflow-x-auto rounded-lg border border-[#262626] bg-[#0d0d0d] p-4">
         <div className="mb-2 flex items-baseline justify-between">
           <span className="font-mono text-[10px] uppercase tracking-wider text-[#666]">coverage · capability × level</span>
@@ -499,6 +549,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* FACETS */}
       <div className="mt-4 flex flex-wrap items-center gap-2">
@@ -507,19 +558,26 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
           <option value="">any domain</option>
           {doms.map((d) => <option key={d} value={d}>{d} ({index?.byDomain[d]})</option>)}
         </select>
-        <select value={capability} onChange={(e) => setCapability(e.target.value)}
+        <select value={capability} onChange={(e) => { setCapability(e.target.value); setLevel(""); }}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
-          <option value="">any capability</option>
-          {caps.map((c) => <option key={c} value={c}>{c} ({index?.byCapability[c]})</option>)}
+          <option value="">{isV5 ? "any category" : "any capability"}</option>
+          {capOptions.map((c) => (
+            <option key={c} value={c}>{c} ({(isV5 ? index?.byCategory?.[c] : index?.byCapability[c]) ?? 0})</option>
+          ))}
         </select>
         <select value={level} onChange={(e) => setLevel(e.target.value)}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
-          <option value="">any level</option>
-          {levels.map((l) => <option key={l} value={l}>{l} ({index?.byLevel[l]})</option>)}
+          <option value="">{isV5 ? "any subcategory" : "any level"}</option>
+          {levelOptions.map((l) => (
+            <option key={l} value={l}>{l} ({(isV5 ? index?.bySubcategory?.[l] : index?.byLevel[l]) ?? 0})</option>
+          ))}
         </select>
         <select value={minN} onChange={(e) => setMinN(Number(e.target.value))}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
-          <option value={0}>any count</option><option value={3}>≥ 3 questions</option><option value={5}>5 questions</option>
+          <option value={0}>any count</option>
+          {isV5
+            ? <><option value={6}>≥ 6 questions</option><option value={8}>≥ 8 questions</option><option value={10}>≥ 10 questions</option></>
+            : <><option value={3}>≥ 3 questions</option><option value={5}>5 questions</option></>}
         </select>
         <select value={kind} onChange={(e) => setKind(e.target.value as "all" | "bias" | "abstain")}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
@@ -530,7 +588,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
         <select value={group} onChange={(e) => setGroup(e.target.value as "none" | "domain" | "level")}
           className="rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1.5 text-[12px] text-[#ededed]">
           <option value="domain">group by domain</option>
-          <option value="level">group by level</option>
+          <option value="level">{isV5 ? "group by subcategory" : "group by level"}</option>
           <option value="none">no grouping</option>
         </select>
         <input value={search} onChange={(e) => { setSearch(e.target.value); setNeedText(true); }}
@@ -579,7 +637,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                               <span className="font-mono text-[9px] text-[#a1a1a1]">{r.n} q</span>
                             </div>
                             <div className="mt-0.5 truncate font-mono text-[9px] text-[#5f5f5f]">
-                              {r.l.join(" ")} · {r.c.slice(0, 3).join(" ")}
+                              {(r.s?.length ? r.s : r.l).join(" ")} · {r.c.slice(0, 3).join(" ")}
                             </div>
                           </div>
                         </button>
@@ -606,8 +664,8 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
               <span className="font-mono text-[9px] uppercase tracking-wider text-[#666]">image</span>
               <span className="break-all font-mono text-[10px] text-[#a1a1a1]">{selected.f}</span>
               <Chip k="domain" v={selected.d} />
-              {selected.l.map((l) => <Chip key={l} k="level" v={l} />)}
-              {selected.c.map((c) => <Chip key={c} k="cap" v={c} />)}
+              {selected.c.map((c) => <Chip key={c} k={isV5 ? "category" : "cap"} v={c} />)}
+              {(selected.s ?? selected.l).map((s) => <Chip key={s} k={isV5 ? "sub" : "level"} v={s} />)}
               <Chip k="questions" v={selected.n} />
               <button onClick={() => setSelected(null)}
                 className="ml-auto rounded border border-[#262626] px-3 py-1 text-[11px] text-[#a1a1a1] hover:border-[#404040]">close ✕</button>
@@ -631,7 +689,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                   <div key={c.id} className="rounded-lg border border-[#262626] bg-[#0d0d0d] px-2.5 py-1.5">
                     <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[9px] text-[#8a8a8a]">
                       <span className="rounded bg-[#141414] px-1.5 py-0.5 text-[#ededed]">Q{qi + 1}</span>
-                      <span>{c.capability} · {c.level} · {c.difficulty}</span>
+                      <span>{(c.category ? `${c.category} · ${c.subcategory}` : `${c.capability} · ${c.level}`)} · {c.difficulty}</span>
                       {c.bias_axis ? <span className="text-[#60a5fa]">bias {c.bias_axis}</span> : null}
                       {c.abstention ? <span className="text-[#60a5fa]">abstention</span> : null}
                       {isEdited ? <span className="ml-auto text-[#60a5fa]">edited</span> : null}
@@ -711,7 +769,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                 </div>
                 {/* ONE VERDICT PER IMAGE, and it is reversible. Edits staged above ride
                     along with Approve, so what others read is the corrected set. */}
-                <div className="border-t border-[#262626] bg-[#0a0a0a] px-3 py-2">
+                <div className="shrink-0 border-t border-[#262626] bg-[#0a0a0a] px-3 py-2">
                   {imgReject ? (
                     <div className="flex flex-wrap items-center gap-1.5">
                       <input autoFocus value={imgReason} onChange={(ev) => setImgReason(ev.target.value)}
