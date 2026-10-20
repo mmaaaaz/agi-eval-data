@@ -55,15 +55,21 @@ def main() -> int:
     doms: Counter[str] = Counter()
     matrix: dict[str, Counter[str]] = {}
     total = 0
+    trimmed = 0
 
     for r in rows:
         if not r.get("parse_ok"):
             continue
         fid = r.get("file_id", "")
         batch = args.batch
-        for c in r.get("candidates") or []:
-            if c.get("_errors"):
-                continue
+        valid = [c for c in (r.get("candidates") or []) if not c.get("_errors")]
+        # EXACTLY FIVE. The model occasionally returned six to ten; the spec is
+        # five per image, so keep the first five in ordinal order and count what
+        # was dropped, rather than letting the page size drift per image.
+        if len(valid) > 5:
+            trimmed += len(valid) - 5
+            valid = valid[:5]
+        for c in valid:
             cid = cand_id(batch, fid, c.get("qnorm") or c.get("question", ""))
             item = {
                 "id": cid,
@@ -123,6 +129,7 @@ def main() -> int:
         "byCapability": dict(caps.most_common()),
         "byLevel": dict(sorted(lvls.items())),
         "byDomain": dict(doms.most_common()),
+        "trimmedOverFive": trimmed,
     }
     # Pages refuses files over 25 MiB. The question index is sharded at 60k rows
     # (~8 MB each), and the UI fetches the parts in parallel on first search.

@@ -176,22 +176,44 @@ def main() -> int:
     # appended here; a restart replays the file and skips what it already has.
     results_path = out_dir / "topup-results.jsonl"
     done: dict[int, list[dict]] = {}
+    skipped = 0
     if results_path.exists():
         for line in results_path.read_text(encoding="utf-8").splitlines():
-            if not line.strip():
+            line = line.strip()
+            if not line:
                 continue
-            rec = json.loads(line)
+            try:
+                rec = json.loads(line)
+            except json.JSONDecodeError:
+                # A process killed mid-append leaves a partial last line. Skipping
+                # it is correct: the image is simply redone. Crashing here instead
+                # (as the first version did) made the checkpoint unrecoverable.
+                skipped += 1
+                continue
             done[rec["idx"]] = rec["candidates"]
         for idx, cands in done.items():
             if 0 <= idx < len(rows):
-                rows[idx].setdefault("candidates", []).extend(cands)
-        print(f"checkpoint: {len(done)} image(s) already topped up")
+                row = rows[idx]
+                have = [c for c in row.get("candidates") or [] if not c.get("_errors")]
+                seen = {__import__("hashlib").sha1(norm_q(c.get("question", "")).encode()).hexdigest()[:12]
+                        for c in row.get("candidates") or []}
+                for c in cands:
+                    if len(have) >= TARGET:
+                        break
+                    h = __import__("hashlib").sha1(norm_q(c.get("question", "")).encode()).hexdigest()[:12]
+                    if h not in seen:
+                        row.setdefault("candidates", []).append(c)
+                        seen.add(h)
+                        have.append(c)
+        print(f"checkpoint: {len(done)} image(s) already topped up"
+              + (f", {skipped} corrupt line(s) skipped" if skipped else ""))
 
     todo = []
     for idx, row in enumerate(rows):
-        if idx in done:
-            continue
         valid = [c for c in row.get("candidates") or [] if not c.get("_errors")]
+        # THE ROW IS THE TRUTH, NOT THE CHECKPOINT. A checkpoint line only proves an
+        # attempt was recorded; earlier code treated its presence as "complete" and
+        # skipped images that were still short.
         if len(valid) < TARGET:
             todo.append((idx, row, TARGET - len(valid), [c["question"] for c in valid]))
     if args.limit:
