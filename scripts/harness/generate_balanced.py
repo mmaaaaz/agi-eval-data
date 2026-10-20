@@ -118,14 +118,20 @@ def prompt(name: str, index: int) -> str:
         '{"candidates":[{"question":"...","choices":["...","...","...","..."],'
         '"answer":"<exactly one of the choices>","capability":"<code>","level":"<L1..L5>",'
         '"domain":"<code>","grounding":"<one sentence naming what in the image proves the answer>",'
-        '"answer_type":"number|yesno|choice|text","bias_axis":"","abstention":false,'
+        '"answer_type":"number|yesno|choice|text","difficulty":"easy|medium|hard","bias_axis":"","abstention":false,'
         '"relevance":"visual_true_premise|visual_false_premise"}]}\n\n'
         "Rules:\n"
         "- Exactly 4 distinct short choices (1-6 words) for every item; the answer equals one choice exactly.\n"
         "- Answerable from the photograph alone (L5 may use one general fact, never image-external specifics).\n"
         "- Never say 'in this image'; ask about the world in it.\n"
         "- Grounding cites visible evidence, never the file name.\n"
-        "- LEVELS MUST MATCH THE SLOTS: item i gets exactly the level named in slot i.\n\n"
+        "- LEVELS MUST MATCH THE SLOTS: item i gets exactly the level named in slot i. Level is the\n"
+        "  NUMBER OF REASONING STEPS, not how hard the item feels.\n"
+        "- difficulty is INDEPENDENT of level: easy = an attentive viewer answers at a glance; medium =\n"
+        "  needs a specific region read carefully; hard = tiny text, heavy clutter, fine measurement or\n"
+        "  a genuinely ambiguous cue. A perception item can be hard; an L4 item can be easy.\n"
+        "- ACROSS THE FIVE: at least one item must be easy and at least one must be hard. Choose the\n"
+        "  hard one as the question whose answer needs the finest visual discrimination.\n\n"
         "CAPABILITY codes: G1 depth/occlusion, G2 size/distance, G3 shape, G4 lines/angles, G5 perspective, "
         "G6 layout, G7 symmetry, G8 fit; P1 material, P2 support, P3 contact, P4 forces, P5 dynamics, P6 light, "
         "P7 fluids/heat, P8 function; B1 tipping, B2 sun shadow, B3 rolling, B4 passage (only for geometry+physics); "
@@ -202,6 +208,8 @@ def check_slot(c: dict, slot: dict, seen: set[str]) -> list[str]:
     at = c.get("answer_type")
     if at not in ("number", "yesno", "choice", "text"):
         errs.append("answer_type_invalid")
+    if c.get("difficulty") not in ("easy", "medium", "hard"):
+        errs.append("difficulty_invalid")
     rel = c.get("relevance")
     if rel not in ("visual_true_premise", "visual_false_premise", "non_visual"):
         errs.append("relevance_invalid")
@@ -268,7 +276,9 @@ def main() -> int:
                 r = json.loads(line)
             except json.JSONDecodeError:
                 continue
-            if r.get("parse_ok") and len(r.get("candidates") or []) == 5:
+            if (r.get("parse_ok") and len(r.get("candidates") or []) == 5
+                    and all(c.get("_ok") and c.get("difficulty") in ("easy", "medium", "hard")
+                            for c in r["candidates"])):
                 done.add(r["file_id"])
         print(f"resume: {len(done)} image(s) already complete")
 
@@ -320,6 +330,11 @@ def main() -> int:
                         c["abstention"] = False
                     out.append(c)
                 good = [c for c in out if c["_ok"]]
+                # A spread with no hard item is a request the model ignored, not a
+                # corpus property. Retry the image instead of accepting an all-easy set.
+                diffs = {c.get("difficulty") for c in good}
+                if good and ("hard" not in diffs or "easy" not in diffs):
+                    raise ValueError("difficulty spread missing easy/hard: " + ",".join(sorted(map(str, diffs))))
                 rec = {
                     "file_id": fid, "name": name, "index": index,
                     "model": args.model, "prompt_version": PROMPT_VERSION,
@@ -349,6 +364,7 @@ def main() -> int:
     rows = [json.loads(l) for l in rows_path.read_text(encoding="utf-8").splitlines() if l.strip()]
     by_level: dict[str, int] = {}
     by_cap: dict[str, int] = {}
+    by_difficulty: dict[str, int] = {}
     bias = abstain = skipped = 0
     short = 0
     for r in rows:
@@ -358,6 +374,7 @@ def main() -> int:
         for c in good:
             by_level[c.get("level", "?")] = by_level.get(c.get("level", "?"), 0) + 1
             by_cap[c.get("capability", "?")] = by_cap.get(c.get("capability", "?"), 0) + 1
+            by_difficulty[c.get("difficulty", "?")] = by_difficulty.get(c.get("difficulty", "?"), 0) + 1
             if c.get("bias_axis"):
                 bias += 1
             if c.get("abstention"):
@@ -368,6 +385,7 @@ def main() -> int:
         "batch": args.batch, "model": args.model, "prompt_version": PROMPT_VERSION,
         "images": len(rows), "valid_items": sum(by_level.values()),
         "by_level": dict(sorted(by_level.items())), "by_capability": dict(sorted(by_cap.items())),
+        "by_difficulty": dict(sorted(by_difficulty.items())),
         "bias_items": bias, "abstention_items": abstain, "bias_skipped": skipped,
         "images_not_five": short,
         "started_at": started, "finished_at": datetime.now(timezone.utc).isoformat(),
