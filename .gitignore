@@ -131,3 +131,6 @@ scripts/harness/providers/*.env
 
 # Static review-room pages are generated from the private draft, never committed.
 apps/web/public/vqa/
+
+# Unrelated audit checkout that landed in the repo root; never part of this project.
+gripv-audit-public/
