@@ -510,7 +510,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                 const st = statusOf(c.id);
                 const editingThis = editing === c.id;
                 return (
-                  <div key={c.id} className="rounded-lg border border-[#262626] bg-[#0d0d0d] px-2.5 py-2">
+                  <div key={c.id} className="rounded-lg border border-[#262626] bg-[#0d0d0d] px-2.5 py-1.5">
                     <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[9px] text-[#8a8a8a]">
                       <span className="rounded bg-[#141414] px-1.5 py-0.5 text-[#ededed]">Q{qi + 1}</span>
                       <span>{c.capability} · {c.level} · {c.difficulty}</span>
@@ -549,7 +549,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                           ))}
                         </div>
                         {c.grounding && (
-                          <div className="mt-0.5 line-clamp-1 text-[10.5px] italic leading-4 text-[#7a7a7a]">{c.grounding}</div>
+                          <div className="line-clamp-1 text-[10px] italic leading-3.5 text-[#7a7a7a]">{c.grounding}</div>
                         )}
                         {rejectFor === c.id ? (
                           <div className="mt-2 flex gap-1.5">
@@ -560,13 +560,13 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                             <button onClick={() => setRejectFor(null)} className="rounded border border-[#262626] px-2 py-1 text-[11px] text-[#a1a1a1]">Cancel</button>
                           </div>
                         ) : (
-                          <div className="mt-1.5 flex flex-wrap gap-1.5">
+                          <div className="mt-1 flex flex-wrap gap-1.5">
                             <button disabled={busy || st === "approve"} onClick={() => decide(c, "approve")}
-                              className="rounded bg-[#14532d] px-2.5 py-1 text-[11px] font-medium text-[#4ade80] disabled:opacity-40">Approve</button>
+                              className="rounded bg-[#14532d] px-2.5 py-0.5 text-[11px] font-medium text-[#4ade80] disabled:opacity-40">Approve</button>
                             <button disabled={busy} onClick={() => startEdit(c)}
-                              className="rounded border border-[#262626] px-2.5 py-1 text-[11px] text-[#ededed]">Edit</button>
+                              className="rounded border border-[#262626] px-2.5 py-0.5 text-[11px] text-[#ededed]">Edit</button>
                             <button disabled={busy || st === "reject"} onClick={() => { setRejectFor(c.id); setReason(""); }}
-                              className="rounded border border-[#4c1d1d] px-2.5 py-1 text-[11px] text-[#f87171] disabled:opacity-40">Reject</button>
+                              className="rounded border border-[#4c1d1d] px-2.5 py-0.5 text-[11px] text-[#f87171] disabled:opacity-40">Reject</button>
                           </div>
                         )}
                       </>
