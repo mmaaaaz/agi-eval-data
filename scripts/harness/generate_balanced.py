@@ -35,7 +35,6 @@ from __future__ import annotations
 
 import argparse
 import base64
-import hashlib
 import json
 import os
 import pathlib
@@ -49,7 +48,7 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import datetime, timezone
 
 from scripts.harness.generate_vqa import (
-    ROOT, THUMB, load_env_file, norm_q, parse_json_blob, refuse_without_spend,
+    ROOT, THUMB, load_env_file, parse_json_blob, refuse_without_spend,
     spend_permitted, validate,
 )
 
