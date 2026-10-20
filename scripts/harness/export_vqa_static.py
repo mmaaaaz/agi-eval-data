@@ -53,6 +53,7 @@ def main() -> int:
     caps: Counter[str] = Counter()
     lvls: Counter[str] = Counter()
     doms: Counter[str] = Counter()
+    matrix: dict[str, Counter[str]] = {}
     total = 0
 
     for r in rows:
@@ -84,6 +85,7 @@ def main() -> int:
             caps[item["capability"]] += 1
             lvls[item["level"]] += 1
             doms[item["domain"]] += 1
+            matrix.setdefault(item["capability"], Counter())[item["level"]] += 1
             total += 1
 
     out = pathlib.Path(args.out)
@@ -94,6 +96,7 @@ def main() -> int:
 
     fids = sorted(images.keys())
     pages = []
+    imgs_index = []
     n = 0
     for start in range(0, len(fids), args.page_size):
         n += 1
@@ -102,6 +105,13 @@ def main() -> int:
         name = f"pages/{n:04d}.json"
         (out / name).write_text(json.dumps(payload, separators=(",", ":")), encoding="utf-8")
         pages.append({"p": n, "file": name, "images": len(chunk), "first": chunk[0], "last": chunk[-1]})
+        for f in chunk:
+            cs = images[f]
+            imgs_index.append({
+                "f": f, "p": n,
+                "d": cs[0]["domain"], "c": sorted({x["capability"] for x in cs}),
+                "l": sorted({x["level"] for x in cs}), "n": len(cs),
+            })
 
     index = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
@@ -114,8 +124,24 @@ def main() -> int:
         "byLevel": dict(sorted(lvls.items())),
         "byDomain": dict(doms.most_common()),
     }
+    # Pages refuses files over 25 MiB. The question index is sharded at 60k rows
+    # (~8 MB each), and the UI fetches the parts in parallel on first search.
+    (out / "search").mkdir(exist_ok=True)
+    for old in (out / "search").glob("*.json"):
+        old.unlink()
+    parts = [search[i:i + 60000] for i in range(0, len(search), 60000)]
+    for i, part in enumerate(parts, 1):
+        (out / "search" / f"{i:02d}.json").write_text(json.dumps(part, separators=(",", ":")), encoding="utf-8")
+    # A stale single-file index from an earlier export would still be uploaded;
+    # remove it or the deploy trips the 25 MiB limit again.
+    (out / "search.json").unlink(missing_ok=True)
+    index["searchParts"] = len(parts)
     (out / "index.json").write_text(json.dumps(index, separators=(",", ":")), encoding="utf-8")
-    (out / "search.json").write_text(json.dumps(search, separators=(",", ":")), encoding="utf-8")
+    # The virtualized explorer reads this once and filters in memory: 50k rows,
+    # no pagination, no per-scroll request, no D1.
+    (out / "images.json").write_text(json.dumps(imgs_index, separators=(",", ":")), encoding="utf-8")
+    (out / "matrix.json").write_text(
+        json.dumps({c: dict(v) for c, v in matrix.items()}, separators=(",", ":")), encoding="utf-8")
     # Decisions are published as static JSON too, so a visitor never reads D1.
     # A re-export must NOT wipe them: only sync_vqa_decisions.py writes this file.
     if not (out / "decisions.json").exists():
