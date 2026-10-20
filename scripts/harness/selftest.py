@@ -2044,10 +2044,12 @@ check("the benchmark tree has no unwired machinery",
 # the review room is a per-visit D1 query and cannot be free at a million visits.
 # MOVED 24 -> 25 for the top-up tool, which exists because count was not part of the
 # schema: 23,465 images shipped short while the run exited 0.
+# MOVED 25 -> 26 for the balanced runner: composition (levels, bias, abstention) is a
+# schema too, and the free-form prompt silently ignored it.
 # Raised rather than removed: a bound that never moves is a bound nobody revisits, and a bound
 # with no bound at all lets the list grow unattended.
 check("every allowlist entry states a reason, and the list is bounded",
-      all(len(v) > 20 for v in _unwired.ALLOWED.values()) and len(_unwired.ALLOWED) <= 25,
+      all(len(v) > 20 for v in _unwired.ALLOWED.values()) and len(_unwired.ALLOWED) <= 26,
       str(sorted(_unwired.ALLOWED)) + " n=" + str(len(_unwired.ALLOWED)))
 check("most of the allowlist is guards, which is what it is FOR",
       sum(1 for v in _unwired.ALLOWED.values() if "guard" in v.lower()) >= 5,

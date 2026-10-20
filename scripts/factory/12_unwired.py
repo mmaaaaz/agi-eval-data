@@ -60,6 +60,7 @@ ALLOWED = {
     "export_vqa_static.py": "the review room's FREE READ PATH: writes the candidate snapshot as static JSON pages that Pages serves from the edge, so a visit never reads D1; run by hand after a drafting pass, output is deployed with the site and never committed",
     "sync_vqa_decisions.py": "publishes the decisions D1 already holds as static JSON, so other visitors read them from the edge instead of a query; run by hand after a review session",
     "top_up_vqa.py": "repairs a drafting batch that came back short: for every image under five valid questions it asks for exactly the missing number, shows the model what is already accepted, and merges without overwriting; run by hand, then re-export",
+    "generate_balanced.py": "the composition-balanced drafting runner: five enforced slots per image (L1, L2, L3, L4/L5, and a rotating bias/abstention/extra item), because the free-form prompt produced 86% L1 and no abstention items; run by hand with --spend",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "
