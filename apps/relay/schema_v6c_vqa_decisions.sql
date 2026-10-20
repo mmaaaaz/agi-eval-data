@@ -16,6 +16,14 @@
 -- approved, the static snapshot the id came from is the record; the id is
 -- reproducible from (batch, file_id, question), which is exactly why it is the
 -- key.
+--
+-- TWO KINDS OF ROW
+-- ----------------
+--   cand_id = sha1(batch|file_id|qnorm)[:16]   one question (legacy per-item verdicts)
+--   cand_id = 'img:' + sha256(batch|file_id)[:24]   one IMAGE — the review room's
+--             normal verdict: verdict approve|reject, edits = JSON
+--             {"questions": {<cand_id>: {question, choices, answer, grounding}}}
+--             A 'clear' request deletes the row, which is the undo path.
 -- ===========================================================================
 
 CREATE TABLE IF NOT EXISTS vqa_decisions (

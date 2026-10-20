@@ -10,8 +10,10 @@ import type { AskSettings } from "./settings";
  * Every read is a static file on Cloudflare Pages: the per-page candidate
  * payloads, a 50k-row image index, the taxonomy matrix, the search index and the
  * decisions snapshot. Nothing here queries D1 to render, so traffic cannot cross
- * the free tier. A decision is the only write, one row keyed by a stable candidate
- * id; `sync_vqa_decisions` republishes those as static JSON for everyone else.
+ * the free tier. The normal decision is per IMAGE: a reviewer stages edits across
+ * its questions, then approves (or rejects) the image once. Those rows are keyed
+ * by the image; `sync_vqa_decisions` republishes them as static JSON for everyone
+ * else.
  *
  * The grid is windowed with @tanstack/react-virtual: 50,000 images are a scroll,
  * not 50,000 DOM nodes. Filters and grouping run in memory over the index that was
@@ -37,7 +39,13 @@ interface Index {
   byBiasAxis?: Record<string, number>; abstentions?: number;
 }
 interface ImgRow { f: string; p: number; d: string; c: string[]; l: string[]; n: number; b?: number; a?: number }
-interface Decision { id: string; verdict: "approve" | "edit" | "reject"; reason: string; reviewer: string }
+interface Decision {
+  id: string; verdict: "approve" | "edit" | "reject" | "clear"; reason: string; reviewer: string;
+  file_id?: string; edits?: string;
+}
+/** One question as the reviewer left it. Staged locally, persisted with the image verdict. */
+interface QEdit { question: string; choices: string[]; answer: string; grounding: string }
+interface EditDraft { id: string; question: string; choices: string[]; answerIndex: number; grounding: string }
 interface Hit { id: string; f: string; q: string; c: string; l: string; d: string }
 
 type Item = { kind: "head"; key: string; label: string; count: number } | { kind: "row"; key: string; row: ImgRow[] };
@@ -47,6 +55,27 @@ const LEVELS = ["L1", "L2", "L3", "L4", "L5"];
 const GAP = 8;
 const CAPTION = 44;
 const HEAD_H = 34;
+
+/**
+ * This browser's own decisions, kept until the snapshot catches up.
+ *
+ * The published decisions.json only changes when `sync_vqa_decisions` runs and the
+ * site is redeployed. Without this overlay a reviewer would lose sight of their own
+ * verdict on reload — and an undo would silently revert. A "clear" entry is a
+ * tombstone: it hides the published row until the sync removes it.
+ */
+const LOCAL_DECISIONS = "vqa.decisions.local.v1";
+
+function readLocalDecisions(): Record<string, Decision> {
+  try {
+    const raw = localStorage.getItem(LOCAL_DECISIONS);
+    return raw ? (JSON.parse(raw) as Record<string, Decision>) : {};
+  } catch { return {}; }
+}
+
+function writeLocalDecisions(map: Record<string, Decision>) {
+  try { localStorage.setItem(LOCAL_DECISIONS, JSON.stringify(map)); } catch { /* private mode: session-only */ }
+}
 
 /** D1, D2, … D11 instead of D1, D10, D11, D2; L1…L5 naturally. */
 function natural(a: string, b: string) {
@@ -93,10 +122,13 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
   const [busy, setBusy] = useState(false);
-  const [editing, setEditing] = useState<string | null>(null);
-  const [draft, setDraft] = useState({ question: "", choices: "", answer: "", grounding: "" });
-  const [rejectFor, setRejectFor] = useState<string | null>(null);
-  const [reason, setReason] = useState("");
+  // Edits are staged per image in this browser. Nothing is written until the
+  // reviewer approves or rejects the image, so an edit cannot half-land.
+  const [editsByFile, setEditsByFile] = useState<Record<string, Record<string, QEdit>>>({});
+  const [editFor, setEditFor] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft | null>(null);
+  const [imgReject, setImgReject] = useState(false);
+  const [imgReason, setImgReason] = useState("");
 
   useEffect(() => {
     void (async () => {
@@ -113,6 +145,10 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
           const list = (await d.json()) as Decision[];
           const map: Record<string, Decision> = {};
           for (const x of list) map[x.id] = x;
+          for (const x of Object.values(readLocalDecisions())) {
+            if (x.verdict === "clear") delete map[x.id];
+            else map[x.id] = x;
+          }
           setDecisions(map);
         }
       } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
@@ -223,21 +259,49 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
 
   const statusOf = (id: string) => decisions[id]?.verdict ?? "pending";
 
+  // Image verdicts come from rows whose id starts with "img:". They key the review
+  // room now; per-candidate rows from earlier sessions still count as fallbacks.
+  const imageDecByFile = useMemo(() => {
+    const m: Record<string, Decision> = {};
+    for (const d of Object.values(decisions)) {
+      if (d.id.startsWith("img:") && d.file_id && d.verdict !== "clear") m[d.file_id] = d;
+    }
+    return m;
+  }, [decisions]);
+
+  const statusFor = (fileId: string, candId: string) => imageDecByFile[fileId]?.verdict ?? statusOf(candId);
+
+  /** Saved edits from the snapshot, overlaid with anything staged in this browser. */
+  const editsFor = (fileId: string): Record<string, QEdit> => {
+    const saved = imageDecByFile[fileId]?.edits;
+    let fromServer: Record<string, QEdit> = {};
+    if (saved) {
+      try { fromServer = (JSON.parse(saved) as { questions?: Record<string, QEdit> }).questions ?? {}; }
+      catch { fromServer = {}; }
+    }
+    return { ...fromServer, ...(editsByFile[fileId] ?? {}) };
+  };
+
+  const effective = (c: Cand, fileId: string): Cand => {
+    const e = editsFor(fileId)[c.id];
+    return e ? { ...c, ...e } : c;
+  };
+
   const counts = useMemo(() => {
     let approved = 0, edited = 0, rejected = 0;
     for (const d of Object.values(decisions)) {
+      if (!d.id.startsWith("img:")) continue;
       if (d.verdict === "approve") approved++;
-      else if (d.verdict === "edit") edited++;
-      else rejected++;
+      else if (d.verdict === "reject") rejected++;
+      if (d.edits) edited++;
     }
-    const total = index?.candidates ?? 0;
-    return { approved, edited, rejected, pending: Math.max(0, total - approved - edited - rejected) };
+    return { approved, edited, rejected, pending: Math.max(0, (index?.images ?? 0) - approved - rejected) };
   }, [decisions, index]);
 
   function openImage(r: ImgRow) {
     setSelected(r);
-    setEditing(null);
-    setRejectFor(null);
+    setEditFor(null); setEditDraft(null);
+    setImgReject(false); setImgReason("");
     if (!pageCache[r.p]) {
       void (async () => {
         try {
@@ -259,44 +323,95 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
     setCodeInput("");
   }
 
-  async function decide(c: Cand, verdict: "approve" | "edit" | "reject", edits?: Record<string, unknown>, why = "") {
-    if (!relay) { setError("set the relay URL in Settings first"); return; }
-    setBusy(true);
-    setError("");
+  async function postDecision(payload: Record<string, unknown>): Promise<Decision | null> {
+    if (!relay) { setError("set the relay URL in Settings first"); return null; }
+    if (!code) { setError("enter the reviewer code to approve or reject"); return null; }
+    setBusy(true); setError("");
     try {
       const actor = getActor();
       const res = await fetch(`${relay.replace(/\/+$/, "")}/api/vqa/decision`, {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-questions-code": code },
-        body: JSON.stringify({
-          id: c.id, verdict, reason: why, edits,
-          reviewer: actor.name || actor.id || "reviewer",
-          batch: index?.batch ?? "", file_id: selected?.f ?? "",
-        }),
+        body: JSON.stringify({ ...payload, reviewer: actor.name || actor.id || "reviewer", batch: index?.batch ?? "" }),
       });
-      const body = (await res.json().catch(() => ({}))) as { error?: string };
+      const body = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
       if (!res.ok) throw new Error(body.error ?? `HTTP ${res.status}`);
-      setDecisions((prev) => ({ ...prev, [c.id]: { id: c.id, verdict, reason: why, reviewer: actor.name || "reviewer" } }));
-      setNote(`${verdict} · ${c.id.slice(0, 8)}`);
-      setEditing(null); setRejectFor(null); setReason("");
-    } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+      return {
+        id: body.id ?? String(payload.id ?? ""),
+        verdict: payload.verdict as Decision["verdict"],
+        reason: String(payload.reason ?? ""),
+        reviewer: actor.name || "reviewer",
+      };
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)); return null; }
     finally { setBusy(false); }
   }
 
-  function startEdit(c: Cand) {
-    setEditing(c.id);
-    setDraft({ question: c.question, choices: c.choices.join("\n"), answer: c.answer, grounding: c.grounding });
-    setReason("");
+  /** One verdict per image, carrying every staged question edit in the same row. */
+  async function decideImage(verdict: "approve" | "reject" | "clear") {
+    if (!selected) return;
+    const file = selected.f;
+    const staged = editsByFile[file] ?? {};
+    const why = verdict === "reject" ? imgReason.trim() : "";
+    if (verdict === "reject" && !why) { setError("say why the image is rejected"); return; }
+    const payload: Record<string, unknown> = { scope: "image", file_id: file, verdict, reason: why };
+    if (verdict === "approve" && Object.keys(staged).length) payload.edits = { questions: staged };
+    const row = await postDecision(payload);
+    if (!row) return;
+    const savedEdits = verdict === "approve" && Object.keys(staged).length ? JSON.stringify({ questions: staged }) : "";
+    const localRow: Decision = verdict === "clear"
+      ? { ...row, verdict: "clear", file_id: file }
+      : { ...row, file_id: file, edits: savedEdits };
+    setDecisions((prev) => {
+      const next = { ...prev };
+      if (verdict === "clear") delete next[row.id];
+      else next[row.id] = localRow;
+      return next;
+    });
+    writeLocalDecisions({ ...readLocalDecisions(), [row.id]: localRow });
+    if (verdict === "approve") {
+      // Edits now live in the decision row; drop the local copies so the row is the record.
+      setEditsByFile((prev) => { const next = { ...prev }; delete next[file]; return next; });
+      setNote(`image approved · ${Object.keys(staged).length} edited question(s) · ${file.slice(0, 8)}`);
+    } else if (verdict === "reject") {
+      setNote(`image rejected · ${file.slice(0, 8)}`);
+      setImgReject(false); setImgReason("");
+    } else {
+      setNote("approval withdrawn — image is back to pending");
+     
+      // Undo hands the edited questions back to this browser so nothing is lost.
+      const saved = imageDecByFile[file]?.edits;
+      if (saved) {
+        try { setEditsByFile((prev) => ({ ...prev, [file]: (JSON.parse(saved) as { questions?: Record<string, QEdit> }).questions ?? {} })); }
+        catch { /* a malformed row must not break the undo */ }
+      }
+    }
   }
 
-  function saveEdit(c: Cand) {
-    const choices = draft.choices.split("\n").map((s) => s.trim()).filter(Boolean);
-    if (!draft.question.trim() || !draft.answer.trim() || choices.length < 2) {
-      setError("question, answer and at least two choices are required");
+  function startEdit(c: Cand) {
+    const current = effective(c, selected?.f ?? "");
+    setEditFor(c.id);
+    setEditDraft({
+      id: c.id,
+      question: current.question,
+      choices: [...current.choices],
+      answerIndex: Math.max(0, current.choices.indexOf(current.answer)),
+      grounding: current.grounding,
+    });
+    setError("");
+  }
+
+  /** Applies the edit to the image in this browser; the write happens on approve. */
+  function applyEdit() {
+    if (!selected || !editDraft) return;
+    const question = editDraft.question.trim();
+    const choices = editDraft.choices.map((c) => c.trim()).filter(Boolean);
+    if (!question || choices.length < 2 || !choices[editDraft.answerIndex]) {
+      setError("the question needs text, at least two choices, and one selected as the answer");
       return;
     }
-    void decide(c, "edit", { question: draft.question.trim(), choices, answer: draft.answer.trim(), grounding: draft.grounding.trim() },
-      reason.trim() || "edited in the review room");
+    const edit: QEdit = { question, choices, answer: choices[editDraft.answerIndex], grounding: editDraft.grounding.trim() };
+    setEditsByFile((prev) => ({ ...prev, [selected.f]: { ...(prev[selected.f] ?? {}), [editDraft.id]: edit } }));
+    setEditFor(null); setEditDraft(null); setError("");
   }
 
   const caps = Object.keys(index?.byCapability ?? {}).sort(natural);
@@ -317,9 +432,9 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
           <div className="flex flex-wrap gap-2">
             <Chip k="images" v={index.images} />
             <Chip k="questions" v={index.candidates} />
-            <Chip k="approved" v={counts.approved} />
-            <Chip k="edited" v={counts.edited} />
-            <Chip k="rejected" v={counts.rejected} />
+            <Chip k="images approved" v={counts.approved} />
+            <Chip k="with edits" v={counts.edited} />
+            <Chip k="images rejected" v={counts.rejected} />
             {index?.abstentions ? <Chip k="abstention" v={index.abstentions} /> : null}
             {index?.byBiasAxis ? <Chip k="bias" v={Object.values(index.byBiasAxis).reduce((a, b) => a + b, 0)} /> : null}
             <Chip k="snapshot" v={index.generated_at.slice(0, 16).replace("T", " ")} />
@@ -450,7 +565,8 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                 ) : (
                   <div className="grid gap-2 py-1" style={{ gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))` }}>
                     {it.row.map((r) => {
-                      const st = r.c.length === 1 ? statusOfOf(r, pageCache, decisions, statusOf) : "pending";
+                      const imgDec = imageDecByFile[r.f];
+                      const st = imgDec?.verdict ?? (r.c.length === 1 ? statusOfOf(r, pageCache, statusFor) : "pending");
                       return (
                         <button key={r.f} onClick={() => openImage(r)}
                           className={`group overflow-hidden rounded-lg border bg-[#0d0d0d] text-left hover:border-[#0070f3] ${STATUS_BORDER[st] ?? ""}`}>
@@ -501,14 +617,16 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                 <ThumbImage fileId={selected.f} w={1600} alt="review image" fit="contain"
                   className="h-full w-full object-contain" />
               </div>
-              <div className="min-h-0 overflow-y-auto border-t border-[#262626] p-3 md:border-l md:border-t-0">
+              <div className="flex min-h-0 flex-col border-t border-[#262626] md:border-l md:border-t-0">
+                <div className="min-h-0 flex-1 overflow-y-auto p-3">
                 {/* Five items read in one column; a ten-item image (the planned
                     next count) pairs them so its list does not double in height. */}
                 <div className={openCands.length > 6 ? "grid grid-cols-1 gap-2 md:grid-cols-2" : "space-y-2"}>
               {openCands.length === 0 && <p className="font-mono text-[11px] text-[#666]">loading questions…</p>}
               {openCands.map((c, qi) => {
-                const st = statusOf(c.id);
-                const editingThis = editing === c.id;
+                const e = effective(c, selected.f);
+                const isEdited = Boolean(editsByFile[selected.f]?.[c.id]);
+                const editingThis = editFor === c.id && editDraft !== null;
                 return (
                   <div key={c.id} className="rounded-lg border border-[#262626] bg-[#0d0d0d] px-2.5 py-1.5">
                     <div className="mb-1 flex flex-wrap items-baseline gap-x-2 gap-y-0.5 font-mono text-[9px] text-[#8a8a8a]">
@@ -516,64 +634,119 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                       <span>{c.capability} · {c.level} · {c.difficulty}</span>
                       {c.bias_axis ? <span className="text-[#60a5fa]">bias {c.bias_axis}</span> : null}
                       {c.abstention ? <span className="text-[#60a5fa]">abstention</span> : null}
-                      <span className="ml-auto">{st}</span>
+                      {isEdited ? <span className="ml-auto text-[#60a5fa]">edited</span> : null}
                     </div>
                     {editingThis ? (
-                      <div className="space-y-2">
-                        <textarea value={draft.question} onChange={(e) => setDraft({ ...draft, question: e.target.value })}
-                          className="h-16 w-full rounded border border-[#262626] bg-[#0a0a0a] p-2 text-[13px] text-[#ededed]" />
-                        <textarea value={draft.choices} onChange={(e) => setDraft({ ...draft, choices: e.target.value })}
-                          className="h-24 w-full rounded border border-[#262626] bg-[#0a0a0a] p-2 text-[13px] text-[#ededed]" />
-                        <div className="grid grid-cols-2 gap-2">
-                          <input value={draft.answer} onChange={(e) => setDraft({ ...draft, answer: e.target.value })}
-                            className="rounded border border-[#262626] bg-[#0a0a0a] p-2 text-[13px] text-[#ededed]" />
-                          <input value={reason} onChange={(e) => setReason(e.target.value)} placeholder="reason"
-                            className="rounded border border-[#262626] bg-[#0a0a0a] p-2 text-[13px] text-[#ededed]" />
+                      <div className="space-y-1.5">
+                        <textarea value={editDraft.question} rows={2} autoFocus
+                          onChange={(ev) => setEditDraft({ ...editDraft, question: ev.target.value })}
+                          className="w-full resize-y rounded border border-[#262626] bg-[#0a0a0a] p-2 text-[13px] text-[#ededed]" />
+                        <div className="space-y-1">
+                          {editDraft.choices.map((ch, i) => (
+                            <div key={i} className="flex items-center gap-1.5">
+                              <input type="radio" name={`answer-${c.id}`} checked={editDraft.answerIndex === i}
+                                onChange={() => setEditDraft({ ...editDraft, answerIndex: i })}
+                                className="accent-[#4ade80]" title="correct answer" />
+                              <span className="w-3 font-mono text-[10px] text-[#8a8a8a]">{String.fromCharCode(65 + i)}</span>
+                              <input value={ch}
+                                onChange={(ev) => {
+                                  const choices = [...editDraft.choices];
+                                  choices[i] = ev.target.value;
+                                  setEditDraft({ ...editDraft, choices });
+                                }}
+                                className="min-w-0 flex-1 rounded border border-[#262626] bg-[#0a0a0a] px-2 py-0.5 text-[12px] text-[#ededed]" />
+                              <button title="remove this choice" disabled={editDraft.choices.length <= 2}
+                                onClick={() => {
+                                  const choices = editDraft.choices.filter((_, j) => j !== i);
+                                  setEditDraft({ ...editDraft, choices, answerIndex: Math.min(editDraft.answerIndex, choices.length - 1) });
+                                }}
+                                className="px-1 text-[12px] text-[#666] disabled:opacity-30">×</button>
+                            </div>
+                          ))}
+                          <button onClick={() => setEditDraft({ ...editDraft, choices: [...editDraft.choices, ""] })}
+                            className="font-mono text-[10px] text-[#60a5fa]">+ add choice</button>
                         </div>
-                        <textarea value={draft.grounding} onChange={(e) => setDraft({ ...draft, grounding: e.target.value })}
-                          className="h-14 w-full rounded border border-[#262626] bg-[#0a0a0a] p-2 text-[13px] text-[#ededed]" />
-                        <div className="flex gap-2">
-                          <button disabled={busy} onClick={() => saveEdit(c)}
-                            className="rounded bg-[#0070f3] px-3 py-1.5 text-[12px] font-medium text-white disabled:opacity-50">Save edit</button>
-                          <button onClick={() => setEditing(null)} className="rounded border border-[#262626] px-3 py-1.5 text-[12px] text-[#a1a1a1]">Cancel</button>
+                        <input value={editDraft.grounding}
+                          onChange={(ev) => setEditDraft({ ...editDraft, grounding: ev.target.value })}
+                          placeholder="what in the image makes the answer visible"
+                          className="w-full rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1 text-[11px] text-[#ededed]" />
+                        <div className="flex items-center gap-1.5">
+                          <button disabled={busy} onClick={applyEdit}
+                            className="rounded bg-[#0070f3] px-2.5 py-0.5 text-[11px] font-medium text-white disabled:opacity-50">Apply to image</button>
+                          <button onClick={() => { setEditFor(null); setEditDraft(null); }}
+                            className="rounded border border-[#262626] px-2.5 py-0.5 text-[11px] text-[#a1a1a1]">Cancel</button>
+                          <span className="ml-auto font-mono text-[9px] text-[#666]">saves when the image is approved</span>
                         </div>
                       </div>
                     ) : (
                       <>
-                        <div className="text-[13px] font-medium leading-snug text-[#ededed]">{c.question}</div>
+                        <div className="text-[13px] font-medium leading-snug text-[#ededed]">{e.question}</div>
                         <div className="mt-1 text-[12px] leading-5 text-[#a1a1a1]">
-                          {c.choices.map((ch, i) => (
-                            <span key={i} className={ch === c.answer ? "font-semibold text-[#4ade80]" : ""}>
-                              {String.fromCharCode(65 + i)}. {ch}{i < c.choices.length - 1 ? "  ·  " : ""}
+                          {e.choices.map((ch, i) => (
+                            <span key={i} className={ch === e.answer ? "font-semibold text-[#4ade80]" : ""}>
+                              {String.fromCharCode(65 + i)}. {ch}{i < e.choices.length - 1 ? "  ·  " : ""}
                             </span>
                           ))}
                         </div>
-                        {c.grounding && (
-                          <div className="line-clamp-1 text-[10px] italic leading-3.5 text-[#7a7a7a]">{c.grounding}</div>
+                        {e.grounding && (
+                          <div className="line-clamp-1 text-[10px] italic leading-3.5 text-[#7a7a7a]">{e.grounding}</div>
                         )}
-                        {rejectFor === c.id ? (
-                          <div className="mt-2 flex gap-1.5">
-                            <input autoFocus value={reason} onChange={(e) => setReason(e.target.value)} placeholder="why reject?"
-                              className="flex-1 rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1 text-[11px] text-[#ededed]" />
-                            <button disabled={busy || !reason.trim()} onClick={() => decide(c, "reject", undefined, reason.trim())}
-                              className="rounded bg-[#b3261e] px-2 py-1 text-[11px] text-white disabled:opacity-50">Reject</button>
-                            <button onClick={() => setRejectFor(null)} className="rounded border border-[#262626] px-2 py-1 text-[11px] text-[#a1a1a1]">Cancel</button>
-                          </div>
-                        ) : (
-                          <div className="mt-1 flex flex-wrap gap-1.5">
-                            <button disabled={busy || st === "approve"} onClick={() => decide(c, "approve")}
-                              className="rounded bg-[#14532d] px-2.5 py-0.5 text-[11px] font-medium text-[#4ade80] disabled:opacity-40">Approve</button>
-                            <button disabled={busy} onClick={() => startEdit(c)}
-                              className="rounded border border-[#262626] px-2.5 py-0.5 text-[11px] text-[#ededed]">Edit</button>
-                            <button disabled={busy || st === "reject"} onClick={() => { setRejectFor(c.id); setReason(""); }}
-                              className="rounded border border-[#4c1d1d] px-2.5 py-0.5 text-[11px] text-[#f87171] disabled:opacity-40">Reject</button>
-                          </div>
-                        )}
+                        <div className="mt-1 flex items-center gap-2">
+                          <button disabled={busy} onClick={() => startEdit(c)}
+                            className="rounded border border-[#262626] px-2.5 py-0.5 text-[11px] text-[#ededed]">Edit question</button>
+                          {isEdited && (
+                            <button onClick={() => setEditsByFile((prev) => {
+                              const m = { ...(prev[selected.f] ?? {}) };
+                              delete m[c.id];
+                              return { ...prev, [selected.f]: m };
+                            })} className="font-mono text-[9px] text-[#60a5fa]">revert this edit</button>
+                          )}
+                        </div>
                       </>
                     )}
                   </div>
                 );
               })}
+                </div>
+                </div>
+                {/* ONE VERDICT PER IMAGE, and it is reversible. Edits staged above ride
+                    along with Approve, so what others read is the corrected set. */}
+                <div className="border-t border-[#262626] bg-[#0a0a0a] px-3 py-2">
+                  {imgReject ? (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <input autoFocus value={imgReason} onChange={(ev) => setImgReason(ev.target.value)}
+                        placeholder="why is this image unusable?"
+                        className="min-w-[180px] flex-1 rounded border border-[#262626] bg-[#0a0a0a] px-2 py-1 text-[12px] text-[#ededed]" />
+                      <button disabled={busy || !imgReason.trim()} onClick={() => void decideImage("reject")}
+                        className="rounded bg-[#b3261e] px-3 py-1 text-[11px] text-white disabled:opacity-50">Reject image</button>
+                      <button onClick={() => { setImgReject(false); setImgReason(""); }}
+                        className="rounded border border-[#262626] px-3 py-1 text-[11px] text-[#a1a1a1]">Cancel</button>
+                    </div>
+                  ) : imageDecByFile[selected.f] ? (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className={`font-mono text-[10px] ${imageDecByFile[selected.f].verdict === "approve" ? "text-[#4ade80]" : "text-[#f87171]"}`}>
+                        {imageDecByFile[selected.f].verdict === "approve" ? "✓ approved" : "✕ rejected"}
+                        {imageDecByFile[selected.f].reviewer ? ` · ${imageDecByFile[selected.f].reviewer}` : ""}
+                      </span>
+                      {imageDecByFile[selected.f].reason && (
+                        <span className="max-w-[50%] truncate text-[11px] italic text-[#8a8a8a]">{imageDecByFile[selected.f].reason}</span>
+                      )}
+                      <button disabled={busy} onClick={() => void decideImage("clear")}
+                        className="ml-auto rounded border border-[#262626] px-3 py-1 text-[11px] text-[#ededed] disabled:opacity-50">Undo</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <button disabled={busy} onClick={() => void decideImage("approve")}
+                        className="rounded bg-[#14532d] px-3 py-1 text-[11px] font-medium text-[#4ade80] disabled:opacity-40">Approve image</button>
+                      <button disabled={busy} onClick={() => setImgReject(true)}
+                        className="rounded border border-[#4c1d1d] px-3 py-1 text-[11px] text-[#f87171] disabled:opacity-40">Reject image</button>
+                      <span className="font-mono text-[9px] text-[#666]">
+                        {Object.keys(editsByFile[selected.f] ?? {}).length
+                          ? `${Object.keys(editsByFile[selected.f] ?? {}).length} edit(s) staged · saved with the approval`
+                          : "no edits staged"}
+                      </span>
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -584,16 +757,15 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   );
 }
 
-/** Card border reflects the image's overall state only when every question is decided. */
+/** Card border reflects the image's verdict; per-question rows are a fallback. */
 function statusOfOf(
-  r: ImgRow, cache: Record<number, PageData>, decisions: Record<string, Decision>,
-  statusOf: (id: string) => string,
+  r: ImgRow, cache: Record<number, PageData>, statusFor: (fileId: string, candId: string) => string,
 ): string {
   const page = cache[r.p];
   if (!page) return "pending";
   const cands = page.images.find((im) => im.file_id === r.f)?.candidates ?? [];
   if (!cands.length) return "pending";
-  const states = cands.map((c) => statusOf(c.id));
+  const states = cands.map((c) => statusFor(r.f, c.id));
   if (states.every((s) => s === "approve")) return "approve";
   if (states.every((s) => s === "reject")) return "reject";
   return "pending";

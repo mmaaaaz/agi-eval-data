@@ -87,6 +87,14 @@ export function jsonResponse(obj: unknown, status = 200): Response {
   });
 }
 
+/** Stable key material for rows that belong to an image rather than a candidate.
+ *  Same image + batch always hashes to the same id, so approving, then editing and
+ *  approving again updates one row instead of accumulating duplicates. */
+async function sha256Hex(input: string): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 /**
  * One API, two doors.
  *
@@ -1759,23 +1767,58 @@ const ROUTES: Route[] = [
     handler: async ({ request, db, deps }) => {
       if (!canApprove(request, deps)) return APPROVE_ERROR();
       const body = (await request.json().catch(() => null)) as
-        | { id?: string; verdict?: string; reason?: string; reviewer?: string; edits?: Record<string, unknown>; batch?: string; file_id?: string }
+        | {
+          scope?: string; id?: string; verdict?: string; reason?: string; reviewer?: string;
+          edits?: Record<string, unknown>; batch?: string; file_id?: string;
+        }
         | null;
-      const id = String(body?.id ?? "").trim().slice(0, 32);
       const verdict = String(body?.verdict ?? "");
-      if (!id || !["approve", "edit", "reject"].includes(verdict)) {
-        return jsonResponse({ error: "id and verdict approve|edit|reject are required" }, 400);
-      }
-      const reason = String(body?.reason ?? "").trim().slice(0, 500);
-      if (verdict !== "approve" && !reason) return jsonResponse({ error: "a reason is required to edit or reject" }, 400);
+      const batch = String(body?.batch ?? "").slice(0, 64);
+      const fileId = String(body?.file_id ?? "").slice(0, 128);
       const reviewer = String(body?.reviewer ?? "").slice(0, 64);
-      const edits = body?.edits && typeof body.edits === "object" ? JSON.stringify(body.edits).slice(0, 4000) : "";
+      const reason = String(body?.reason ?? "").trim().slice(0, 500);
+
+      // IMAGE SCOPE — the review room's normal verdict. A reviewer edits whatever
+      // they want across the image's questions and approves (or rejects) the image
+      // once. The row is keyed by the image, so a later re-export of candidates
+      // cannot orphan it, and `clear` removes it (undo after approving).
+      if (body?.scope === "image") {
+        if (!fileId) return jsonResponse({ error: "file_id is required for an image decision" }, 400);
+        if (!["approve", "reject", "clear"].includes(verdict)) {
+          return jsonResponse({ error: "image verdict must be approve|reject|clear" }, 400);
+        }
+        if (verdict === "reject" && !reason) return jsonResponse({ error: "a reason is required to reject" }, 400);
+        const id = "img:" + (await sha256Hex(`${batch}|${fileId}`)).slice(0, 24);
+        if (verdict === "clear") {
+          await db.prepare("DELETE FROM vqa_decisions WHERE cand_id = ?1").bind(id).run();
+          return jsonResponse({ ok: true, id, verdict: "clear" });
+        }
+        const edits = body?.edits && typeof body.edits === "object" ? JSON.stringify(body.edits).slice(0, 20000) : "";
+        await db.prepare(
+          "INSERT INTO vqa_decisions (cand_id, batch, file_id, verdict, reviewer, reason, edits)"
+          + " VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
+          + " ON CONFLICT(cand_id) DO UPDATE SET verdict = excluded.verdict, reviewer = excluded.reviewer,"
+          + " reason = excluded.reason, edits = excluded.edits, updated_at = datetime('now')",
+        ).bind(id, batch, fileId, verdict, reviewer, reason, edits).run();
+        return jsonResponse({ ok: true, id, verdict });
+      }
+
+      const id = String(body?.id ?? "").trim().slice(0, 32);
+      if (!id || !["approve", "edit", "reject", "clear"].includes(verdict)) {
+        return jsonResponse({ error: "id and verdict approve|edit|reject|clear are required" }, 400);
+      }
+      if (verdict === "clear") {
+        await db.prepare("DELETE FROM vqa_decisions WHERE cand_id = ?1").bind(id).run();
+        return jsonResponse({ ok: true, id, verdict: "clear" });
+      }
+      if (verdict !== "approve" && !reason) return jsonResponse({ error: "a reason is required to edit or reject" }, 400);
+      const edits = body?.edits && typeof body?.edits === "object" ? JSON.stringify(body.edits).slice(0, 4000) : "";
       await db.prepare(
         "INSERT INTO vqa_decisions (cand_id, batch, file_id, verdict, reviewer, reason, edits)"
         + " VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)"
         + " ON CONFLICT(cand_id) DO UPDATE SET verdict = excluded.verdict, reviewer = excluded.reviewer,"
         + " reason = excluded.reason, edits = excluded.edits, updated_at = datetime('now')",
-      ).bind(id, String(body?.batch ?? "").slice(0, 64), String(body?.file_id ?? "").slice(0, 128), verdict, reviewer, reason, edits).run();
+      ).bind(id, batch, fileId, verdict, reviewer, reason, edits).run();
       // Edge cache: the decisions read is cached, so a fresh decision can take up
       // to the TTL to appear for other visitors. That is the price of free reads.
       return jsonResponse({ ok: true, id, verdict });
