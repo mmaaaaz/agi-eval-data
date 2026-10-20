@@ -393,6 +393,9 @@ def main() -> int:
     ap.add_argument("--retry", type=int, default=2, help="extra attempts per image")
     ap.add_argument("--timeout", type=int, default=900, help="per-call seconds")
     ap.add_argument("--dry-run", action="store_true", help="assemble prompts only, no calls")
+    ap.add_argument("--allow-short", action="store_true",
+                    help="do not fail when an image ends with fewer than --candidates valid questions; "
+                         "off by default, because a short image is a broken image")
     ap.add_argument("--spend", action="store_true", help="required by house rule even for zero-priced models")
     args = ap.parse_args()
 
@@ -542,6 +545,20 @@ def main() -> int:
         list(ex.map(work, todo))
 
     kept, dropped = compact_rows(rows_path)
+    # THE COUNT IS PART OF THE SCHEMA. v2 asked for five and validated each
+    # candidate, but never the count, so 23,465 images shipped short and the run
+    # still exited 0. A short image now fails the run unless --allow-short is
+    # given explicitly, which makes the gap impossible to miss.
+    short = empty = 0
+    for line in rows_path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        valid = [c for c in row.get("candidates") or [] if not c.get("_errors")]
+        if len(valid) < args.candidates:
+            short += 1
+        if not valid:
+            empty += 1
     manifest = {
         "batch": args.batch, "model": args.model, "provider": args.provider,
         "transport": transport, "base_url": (base_url if transport == "api" else "hermes-cli"),
@@ -550,12 +567,20 @@ def main() -> int:
         "prompt_version": PROMPT_VERSION, "requested_candidates": args.candidates,
         "images": len(items), "drafted": len(done) + len(todo),
         "ok": counters["ok"], "failed": counters["fail"],
+        "images_short": short, "images_empty": empty,
+        "exact_count_enforced": not args.allow_short,
         "started_at": started, "finished_at": datetime.now(timezone.utc).isoformat(),
         "rows": str(rows_path.relative_to(ROOT)),
     }
     (out_dir / "manifest.json").write_text(json.dumps(manifest, indent=1), encoding="utf-8")
     print(json.dumps(manifest, indent=1))
-    return 0 if counters["fail"] == 0 else 1
+    if counters["fail"]:
+        return 1
+    if short and not args.allow_short:
+        print(f"REFUSING: {short} image(s) have fewer than {args.candidates} valid questions "
+              f"({empty} with none). Top them up or pass --allow-short.", file=sys.stderr)
+        return 2
+    return 0
 
 
 if __name__ == "__main__":

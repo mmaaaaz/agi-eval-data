@@ -59,6 +59,7 @@ ALLOWED = {
     "backfill_vqa_room.py": "one-time initialisation of the review room's materialised tables and its marker; run by hand after migration 0011",
     "export_vqa_static.py": "the review room's FREE READ PATH: writes the candidate snapshot as static JSON pages that Pages serves from the edge, so a visit never reads D1; run by hand after a drafting pass, output is deployed with the site and never committed",
     "sync_vqa_decisions.py": "publishes the decisions D1 already holds as static JSON, so other visitors read them from the edge instead of a query; run by hand after a review session",
+    "top_up_vqa.py": "repairs a drafting batch that came back short: for every image under five valid questions it asks for exactly the missing number, shows the model what is already accepted, and merges without overwriting; run by hand, then re-export",
     "sync_migrations.py": "a maintenance tool — run by hand to regenerate migrations, not a stage",
     "16_html_mirrors.py": "a guard — it checks that each document's hand-maintained .html "
                           "mirror has not drifted from its .md. Runs in the pipeline, not CI, "
