@@ -212,33 +212,45 @@ def main() -> int:
                 req = urllib.request.Request(THUMB.format(fid=fid), headers={"User-Agent": UA})
                 with urllib.request.urlopen(req, timeout=120) as r:
                     data = r.read()
-                content, wall, usage = call(data, args.model, key, base, args.reasoning_effort or None,
-                                            args.max_tokens, args.timeout,
-                                            names.get(fid, ""), False,
-                                            prompt_override=fill_prompt(names.get(fid, ""), items, need, missing_cats, allowed))
-                blob = parse_json_blob(content)
-                fresh = normalize({"taxonomy_version": "v5.1", "items": blob.get("items") or []}).get("items") or []
-                fresh = [x for x in fresh if not any(
-                    re.sub(r"[^a-z0-9]+", " ", str(x.get("question", "")).lower()).strip()
-                    == re.sub(r"[^a-z0-9]+", " ", str(it.get("question", "")).lower()).strip()
-                    for it in items)]
-                # keep only allowed categories, and never exceed what is needed
-                fresh = [x for x in fresh if x.get("category") in allowed][:need]
-                # The model sometimes returns the answer with different casing or a
-                # trailing qualifier. Repair it to the exact choice, or drop the item
-                # and let the retry supply a clean one.
-                repaired = []
-                for x in fresh:
-                    ch = [str(c).strip() for c in (x.get("choices") or [])]
-                    ans = str(x.get("answer") or "").strip()
-                    if ch and ans not in ch:
-                        hit = next((c for c in ch if c.lower() == ans.lower()), None)
-                        if hit is None:
-                            continue
-                        x["answer"] = hit
-                    repaired.append(x)
-                fresh = repaired
-                merged = {**row, "taxonomy_version": "v5.1", "items": items + fresh}
+                merged_items = list(items)
+                last_wall, last_usage = 0, {}
+                # A single call often returns fewer items than asked. Ask again for
+                # the exact deficit rather than failing the image; two rounds cover
+                # the observed shortfall without an unbounded call loop.
+                for _round in range(2):
+                    need_now = TOTAL_ITEMS - len(merged_items)
+                    if need_now <= 0:
+                        break
+                    miss_now = [c for c in allowed if c != "perc"
+                                and not any(x.get("category") == c for x in merged_items)]
+                    content, last_wall, last_usage = call(
+                        data, args.model, key, base, args.reasoning_effort or None,
+                        args.max_tokens, args.timeout, names.get(fid, ""), False,
+                        prompt_override=fill_prompt(names.get(fid, ""), merged_items, need_now, miss_now, allowed))
+                    blob = parse_json_blob(content)
+                    fresh = normalize({"taxonomy_version": "v5.1", "items": blob.get("items") or []}).get("items") or []
+                    fresh = [x for x in fresh if not any(
+                        re.sub(r"[^a-z0-9]+", " ", str(x.get("question", "")).lower()).strip()
+                        == re.sub(r"[^a-z0-9]+", " ", str(it.get("question", "")).lower()).strip()
+                        for it in merged_items)]
+                    fresh = [x for x in fresh if x.get("category") in allowed][:need_now]
+                    # The model sometimes returns the answer with different casing or a
+                    # trailing qualifier. Repair it to the exact choice, or drop the item
+                    # and let the next round supply a clean one.
+                    repaired = []
+                    for x in fresh:
+                        ch = [str(c).strip() for c in (x.get("choices") or [])]
+                        ans = str(x.get("answer") or "").strip()
+                        if ch and ans not in ch:
+                            hit = next((c for c in ch if c.lower() == ans.lower()), None)
+                            if hit is None:
+                                continue
+                            x["answer"] = hit
+                        repaired.append(x)
+                    if not repaired:
+                        break
+                    merged_items.extend(repaired)
+                merged = {**row, "taxonomy_version": "v5.1", "items": merged_items}
                 if len(merged["items"]) > TOTAL_ITEMS:
                     merged["items"] = trim_to_ten(app, merged["items"])
                 errs = check_image(merged)
@@ -248,11 +260,13 @@ def main() -> int:
                     with out_path.open("a", encoding="utf-8") as f:
                         f.write(json.dumps({**merged, "name": names.get(fid, ""), "model": args.model,
                                             "prompt_version": PROMPT_VERSION, "parse_ok": True,
-                                            "filled": len(fresh), "wall_ms": wall, "usage": usage,
+                                            "filled": len(merged_items) - len(items), "wall_ms": last_wall,
+                                            "usage": last_usage,
                                             "started_at": datetime.now(timezone.utc).isoformat()},
                                            ensure_ascii=False) + "\n")
                     stats["ok"] += 1
-                    print(f"  [{stats['ok']+stats['kept']}/{len(jobs)}] {names.get(fid,fid)[:40]}: +{len(fresh)} ({wall} ms)", flush=True)
+                    print(f"  [{stats['ok']+stats['kept']}/{len(jobs)}] {names.get(fid,fid)[:40]}: "
+                          f"+{len(merged_items)-len(items)} ({last_wall} ms)", flush=True)
                 return
             except Exception as e:  # noqa: BLE001
                 last = f"{type(e).__name__}: {e}"
