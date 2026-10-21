@@ -25,7 +25,10 @@ import json
 import re
 import sys
 
-TAXONOMY_VERSION = "v5"
+TAXONOMY_VERSION = "v5.1"
+
+TOTAL_ITEMS = 10          # locked by the owner: exactly ten, no more, no less
+PERC_ITEMS = 2            # the perception control keeps a fixed floor
 
 PHYSICS = ("P1", "P2", "P3", "P4", "P5", "P6", "P7", "P8")
 GEOMETRY = ("G1", "G2", "G3", "G4", "G5", "G6", "G7", "G8")
@@ -143,7 +146,7 @@ def check_image(rec: dict) -> list[str]:
     """Full composition check for one image record."""
     e: list[str] = []
     if rec.get("taxonomy_version") != TAXONOMY_VERSION:
-        e.append("taxonomy_version is not v5")
+        e.append(f"taxonomy_version is not {TAXONOMY_VERSION}")
     app = rec.get("applicability")
     if not isinstance(app, dict):
         return e + ["applicability is missing"]
@@ -178,25 +181,31 @@ def check_image(rec: dict) -> list[str]:
         if cat in by_cat:
             by_cat[cat].append(it)
 
+    if len(items) != TOTAL_ITEMS:
+        e.append(f"an image must carry exactly {TOTAL_ITEMS} items, not {len(items)}")
+
     for cat in CATEGORIES:
         applicable = bool(isinstance(app, dict) and isinstance(app.get(cat), dict)
                          and app[cat].get("applicable"))
         n = len(by_cat[cat])
-        if applicable and n != 2:
-            e.append(f"{cat}: applicable but has {n} item(s), needs exactly 2")
+        if applicable and n < 1:
+            e.append(f"{cat}: applicable but has no item")
         if not applicable and n:
             e.append(f"{cat}: not applicable but has {n} item(s)")
+    if len(by_cat["perc"]) != PERC_ITEMS:
+        e.append(f"perc is the control rung and must carry exactly {PERC_ITEMS} items")
 
     # Hardness is the point of v5: no easy item in any competence category, and at
-    # least one genuinely hard item in each. The control rung stays easy/medium.
+    # least one genuinely hard item in each applicable category. The control rung
+    # stays easy/medium.
     for cat in ("physics", "geometry", "combination", "bias", "sensitivity"):
-        if len(by_cat[cat]) == 2:
+        if by_cat[cat]:
             diffs = [str(x.get("difficulty")) for x in by_cat[cat]]
             if "easy" in diffs:
                 e.append(f"{cat}: an easy item is not acceptable in v5")
             if "hard" not in diffs:
                 e.append(f"{cat}: needs at least one hard item")
-    if len(by_cat["perc"]) == 2:
+    if by_cat["perc"]:
         pd = [str(x.get("difficulty")) for x in by_cat["perc"]]
         if "hard" in pd:
             e.append("perc is the control rung; it must not be hard")
@@ -236,7 +245,7 @@ def catalog_text() -> str:
 def _selftest() -> int:
     """A record that must be refused, and the same record made valid."""
     base = {
-        "taxonomy_version": "v5",
+        "taxonomy_version": "v5.1",
         "applicability": {
             "physics": {"applicable": True, "evidence": "steel beam rests on two brick piers"},
             "geometry": {"applicable": True, "evidence": "three objects at distinct depths"},
@@ -272,14 +281,35 @@ def _selftest() -> int:
              "grounding": "Two horizontal boards are visible above the brackets."},
         ],
     }
+    # v5.1 requires exactly ten. The fixture carries four physics, four geometry and
+    # the two control items, so it is a valid distribution without a bias or
+    # sensitivity claim.
+    base["items"].extend([
+        {"category": "physics", "subcategory": "P3", "difficulty": "medium",
+         "question": "What touches the books on the shelf?", "choices": ["The board", "The wall", "Nothing", "The brackets"],
+         "answer": "The board", "answer_type": "choice",
+         "grounding": "The books rest directly on the lower board."},
+        {"category": "physics", "subcategory": "P6", "difficulty": "hard",
+         "question": "Which way would a shadow fall if the window light moved left?", "choices": ["Right", "Left", "Up", "Down"],
+         "answer": "Right", "answer_type": "choice",
+         "grounding": "The window is on the left and the shelf edge shadow falls right."},
+        {"category": "geometry", "subcategory": "G2", "difficulty": "medium",
+         "question": "Which is larger in real life, the chair or the shelf?", "choices": ["The shelf", "The chair", "Equal", "Cannot tell"],
+         "answer": "The shelf", "answer_type": "choice",
+         "grounding": "The shelf spans the wall while the chair sits below it."},
+        {"category": "geometry", "subcategory": "G4", "difficulty": "hard",
+         "question": "Are the shelf board and the window sill parallel?", "choices": ["Yes", "No", "Perpendicular", "At 45 degrees"],
+         "answer": "Yes", "answer_type": "yesno",
+         "grounding": "Both edges run horizontally across the frame."},
+    ])
     if check_image(base):
         print("SELFTEST FAILED: valid record was refused:")
         print("\n".join(check_image(base)))
         return 1
     bad = json.loads(json.dumps(base))
-    bad["items"].pop(3)  # drop geometry's second item
-    if not any("geometry" in x for x in check_image(bad)):
-        print("SELFTEST FAILED: a short category was accepted")
+    bad["items"].pop(3)  # nine items, not ten
+    if not any("exactly 10" in x for x in check_image(bad)):
+        print("SELFTEST FAILED: a nine-item image was accepted")
         return 1
     bad2 = json.loads(json.dumps(base))
     bad2["items"][0]["difficulty"] = "easy"
