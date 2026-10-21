@@ -99,7 +99,7 @@ def main() -> int:
             continue
         fid = r.get("file_id", "")
         batch = args.batch
-        is_v5 = r.get("taxonomy_version") == "v5"
+        is_v5 = str(r.get("taxonomy_version") or "").startswith("v5")
         # v5 stores `items`; legacy rows store `candidates`.
         valid = [c for c in ((r.get("items") if is_v5 else r.get("candidates")) or [])
                  if not c.get("_errors")]
@@ -195,7 +195,7 @@ def main() -> int:
         "byCapability": dict(caps.most_common()),
         "byCategory": dict(cats.most_common()),
         "bySubcategory": dict(subs.most_common()),
-        "taxonomyVersion": "v5" if taxonomy_versions["v5"] else "v4",
+        "taxonomyVersion": "v5.1" if taxonomy_versions["v5"] else "v4",
         "byLevel": dict(sorted(lvls.items())),
         "byDomain": dict(doms.most_common()),
         "byBiasAxis": dict(sorted(axes.items())),
