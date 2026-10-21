@@ -44,7 +44,7 @@ from scripts.harness.taxonomy_v5 import (
     PERC_ITEMS, SUBCATEGORIES, TOTAL_ITEMS, check_image,
 )
 
-PROMPT_VERSION = "vqa-v5.1-fill-v1"
+PROMPT_VERSION = "vqa-v5.1-fill-v3"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
 
@@ -64,10 +64,14 @@ def fill_prompt(name: str, existing: list[dict], need: int, missing_cats: list[s
         f"Categories that still have ZERO items and must receive at least one: "
         f"{', '.join(missing_cats) if missing_cats else 'none (all already present)'}.\n"
         f"After merging, the image must hold exactly {TOTAL_ITEMS} items, of which exactly "
-        f"{PERC_ITEMS} are category perc.\n\n"
+        f"{PERC_ITEMS} are category perc; a perc item is easy or medium, never hard, and if the "
+        f"image currently has fewer than {PERC_ITEMS} perc items you must add the missing ones.\n\n"
         "HARDNESS: no `easy` item outside perc; every competence category needs at least one "
-        "`hard` item. A hard item needs two chained visual inferences or a counterfactual, "
-        "plausible near-miss choices, and an answer that a text-only model cannot guess.\n\n"
+        "`hard` item, so if you add the only item for a category it MUST be hard. A hard item "
+        "needs two chained visual inferences or a counterfactual, plausible near-miss choices, "
+        "and an answer that a text-only model cannot guess. A sensitivity item is always hard: "
+        "frame a boundary case (partially occluded, cropped or ambiguous) whose honest answer is "
+        "\"Not determinable from the image\".\n\n"
         "Rules: exactly 4 distinct short choices; answer equals one choice exactly; grounding is one "
         "sentence (<=20 words) naming the decisive visible evidence; never say 'in this image'; never "
         "use the file name. For bias never ask for race, ethnicity, religion, gender identity, "
@@ -82,14 +86,18 @@ def fill_prompt(name: str, existing: list[dict], need: int, missing_cats: list[s
 
 def trim_to_ten(app: dict, items: list[dict]) -> list[dict]:
     """Drop over-full categories down to ten, keeping the two PERC items and one per category."""
-    perc = [x for x in items if x.get("category") == "perc"][:PERC_ITEMS]
+    perc = [x for x in items if x.get("category") == "perc" and x.get("difficulty") != "hard"][:PERC_ITEMS]
     rest = [x for x in items if x.get("category") != "perc"]
     keep: list[dict] = list(perc)
     # one per applicable category first
     for cat, a in app.items():
         if cat == "perc" or not a.get("applicable"):
             continue
-        chosen = next((x for x in rest if x.get("category") == cat), None)
+        pool_cat = [x for x in rest if x.get("category") == cat]
+        # Keep a hard item where the category has one: dropping the only hard item
+        # and keeping a medium led the completion pass to fail its own hardness rule.
+        chosen = next((x for x in pool_cat if x.get("difficulty") == "hard"), None) \
+            or (pool_cat[0] if pool_cat else None)
         if chosen:
             keep.append(chosen)
     room = TOTAL_ITEMS - len(keep)
@@ -115,6 +123,7 @@ def main() -> int:
     ap.add_argument("--retry", type=int, default=3)
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--limit", type=int, default=0)
+    ap.add_argument("--only", default="", help="JSONL of file_id/name rows to restrict this run to")
     ap.add_argument("--spend", action="store_true")
     args = ap.parse_args()
 
@@ -173,6 +182,13 @@ def main() -> int:
             r = json.loads(line)
             names[r["file_id"]] = r.get("name", "")
     jobs = [fid for fid in best if fid not in done]
+    if args.only:
+        wanted = set()
+        for line in pathlib.Path(args.only).read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                r = json.loads(line)
+                wanted.add(r.get("file_id") or r.get("name"))
+        jobs = [fid for fid in jobs if fid in wanted or names.get(fid) in wanted]
     if args.limit:
         jobs = jobs[: args.limit]
     print(f"to complete: {len(jobs)} | model: {args.model} | {args.concurrency} workers @ {args.rpm} rpm")
@@ -192,6 +208,8 @@ def main() -> int:
         allowed.append("perc")
         perc_have = sum(1 for x in items if x.get("category") == "perc")
         missing_cats = [c for c in allowed if c != "perc" and not any(x.get("category") == c for x in items)]
+        if perc_have < PERC_ITEMS:
+            missing_cats.append("perc")
         need = TOTAL_ITEMS - len(items)
         last = ""
         if need == 0 and perc_have == PERC_ITEMS:
@@ -223,6 +241,8 @@ def main() -> int:
                         break
                     miss_now = [c for c in allowed if c != "perc"
                                 and not any(x.get("category") == c for x in merged_items)]
+                    if sum(1 for x in merged_items if x.get("category") == "perc") < PERC_ITEMS:
+                        miss_now.append("perc")
                     content, last_wall, last_usage = call(
                         data, args.model, key, base, args.reasoning_effort or None,
                         args.max_tokens, args.timeout, names.get(fid, ""), False,
