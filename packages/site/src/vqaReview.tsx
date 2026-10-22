@@ -111,13 +111,22 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   const [decisions, setDecisions] = useState<Record<string, Decision>>({});
   const [searchIndex, setSearchIndex] = useState<Hit[] | null>(null);
 
-  const [search, setSearch] = useState("");
-  const [domain, setDomain] = useState("");
-  const [capability, setCapability] = useState("");
-  const [level, setLevel] = useState("");
-  const [minN, setMinN] = useState(0);
-  const [kind, setKind] = useState<"all" | "bias" | "abstain">("all");
-  const [group, setGroup] = useState<"none" | "domain" | "level">("domain");
+  const initialQuery = useRef(new URLSearchParams(window.location.search)).current;
+  const initialImage = useRef(initialQuery.get("img") ?? "").current;
+
+  const [search, setSearch] = useState(initialQuery.get("q") ?? "");
+  const [domain, setDomain] = useState(initialQuery.get("domain") ?? "");
+  const [capability, setCapability] = useState(initialQuery.get("cat") ?? initialQuery.get("capability") ?? "");
+  const [level, setLevel] = useState(initialQuery.get("sub") ?? initialQuery.get("level") ?? "");
+  const [minN, setMinN] = useState(Number(initialQuery.get("min") ?? 0) || 0);
+  const [kind, setKind] = useState<"all" | "bias" | "abstain">(() => {
+    const k = initialQuery.get("kind");
+    return k === "bias" || k === "abstain" ? k : "all";
+  });
+  const [group, setGroup] = useState<"none" | "domain" | "level">(() => {
+    const g = initialQuery.get("group");
+    return g === "none" || g === "level" ? g : "domain";
+  });
 
   const [selected, setSelected] = useState<ImgRow | null>(null);
   const [pageCache, setPageCache] = useState<Record<number, PageData>>({});
@@ -207,6 +216,29 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
       document.body.style.overflow = prev;
     };
   }, [selected]);
+
+  // A shared /review?img=<file_id> link opens that photograph even if the grid is
+  // filtered: `rows` holds all 50,000 images, so the lookup does not depend on the
+  // current facet selection. The filters from the same URL are already applied.
+  useEffect(() => {
+    if (!rows || !initialImage) return;
+    const r = rows.find((x) => x.f === initialImage);
+    if (r) openImage(r);
+  }, [rows, initialImage]);
+
+  // Keep the address bar shareable: filters and the open image are mirrored into
+  // the query string, and an existing unknown param (a cache buster) is preserved.
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const put = (k: string, v: string) => { if (v) p.set(k, v); else p.delete(k); };
+    put("cat", capability); put("sub", level); put("domain", domain);
+    put("q", search.trim()); put("min", minN ? String(minN) : "");
+    put("kind", kind === "all" ? "" : kind);
+    put("group", group === "domain" ? "" : group);
+    put("img", selected?.f ?? (rows ? "" : initialImage));
+    const qs = p.toString();
+    window.history.replaceState(null, "", `${window.location.pathname}${qs ? `?${qs}` : ""}`);
+  }, [capability, level, domain, search, minN, kind, group, selected, rows, initialImage]);
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const [width, setWidth] = useState(0);
