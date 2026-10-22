@@ -77,6 +77,7 @@ def main() -> int:
     cats: Counter[str] = Counter()
     subs: Counter[str] = Counter()
     taxonomy_versions: Counter[str] = Counter()
+    tax_version = "v4"
 
     # v5 rows do not carry a scene domain (the five categories are the taxonomy);
     # the v2 draft of the same corpus does. Reuse it by file_id rather than spend a
@@ -108,6 +109,7 @@ def main() -> int:
         # old five-item contract.
         if is_v5:
             taxonomy_versions["v5"] += 1
+            tax_version = str(r.get("taxonomy_version") or tax_version)
         else:
             taxonomy_versions["v4"] += 1
             if len(valid) > 5:
@@ -136,7 +138,8 @@ def main() -> int:
                 "prompt_version": c.get("prompt_version") or r.get("prompt_version", ""),
                 "answer_type": c.get("answer_type", ""),
                 "relevance": c.get("relevance", ""),
-                "bias_axis": c.get("bias_axis", "") or (sub if cat == "bias" else ""),
+                "bias_axis": c.get("bias_axis", "") or ((c.get("probe") or {}).get("axis", "") if cat == "bias" else ""),
+                "probe": c.get("probe") or None,
                 "abstention": bool(c.get("abstention")),
             }
             images.setdefault(fid, []).append(item)
@@ -195,7 +198,7 @@ def main() -> int:
         "byCapability": dict(caps.most_common()),
         "byCategory": dict(cats.most_common()),
         "bySubcategory": dict(subs.most_common()),
-        "taxonomyVersion": "v5.1" if taxonomy_versions["v5"] else "v4",
+        "taxonomyVersion": tax_version,
         "byLevel": dict(sorted(lvls.items())),
         "byDomain": dict(doms.most_common()),
         "byBiasAxis": dict(sorted(axes.items())),

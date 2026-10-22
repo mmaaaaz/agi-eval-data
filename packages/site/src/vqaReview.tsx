@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { ThumbImage } from "./ThumbImage";
+import { rememberScroll, restoreScroll, type ScrollSlot } from "./scrollMemory";
 import { getActor } from "./questions";
 import type { AskSettings } from "./settings";
 
@@ -31,6 +32,7 @@ interface Cand {
   category?: string; subcategory?: string;
   prompt_version: string;
   answer_type?: string; relevance?: string; bias_axis?: string; abstention?: boolean;
+  probe?: { design?: string; axis?: string };
 }
 interface PageData { page: number; images: { file_id: string; candidates: Cand[] }[] }
 interface PageMeta { p: number; file: string; images: number; first: string; last: string }
@@ -129,6 +131,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   });
 
   const [selected, setSelected] = useState<ImgRow | null>(null);
+  const scrollSlot = useRef<ScrollSlot>({ top: 0 });
   const [pageCache, setPageCache] = useState<Record<number, PageData>>({});
   const [error, setError] = useState("");
   const [note, setNote] = useState("");
@@ -215,6 +218,16 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
       window.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
     };
+  }, [selected]);
+
+  // Closing the modal must not move the grid. Capture on open, restore after the
+  // modal unmounts; requestAnimationFrame runs after React has committed the grid.
+  useEffect(() => {
+    if (selected) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    const raf = requestAnimationFrame(() => restoreScroll(el, scrollSlot.current));
+    return () => cancelAnimationFrame(raf);
   }, [selected]);
 
   // A shared /review?img=<file_id> link opens that photograph even if the grid is
@@ -333,6 +346,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   }, [decisions, index]);
 
   function openImage(r: ImgRow) {
+    rememberScroll(scrollRef.current, scrollSlot.current);
     setSelected(r);
     setEditFor(null); setEditDraft(null);
     setImgReject(false); setImgReason("");
@@ -723,6 +737,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
                       <span className="rounded bg-[#141414] px-1.5 py-0.5 text-[#ededed]">Q{qi + 1}</span>
                       <span>{(c.category ? `${c.category} · ${c.subcategory}` : `${c.capability} · ${c.level}`)} · {c.difficulty}</span>
                       {c.bias_axis ? <span className="text-[#60a5fa]">bias {c.bias_axis}</span> : null}
+                      {c.probe?.design ? <span className="text-[#60a5fa]">{c.probe.design}</span> : null}
                       {c.abstention ? <span className="text-[#60a5fa]">abstention</span> : null}
                       {isEdited ? <span className="ml-auto text-[#60a5fa]">edited</span> : null}
                     </div>

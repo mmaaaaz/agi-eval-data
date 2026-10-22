@@ -41,16 +41,17 @@ from scripts.harness.generate_vqa import (
 )
 from scripts.harness.generate_v5 import Limiter, call, normalize
 from scripts.harness.taxonomy_v5 import (
-    PERC_ITEMS, SUBCATEGORIES, TOTAL_ITEMS, check_image,
+    PERC_ITEMS, SUBCATEGORIES, TAXONOMY_VERSION, TOTAL_ITEMS, check_image,
 )
 
-PROMPT_VERSION = "vqa-v5.1-fill-v3"
+PROMPT_VERSION = "vqa-v5.2-fill-v1"
 UA = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36")
 
 
 def fill_prompt(name: str, existing: list[dict], need: int, missing_cats: list[str],
-                allowed: list[str]) -> str:
+                allowed: list[str], excluded: set[str] | None = None) -> str:
+    excluded = excluded or set()
     shown = "\n".join(
         f"{i}. [{it.get('category')}/{it.get('subcategory')}/{it.get('difficulty')}] {it.get('question')}"
         for i, it in enumerate(existing, 1)
@@ -61,6 +62,7 @@ def fill_prompt(name: str, existing: list[dict], need: int, missing_cats: list[s
         f"EXISTING ({len(existing)}):\n{shown}\n\n"
         f"Write EXACTLY {need} NEW items. Do not repeat or rephrase any existing question. "
         f"Categories allowed on this image: {', '.join(allowed)}.\n"
+        f"Do not add or remove items in these categories: {', '.join(sorted(excluded)) or 'none'}.\n"
         f"Categories that still have ZERO items and must receive at least one: "
         f"{', '.join(missing_cats) if missing_cats else 'none (all already present)'}.\n"
         f"After merging, the image must hold exactly {TOTAL_ITEMS} items, of which exactly "
@@ -124,11 +126,14 @@ def main() -> int:
     ap.add_argument("--timeout", type=int, default=300)
     ap.add_argument("--limit", type=int, default=0)
     ap.add_argument("--only", default="", help="JSONL of file_id/name rows to restrict this run to")
+    ap.add_argument("--exclude-categories", default="",
+                    help="comma-separated categories the fill must not add or drop")
     ap.add_argument("--spend", action="store_true")
     args = ap.parse_args()
+    excluded = {c.strip() for c in args.exclude_categories.split(",") if c.strip()}
 
     if not spend_permitted(args):
-        refuse_without_spend(args, "--spend", "the v5.1 completion pass")
+        refuse_without_spend(args, "--spend", "the v5.2 completion pass")
 
     env = load_env_file(pathlib.Path(args.api_key_file))
     key = env.get("VQA_API_KEY", os.environ.get("VQA_API_KEY", ""))
@@ -205,7 +210,9 @@ def main() -> int:
         if len(items) > TOTAL_ITEMS:
             items = trim_to_ten(app, items)
         allowed = [c for c in SUBCATEGORIES if c != "perc" and app.get(c, {}).get("applicable")]
-        allowed.append("perc")
+        allowed = [c for c in allowed if c not in excluded]
+        if "perc" not in excluded:
+            allowed.append("perc")
         perc_have = sum(1 for x in items if x.get("category") == "perc")
         missing_cats = [c for c in allowed if c != "perc" and not any(x.get("category") == c for x in items)]
         if perc_have < PERC_ITEMS:
@@ -213,7 +220,7 @@ def main() -> int:
         need = TOTAL_ITEMS - len(items)
         last = ""
         if need == 0 and perc_have == PERC_ITEMS:
-            merged = {**row, "taxonomy_version": "v5.1", "items": items}
+            merged = {**row, "taxonomy_version": TAXONOMY_VERSION, "items": items}
             errs = check_image(merged)
             if not errs:
                 with lock:
@@ -246,9 +253,9 @@ def main() -> int:
                     content, last_wall, last_usage = call(
                         data, args.model, key, base, args.reasoning_effort or None,
                         args.max_tokens, args.timeout, names.get(fid, ""), False,
-                        prompt_override=fill_prompt(names.get(fid, ""), merged_items, need_now, miss_now, allowed))
+                        prompt_override=fill_prompt(names.get(fid, ""), merged_items, need_now, miss_now, allowed, excluded))
                     blob = parse_json_blob(content)
-                    fresh = normalize({"taxonomy_version": "v5.1", "items": blob.get("items") or []}).get("items") or []
+                    fresh = normalize({"taxonomy_version": TAXONOMY_VERSION, "items": blob.get("items") or []}).get("items") or []
                     fresh = [x for x in fresh if not any(
                         re.sub(r"[^a-z0-9]+", " ", str(x.get("question", "")).lower()).strip()
                         == re.sub(r"[^a-z0-9]+", " ", str(it.get("question", "")).lower()).strip()
@@ -270,7 +277,7 @@ def main() -> int:
                     if not repaired:
                         break
                     merged_items.extend(repaired)
-                merged = {**row, "taxonomy_version": "v5.1", "items": merged_items}
+                merged = {**row, "taxonomy_version": TAXONOMY_VERSION, "items": merged_items}
                 if len(merged["items"]) > TOTAL_ITEMS:
                     merged["items"] = trim_to_ten(app, merged["items"])
                 errs = check_image(merged)
@@ -315,7 +322,7 @@ def main() -> int:
     bad = sum(1 for r in rows if check_image(r))
     manifest = {
         "batch": args.batch, "model": args.model, "prompt_version": PROMPT_VERSION,
-        "taxonomy_version": "v5.1", "source": args.source,
+        "taxonomy_version": TAXONOMY_VERSION, "source": args.source,
         "images": len(rows), "items": sum(len(r.get("items") or []) for r in rows),
         "exactly_ten": sum(1 for r in rows if len(r.get("items") or []) == TOTAL_ITEMS),
         "invalid": bad, "filled_calls": stats["ok"], "kept": stats["kept"], "failed": stats["fail"],
