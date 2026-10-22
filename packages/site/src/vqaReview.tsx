@@ -37,7 +37,7 @@ interface PageMeta { p: number; file: string; images: number; first: string; las
 interface Index {
   generated_at: string; batch: string; images: number; candidates: number; pages: PageMeta[]; searchParts?: number;
   byCapability: Record<string, number>; byLevel: Record<string, number>; byDomain: Record<string, number>;
-  byCategory?: Record<string, number>; bySubcategory?: Record<string, number>; taxonomyVersion?: "v4" | "v5";
+  byCategory?: Record<string, number>; bySubcategory?: Record<string, number>; taxonomyVersion?: string;
   byBiasAxis?: Record<string, number>; abstentions?: number;
 }
 interface ImgRow { f: string; p: number; d: string; c: string[]; s?: string[]; l: string[]; n: number; b?: number; a?: number }
@@ -422,7 +422,7 @@ export function VqaReview({ site }: { site: VqaReviewSite }) {
   // v5 reports categories and subcategories. The same two filter slots are used:
   // `capability` holds the category, `level` holds the subcategory, so a URL or a
   // bookmark keeps meaning without a second filter bar.
-  const isV5 = index?.taxonomyVersion === "v5";
+  const isV5 = String(index?.taxonomyVersion ?? "").startsWith("v5");
   const cats = Object.keys(index?.byCategory ?? {}).sort(natural);
   const subs = Object.keys(index?.bySubcategory ?? {}).sort(natural);
   const CAT_OF: Record<string, string> = { P: "physics", G: "geometry", B: "combination", F: "bias", S: "sensitivity" };
